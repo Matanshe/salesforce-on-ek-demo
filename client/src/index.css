@@ -126,3 +126,8 @@
     overflow-wrap: break-word;
   }
 }
+
+/* Hide specific element */
+#content > div.slds-max-small-hide.slds-p-bottom_medium {
+  display: none !important;
+}
