@@ -1,23 +1,20 @@
 <p align="center">
 <a  href="https://www.salesforce.com/agentforce/"><img  src="./screenshots/agentforce_logo.webp"  alt="Agentforce"  width="150" height="150" hspace="50"/></a>
-<a href="https://www.salesforce.com/data/"><img  src="./screenshots/data_cloud_logo.png"  alt="lock_icon"  width="150" height="150" hspace="50"/></a>
-<a  href="https://www.heroku.com/"><img  src="./screenshots/heroku.webp"  alt="Heroku"  width="150" height="150" hspace="50"/></a>
+<a href="https://www.salesforce.com/data/"><img  src="./screenshots/data_cloud_logo.png"  alt="Data Cloud"  width="150" height="150" hspace="50"/></a>
 <p/>
 
-# Harmonized Unstructured Data With Data 360
+# Salesforce Help Portal - Agentforce on Enterprise Knowledge Demo
 
-Learn how you can use Harmonized Unstructured data with Data 360 and Agentforce.
+A demonstration of Salesforce Help Portal powered by **Agentforce on Enterprise Knowledge (EK)**, showcasing how harmonized unstructured data from Salesforce Data Cloud can be queried through natural language conversations with instant article access.
 
 # Table of Contents
 
-- [Harmonized Unstructured Data With Data 360](#harmonized-unstructured-data-with-data-360)
+- [Salesforce Help Portal - Agentforce on Enterprise Knowledge Demo](#salesforce-help-portal---agentforce-on-enterprise-knowledge-demo)
 - [Table of Contents](#table-of-contents)
   - [What does it do?](#what-does-it-do)
   - [How does it work?](#how-does-it-work)
+  - [Features](#features)
   - [Demo](#demo)
-    - [Welcome screen](#welcome-screen)
-    - [Message details](#message-details)
-    - [Harmonized Unstructured Data Modal](#harmonized-unstructured-data-modal)
   - [API Specification](#api-specification)
     - [Architecture diagram](#architecture-diagram)
   - [Technologies used](#technologies-used)
@@ -34,35 +31,49 @@ Learn how you can use Harmonized Unstructured data with Data 360 and Agentforce.
 
 ## What does it do?
 
-This application demonstrates **Salesforce Data Cloud's unstructured data harmonization capabilities** integrated with **Agentforce**. It provides an interactive chat interface where users can query harmonized unstructured data through natural language conversations.
+This application demonstrates a **Salesforce Help Portal** interface powered by **Agentforce on Enterprise Knowledge**. It provides an interactive chat experience where users can:
 
-The demo showcases how Data Cloud can:
+- Ask natural language questions about Salesforce products, features, and best practices
+- Receive AI-powered responses with citations from harmonized unstructured data
+- Instantly view full articles from cited sources with a single click
+- Experience a seamless, responsive interface designed to match help.salesforce.com
 
-- Process and vectorize unstructured data chunks
+The demo showcases how **Salesforce Data Cloud** and **Agentforce** work together to:
+
+- Process and vectorize unstructured knowledge base content
 - Store vectorized data as HTML objects with semantic search capabilities
 - Enable Agentforce to retrieve relevant information with proper citations
-- Provide transparent insights into AI-generated responses with metrics and source references
+- Provide instant access to source articles through pre-fetched content
 
 ## How does it work?
 
 **Data Processing Pipeline:**
 
-1. **Data Ingestion**: Unstructured data is uploaded to Data Cloud
+1. **Data Ingestion**: Unstructured knowledge base content is uploaded to Data Cloud
 2. **Chunking**: Data is split into manageable chunks for processing
-3. **Harmonization**: Each chunk is converted into an Harmonized Unstructured Data Lake Object (HUDLO)
+3. **Harmonization**: Each chunk is converted into a Harmonized Unstructured Data Lake Object (HUDLO)
 4. **Storage**: Vectorized data is stored as HTML objects in Data Cloud and mapped to Harmonized Unstructured Data Model Object (HUDMO)
 5. **Retrieval**: Agentforce uses RAG (Retrieval-Augmented Generation) to query relevant HUDMO
 
 **User Interaction Flow:**
 
-1. User opens the chat widget and initiates an Agentforce session
-2. User sends natural language queries about the data
+1. User opens the portal and the Agentforce chat session initializes automatically
+2. User sends natural language queries about Salesforce topics
 3. Frontend generates HMAC-SHA256 signature for API authentication
 4. Backend validates the request and forwards it to Agentforce
-5. Agentforce retrieves relevant data using its internal logic
-6. Response includes the answer and response message metadata
-7. User can view detailed metadata
-8. You can fetch the underlying HTML used for the Agentforce response generation
+5. Agentforce retrieves relevant data using RAG and returns answers with citations
+6. Citation details are pre-fetched in the background for instant access
+7. User clicks on a citation to view the full article instantly
+8. Article view opens on the main page with minimized chat sidebar
+
+## Features
+
+- **Auto-initialized Chat**: Chat widget opens automatically when the page loads
+- **Pre-fetching**: Citation articles are fetched in the background for instant viewing
+- **Article View**: Click any citation to view the full article on the main page
+- **Responsive Design**: Mobile-friendly interface that works on all devices
+- **Salesforce Branding**: Design matches help.salesforce.com with Salesforce colors and styling
+- **Real-time Indicators**: Visual feedback for article loading and readiness status
 
 ## Demo
 
@@ -70,13 +81,13 @@ The demo showcases how Data Cloud can:
 
 ### Welcome screen
 
+The portal opens with the chat interface ready for questions.
+
 ![](./screenshots/welcome-screen.png)
 
-### Message details
+### Article view
 
-![](./screenshots/message-details.png)
-
-### Harmonized Unstructured Data Modal
+Click on any citation to view the full article instantly.
 
 ![](./screenshots/hudmo-modal.png)
 
@@ -96,7 +107,7 @@ The application exposes four RESTful endpoints, all protected by HMAC-SHA256 sig
 - Sends a message to an active Agentforce session
 - Headers: `X-Timestamp`, `X-Signature`, `Content-Type: application/json`
 - Body: `{ sessionId, message, sequenceId }`
-- Returns: `{ messages }` (Array containing Agentforce response with metadata)
+- Returns: `{ messages }` (Array containing Agentforce response with metadata and citations)
 
 **DELETE /api/v1/delete-session**
 
@@ -137,8 +148,8 @@ All requests require HMAC-SHA256 signature in headers:
 
 - [Node.js](https://nodejs.org/en) - JavaScript runtime
 - [Express](https://expressjs.com/) - Web framework
-- [Salesforce Einstein Agentforce API v1 ](https://developer.salesforce.com/docs/einstein/genai/guide/agent-api.html)- AI agent integration
-- [OAuth 2.0 Client Credentials Flow ](https://help.salesforce.com/s/articleView?id=xcloud.remoteaccess_oauth_client_credentials_flow.htm&type=5)- Salesforce authentication
+- [Salesforce Einstein Agentforce API v1](https://developer.salesforce.com/docs/einstein/genai/guide/agent-api.html) - AI agent integration
+- [OAuth 2.0 Client Credentials Flow](https://help.salesforce.com/s/articleView?id=xcloud.remoteaccess_oauth_client_credentials_flow.htm&type=5) - Salesforce authentication
 - [HMAC-SHA256](https://nodejs.org/api/crypto.html#cryptocreatehmacalgorithm-key-options) - Request signature validation
 
 For a more detailed overview of the development & production dependencies, please check server [`package.json`](./server/package.json) or client [`package.json`](./client/package.json).
@@ -162,8 +173,8 @@ To run this application locally, you will need the following:
 1. **Clone the repository**
 
    ```bash
-   git clone https://github.com/mvrzan/salesforce-data-cloud-unstructured-harmonization.git
-   cd salesforce-data-cloud-unstructured-harmonization
+   git clone git@github.com:Matanshe/salesforce-on-ek-demo.git
+   cd salesforce-on-ek-demo
    ```
 
 2. **Configure Server Environment Variables**
@@ -183,6 +194,7 @@ To run this application locally, you will need the following:
    CLIENT_SECRET=your_salesforce_client_secret
    AGENTFORCE_AGENT_ID=your_agentforce_agent_id
    API_SECRET=your_generated_secret_key
+   PORT=3000
    ```
 
    Generate a secure API secret:
@@ -212,7 +224,7 @@ To run this application locally, you will need the following:
    Install server dependencies:
 
    ```bash
-   cd server
+   cd ../server
    npm install
    ```
 
@@ -240,6 +252,8 @@ To run this application locally, you will need the following:
 6. **Access the Application**
 
    Open your browser and navigate to `http://localhost:5173`
+
+   The Salesforce Help Portal will open with the Agentforce chat interface ready for questions.
 
 ## Deployment
 
@@ -270,6 +284,7 @@ Once you are happy with your application, you can deploy it to Heroku!
    heroku config:set CLIENT_SECRET=your_salesforce_client_secret
    heroku config:set AGENTFORCE_AGENT_ID=your_agentforce_agent_id
    heroku config:set API_SECRET=your_generated_secret_key
+   heroku config:set PORT=3000
    ```
 
 3. **Build and Deploy Client**
