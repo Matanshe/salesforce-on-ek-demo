@@ -1,8 +1,3 @@
-<p align="center">
-<a  href="https://www.salesforce.com/agentforce/"><img  src="./screenshots/agentforce_logo.webp"  alt="Agentforce"  width="150" height="150" hspace="50"/></a>
-<a href="https://www.salesforce.com/data/"><img  src="./screenshots/data_cloud_logo.png"  alt="Data Cloud"  width="150" height="150" hspace="50"/></a>
-<p/>
-
 # Salesforce Help Portal - Agentforce on Enterprise Knowledge Demo
 
 A demonstration of Salesforce Help Portal powered by **Agentforce on Enterprise Knowledge (EK)**, showcasing how harmonized unstructured data from Salesforce Data Cloud can be queried through natural language conversations with instant article access.
@@ -14,9 +9,7 @@ A demonstration of Salesforce Help Portal powered by **Agentforce on Enterprise 
   - [What does it do?](#what-does-it-do)
   - [How does it work?](#how-does-it-work)
   - [Features](#features)
-  - [Demo](#demo)
   - [API Specification](#api-specification)
-    - [Architecture diagram](#architecture-diagram)
   - [Technologies used](#technologies-used)
 - [Configuration](#configuration)
   - [Requirements](#requirements)
@@ -75,22 +68,6 @@ The demo showcases how **Salesforce Data Cloud** and **Agentforce** work togethe
 - **Salesforce Branding**: Design matches help.salesforce.com with Salesforce colors and styling
 - **Real-time Indicators**: Visual feedback for article loading and readiness status
 
-## Demo
-
-![](./screenshots/demo.gif)
-
-### Welcome screen
-
-The portal opens with the chat interface ready for questions.
-
-![](./screenshots/welcome-screen.png)
-
-### Article view
-
-Click on any citation to view the full article instantly.
-
-![](./screenshots/hudmo-modal.png)
-
 ## API Specification
 
 The application exposes four RESTful endpoints, all protected by HMAC-SHA256 signature validation:
@@ -128,10 +105,6 @@ All requests require HMAC-SHA256 signature in headers:
 
 - `X-Timestamp`: Current timestamp in milliseconds
 - `X-Signature`: HMAC-SHA256(API_SECRET, timestamp + method + path)
-
-### Architecture diagram
-
-![](./screenshots/architecture-diagram.png)
 
 ## Technologies used
 
