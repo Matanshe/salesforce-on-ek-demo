@@ -18,6 +18,8 @@ interface HudmoData {
     metadata?: {
       sourceUrl?: string;
     };
+    qa?: Array<{ question?: string; answer?: string }>;
+    summary?: string;
   };
 }
 
@@ -90,6 +92,11 @@ function App() {
 
       const agentResponse = data.messages?.[0];
       console.log("this is the agent response:", data.messages?.[0]);
+      
+      // Check for URL_Redacted in agent response
+      if (agentResponse?.message?.includes("URL_Redacted") || agentResponse?.message?.includes("(URL_Redacted)")) {
+        console.log("⚠️ Found URL_Redacted in agent response message:", agentResponse.message);
+      }
 
       if (!agentResponse) {
         throw new Error("No message received from agent");
@@ -193,6 +200,36 @@ function App() {
 
       const result = await response.json();
       
+      // Log the full content API response
+      console.log("📄 Content API Response (get-hudmo):", JSON.stringify(result, null, 2));
+      console.log("📄 Content API Response (data):", result.data);
+      console.log("📄 Content API Response (attributes):", result.data?.attributes);
+      
+      // Check for URL_Redacted in content API response
+      const contentStr = JSON.stringify(result);
+      if (contentStr.includes("URL_Redacted") || contentStr.includes("(URL_Redacted)")) {
+        console.log("⚠️ Found URL_Redacted in content API response");
+        console.log("⚠️ Content with URL_Redacted:", result.data?.attributes?.content);
+      }
+      
+      // Extract Q&A and summary from content API response
+      const qa = result.data?.attributes?.qa;
+      const summary = result.data?.attributes?.summary;
+      
+      console.log("📋 Extracted Q&A:", qa);
+      console.log("📝 Extracted Summary:", summary);
+      
+      // Update message with Q&A and summary if messageId is provided
+      if (messageId && (qa || summary)) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === messageId
+              ? { ...msg, qa, summary }
+              : msg
+          )
+        );
+      }
+      
       if (prefetch) {
         // Store in cache for later use
         setPrefetchedHudmoData((prev) => {
@@ -206,6 +243,9 @@ function App() {
           return newSet;
         });
         console.log("Pre-fetched harmonization data for:", cacheKey);
+        if (qa || summary) {
+          console.log("Extracted Q&A and Summary from content API:", { qa, summary });
+        }
       } else {
         // Open article immediately
         setHudmoData(result.data);
@@ -245,10 +285,10 @@ function App() {
         }
       }
 
-      // If message has citation data, open article view
+      // If message has citation data, open article view and extract Q&A/summary
           if (dccid && hudmo) {
             setCurrentContentId(dccid);
-            fetchHarmonizationData(dccid, hudmo);
+            fetchHarmonizationData(dccid, hudmo, message.id, false);
           }
     }
   };
