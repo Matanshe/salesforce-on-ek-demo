@@ -196,12 +196,16 @@ const TableOfContents = ({ onContentClick, currentContentId, isVisible = true }:
   return (
     <div style={{ 
       backgroundColor: '#f3f2f2', 
-      minHeight: '100vh',
+      height: '100vh',
+      maxHeight: '100vh',
       borderRight: '1px solid #d8dde6',
       width: '100%',
       maxWidth: '400px',
       display: 'flex',
-      flexDirection: 'column'
+
+      flexDirection: 'column',
+      overflow: 'hidden'
+
     }}>
       <h2 style={{ 
         fontSize: '14px', 
@@ -210,14 +214,16 @@ const TableOfContents = ({ onContentClick, currentContentId, isVisible = true }:
         color: '#3e3e3c',
         textTransform: 'uppercase',
         letterSpacing: '0.0625rem',
-        borderBottom: '1px solid #d8dde6'
+        borderBottom: '1px solid #d8dde6',
+        flexShrink: 0
       }}>
         Table of Contents
       </h2>
       <div style={{
         padding: '12px 16px',
         borderBottom: '1px solid #d8dde6',
-        backgroundColor: '#ffffff'
+        backgroundColor: '#ffffff',
+        flexShrink: 0
       }}>
         <Input
           type="text"
@@ -236,7 +242,11 @@ const TableOfContents = ({ onContentClick, currentContentId, isVisible = true }:
           }}
         />
       </div>
-      <div style={{ flex: 1, overflowY: 'auto' }}>
+      <div style={{
+        flex: 1,
+        overflowY: 'auto',
+        overflowX: 'hidden'
+      }}>
         {filteredTree ? (
           <ul style={{ padding: 0, margin: 0 }}>
             <NavItem item={filteredTree} />
