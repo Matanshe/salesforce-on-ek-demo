@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { Input } from './ui/input';
 // @ts-ignore: Vite's import.meta.glob ESM asset import workaround, import as URL string
 const tocXmlUrl = '/data/toc_enhanced.xml';
 
@@ -18,6 +19,7 @@ interface TableOfContentsProps {
 const TableOfContents = ({ onContentClick, currentContentId, isVisible = true }: TableOfContentsProps) => {
   const [tree, setTree] = useState<NavNode | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
  // const OBJECT_API_NAME = "SFDCHelp7_DMO_harmonized__dlm";
 
@@ -47,6 +49,36 @@ const TableOfContents = ({ onContentClick, currentContentId, isVisible = true }:
       .map((child) => parseNode(child))
   });
 
+  // Filter tree based on search query
+  const filterTree = (node: NavNode, query: string): NavNode | null => {
+    if (!query.trim()) return node;
+
+    const lowerQuery = query.toLowerCase();
+    const titleMatch = node.title?.toLowerCase().includes(lowerQuery) || false;
+    
+    // Filter children recursively
+    const filteredChildren = node.children
+      .map(child => filterTree(child, query))
+      .filter((child): child is NavNode => child !== null);
+
+    // Include node if title matches or if any child matches
+    if (titleMatch || filteredChildren.length > 0) {
+      return {
+        ...node,
+        children: filteredChildren
+      };
+    }
+
+    return null;
+  };
+
+  // Memoize filtered tree
+  const filteredTree = useMemo(() => {
+    if (!tree) return null;
+    if (!searchQuery.trim()) return tree;
+    return filterTree(tree, searchQuery);
+  }, [tree, searchQuery]);
+
   const NavItem = ({ item, depth = 0 }: { item: NavNode; depth?: number }) => {
     // Local state to track if this specific branch is open
     const [isOpen, setIsOpen] = useState(depth === 0); // Root is open by default
@@ -54,7 +86,7 @@ const TableOfContents = ({ onContentClick, currentContentId, isVisible = true }:
     const hasContentId = !!item.contentId;
     const isCurrentPage = item.contentId === currentContentId;
 
-    // Auto-expand if this is the current page or has the current page as a child
+    // Auto-expand if this is the current page, has the current page as a child, or if searching
     useEffect(() => {
       if (isCurrentPage || (hasChildren && item.children.some(child => 
         child.contentId === currentContentId || 
@@ -63,6 +95,13 @@ const TableOfContents = ({ onContentClick, currentContentId, isVisible = true }:
         setIsOpen(true);
       }
     }, [currentContentId, isCurrentPage, hasChildren, item.children]);
+
+    // Auto-expand when searching
+    useEffect(() => {
+      if (searchQuery.trim() && hasChildren) {
+        setIsOpen(true);
+      }
+    }, [searchQuery, hasChildren]);
 
     const handleClick = (e: React.MouseEvent) => {
       if (hasContentId && onContentClick) {
@@ -160,7 +199,9 @@ const TableOfContents = ({ onContentClick, currentContentId, isVisible = true }:
       minHeight: '100vh',
       borderRight: '1px solid #d8dde6',
       width: '100%',
-      maxWidth: '400px'
+      maxWidth: '400px',
+      display: 'flex',
+      flexDirection: 'column'
     }}>
       <h2 style={{ 
         fontSize: '14px', 
@@ -173,9 +214,45 @@ const TableOfContents = ({ onContentClick, currentContentId, isVisible = true }:
       }}>
         Table of Contents
       </h2>
-      <ul style={{ padding: 0, margin: 0 }}>
-        <NavItem item={tree} />
-      </ul>
+      <div style={{
+        padding: '12px 16px',
+        borderBottom: '1px solid #d8dde6',
+        backgroundColor: '#ffffff'
+      }}>
+        <Input
+          type="text"
+          placeholder="Type to filter"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          style={{
+            width: '100%',
+            fontSize: '13px',
+            fontFamily: 'Salesforce Sans, Arial, sans-serif',
+            padding: '8px 12px',
+            border: '1px solid #d8dde6',
+            borderRadius: '4px',
+            backgroundColor: '#ffffff',
+            color: '#3e3e3c'
+          }}
+        />
+      </div>
+      <div style={{ flex: 1, overflowY: 'auto' }}>
+        {filteredTree ? (
+          <ul style={{ padding: 0, margin: 0 }}>
+            <NavItem item={filteredTree} />
+          </ul>
+        ) : searchQuery.trim() ? (
+          <div style={{ 
+            padding: '20px 16px', 
+            color: '#706e6b',
+            fontSize: '13px',
+            fontFamily: 'Salesforce Sans, Arial, sans-serif',
+            textAlign: 'center'
+          }}>
+            No results found
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 };
