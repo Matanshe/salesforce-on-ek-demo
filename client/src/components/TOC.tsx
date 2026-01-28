@@ -9,11 +9,16 @@ interface NavNode {
   children: NavNode[];
 }
 
-const TableOfContents = () => {
+interface TableOfContentsProps {
+  onContentClick?: (contentId: string) => void;
+  currentContentId?: string | null;
+  isVisible?: boolean;
+}
+
+const TableOfContents = ({ onContentClick, currentContentId, isVisible = true }: TableOfContentsProps) => {
   const [tree, setTree] = useState<NavNode | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const BASE_URL = "https://eheart-241222-495-demo.lightning.force.com/lightning/cmp/runtime_cdp__dataHarmonizedModelObjRefRecordHome";
   const OBJECT_API_NAME = "SFDCHelp7_DMO_harmonized__dlm";
 
   useEffect(() => {
@@ -46,13 +51,25 @@ const TableOfContents = () => {
     // Local state to track if this specific branch is open
     const [isOpen, setIsOpen] = useState(depth === 0); // Root is open by default
     const hasChildren = item.children.length > 0;
+    const hasContentId = !!item.contentId;
+    const isCurrentPage = item.contentId === currentContentId;
 
-    const finalUrl = item.contentId 
-      ? `${BASE_URL}?c__contentId=${item.contentId}&c__objectApiName=${OBJECT_API_NAME}`
-      : (item.xmlHref || "#");
+    // Auto-expand if this is the current page or has the current page as a child
+    useEffect(() => {
+      if (isCurrentPage || (hasChildren && item.children.some(child => 
+        child.contentId === currentContentId || 
+        child.children.some(grandchild => grandchild.contentId === currentContentId)
+      ))) {
+        setIsOpen(true);
+      }
+    }, [currentContentId, isCurrentPage, hasChildren, item.children]);
 
-    const toggle = (e: React.MouseEvent) => {
-      if (hasChildren) {
+    const handleClick = (e: React.MouseEvent) => {
+      if (hasContentId && onContentClick) {
+        e.preventDefault();
+        e.stopPropagation();
+        onContentClick(item.contentId!);
+      } else if (hasChildren) {
         e.preventDefault();
         setIsOpen(!isOpen);
       }
@@ -61,18 +78,25 @@ const TableOfContents = () => {
     return (
       <li style={{ listStyleType: 'none', margin: 0 }}>
         <div 
-          onClick={toggle}
+          onClick={handleClick}
           style={{ 
             display: 'flex', 
             alignItems: 'center', 
             padding: `10px 16px 10px ${16 + (depth * 16)}px`,
             borderBottom: '1px solid #e0e0e0',
-            backgroundColor: '#f3f2f2',
-            cursor: hasChildren ? 'pointer' : 'default',
-            transition: 'background-color 0.2s'
+            backgroundColor: isCurrentPage ? '#e3f2fd' : '#f3f2f2',
+            cursor: hasContentId ? 'pointer' : (hasChildren ? 'pointer' : 'not-allowed'),
+            transition: 'background-color 0.2s',
+            borderLeft: isCurrentPage ? '3px solid #0176D3' : 'none',
           }}
-          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#e0e0e0')}
-          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#f3f2f2')}
+          onMouseEnter={(e) => {
+            if (hasContentId || hasChildren) {
+              e.currentTarget.style.backgroundColor = isCurrentPage ? '#bbdefb' : '#e0e0e0';
+            }
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = isCurrentPage ? '#e3f2fd' : '#f3f2f2';
+          }}
         >
           {/* Chevron Icon */}
           {hasChildren && (
@@ -88,21 +112,29 @@ const TableOfContents = () => {
             </span>
           )}
 
-          <a 
-            href={finalUrl}
-            target="_blank" 
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()} // Prevent link click from triggering toggle
+          <span
             style={{ 
               textDecoration: 'none', 
-              color: '#0070d2', 
+              color: hasContentId ? (isCurrentPage ? '#0176D3' : '#0070d2') : '#706e6b', 
               fontSize: '13px',
-              fontWeight: hasChildren ? 'bold' : 'normal',
+              fontWeight: (hasChildren || isCurrentPage) ? 'bold' : 'normal',
               fontFamily: 'Salesforce Sans, Arial, sans-serif',
+              cursor: hasContentId ? 'pointer' : 'not-allowed',
+              opacity: hasContentId ? 1 : 0.6,
             }}
           >
             {item.title}
-          </a>
+            {isCurrentPage && (
+              <span style={{ 
+                marginLeft: '8px', 
+                fontSize: '10px', 
+                color: '#0176D3',
+                fontWeight: 'bold'
+              }}>
+                ●
+              </span>
+            )}
+          </span>
         </div>
 
         {/* Render children only if isOpen is true */}
@@ -117,6 +149,8 @@ const TableOfContents = () => {
     );
   };
 
+  if (!isVisible) return null;
+  
   if (error) return <div style={{ color: 'red', padding: '20px' }}>{error}</div>;
   if (!tree) return <div style={{ padding: '20px', backgroundColor: '#f3f2f2' }}>Loading...</div>;
 

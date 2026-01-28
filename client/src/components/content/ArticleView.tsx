@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -15,6 +16,20 @@ interface ArticleViewProps {
 }
 
 export const ArticleView = ({ data, onClose }: ArticleViewProps) => {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to top when content changes
+  useEffect(() => {
+    if (data && scrollContainerRef.current) {
+      // Find the ScrollArea viewport element
+      const scrollArea = scrollContainerRef.current.closest('[data-slot="scroll-area"]');
+      const viewport = scrollArea?.querySelector('[data-slot="scroll-area-viewport"]') as HTMLElement;
+      if (viewport) {
+        viewport.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+  }, [data?.attributes?.content, data?.attributes?.title]);
+
   if (!data) return null;
 
   return (
@@ -53,7 +68,7 @@ export const ArticleView = ({ data, onClose }: ArticleViewProps) => {
 
       {/* Content */}
       <ScrollArea className="flex-1 min-h-0">
-        <div className="px-3 sm:px-4 md:px-6 py-4 sm:py-6">
+        <div ref={scrollContainerRef} className="px-3 sm:px-4 md:px-6 py-4 sm:py-6">
           {data.attributes?.content ? (
             <div
               className="prose prose-sm sm:prose-base md:prose-lg max-w-none text-left prose-headings:font-bold prose-headings:text-gray-900 prose-h1:text-xl sm:prose-h1:text-2xl md:prose-h1:text-3xl prose-h2:text-lg sm:prose-h2:text-xl md:prose-h2:text-2xl prose-h3:text-base sm:prose-h3:text-lg md:prose-h3:text-xl prose-h4:text-sm sm:prose-h4:text-base md:prose-h4:text-lg prose-p:text-gray-700 prose-p:leading-relaxed prose-p:text-sm sm:prose-p:text-base prose-a:text-[#0176D3] prose-a:no-underline hover:prose-a:underline prose-strong:text-gray-900 prose-strong:font-semibold prose-ul:my-3 sm:prose-ul:my-4 prose-ul:list-disc prose-ul:pl-4 sm:prose-ul:pl-6 prose-ol:my-3 sm:prose-ol:my-4 prose-ol:list-decimal prose-ol:pl-4 sm:prose-ol:pl-6 prose-li:text-gray-700 prose-li:my-1 sm:prose-li:my-2 prose-li:marker:text-gray-500 prose-li:text-sm sm:prose-li:text-base [&_ul]:my-3 sm:[&_ul]:my-4 [&_ul]:list-disc [&_ul]:pl-4 sm:[&_ul]:pl-6 [&_ol]:my-3 sm:[&_ol]:my-4 [&_ol]:list-decimal [&_ol]:pl-4 sm:[&_ol]:pl-6 [&_li]:text-gray-700 [&_li]:my-1 sm:[&_li]:my-2 [&_li]:ml-0 [&_li]:text-sm sm:[&_li]:text-base pb-4 sm:pb-6"

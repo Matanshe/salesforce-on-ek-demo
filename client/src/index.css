@@ -126,3 +126,15 @@
     overflow-wrap: break-word;
   }
 }
+
+/* Hide breadcrumb elements in article content */
+#bread-crumb-label,
+.slds-breadcrumb,
+ol.slds-breadcrumb {
+  display: none !important;
+}
+
+/* Hide h1 heading with slds-text-heading_large class */
+h1.slds-text-heading_large {
+  display: none !important;
+}

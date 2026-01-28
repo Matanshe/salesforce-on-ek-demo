@@ -30,8 +30,11 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [hudmoData, setHudmoData] = useState<HudmoData | null>(null);
   const [isArticleOpen, setIsArticleOpen] = useState(false);
+  const [currentContentId, setCurrentContentId] = useState<string | null>(null);
   const [prefetchedHudmoData, setPrefetchedHudmoData] = useState<Map<string, HudmoData>>(new Map());
   const [fetchingHudmoFor, setFetchingHudmoFor] = useState<Set<string>>(new Set());
+  
+  const OBJECT_API_NAME = "SFDCHelp7_DMO_harmonized__dlm";
 
   const [externalSessionKey] = useState<string>(() => {
     const existingSession = sessionStorage.getItem("agentforce-session-key");
@@ -207,6 +210,7 @@ function App() {
         // Open article immediately
         setHudmoData(result.data);
         setIsArticleOpen(true);
+        setCurrentContentId(dccid); // Track current content ID
         console.log("Harmonization data:", result.data);
       }
     } catch (error) {
@@ -243,6 +247,7 @@ function App() {
 
       // If message has citation data, open article view
           if (dccid && hudmo) {
+            setCurrentContentId(dccid);
             fetchHarmonizationData(dccid, hudmo);
           }
     }
@@ -251,7 +256,13 @@ function App() {
   const handleCloseArticle = () => {
     setIsArticleOpen(false);
     setHudmoData(null);
+    setCurrentContentId(null);
   };
+
+  const handleTocContentClick = useCallback((contentId: string) => {
+    // Load content using content ID as dccid
+    fetchHarmonizationData(contentId, OBJECT_API_NAME);
+  }, [fetchHarmonizationData]);
 
   const handleDeleteSession = async () => {
     if (!agentforceSessionId) {
@@ -428,9 +439,15 @@ function App() {
       <Header />
 
       <main className="flex-1 relative overflow-hidden flex">
-        <div className="w-64 border-r border-gray-200 bg-white flex-shrink-0">
-          <TOC />
-        </div>
+        {isArticleOpen && (
+          <div className="w-64 border-r border-gray-200 bg-white flex-shrink-0">
+            <TOC 
+              onContentClick={handleTocContentClick}
+              currentContentId={currentContentId}
+              isVisible={isArticleOpen}
+            />
+          </div>
+        )}
         <div className="flex-1 relative overflow-hidden">{isArticleOpen && hudmoData ? (
           <div className="flex flex-col md:flex-row h-full absolute inset-0">
             {/* Article View - Main Content */}
