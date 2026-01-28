@@ -40,34 +40,82 @@ const handleUrlClick = (url: string, e: React.MouseEvent) => {
   window.open(url, "_blank", "noopener,noreferrer");
 };
 
+
+
+
 const parseMessageContent = (content: string) => {
-  // Preserve the original content formatting - don't modify newlines or whitespace
-  const urlRegex = /(https?:\/\/[^\s)]+)/g;
-  const parts = content.split(urlRegex);
-  
-  return parts.map((part, index) => {
+  // Matches "Label" (URL)
+  const labeledLinkRegex = /"([^"]+)"\s*\((https?:\/\/[^\s<>"'()]+[^\s<>"'().,;!?])\)/g;
+
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+
+  // Handle labeled links first
+  content.replace(labeledLinkRegex, (match, label, url, offset) => {
+    if (offset > lastIndex) {
+      parts.push(
+        <span key={lastIndex} style={{ whiteSpace: "pre-wrap" }}>
+          {content.slice(lastIndex, offset)}
+        </span>
+      );
+    }
+
+    // Only display the label, do not duplicate
+    parts.push(
+      <a
+        key={offset}
+        href={url}
+        className="text-blue-500 hover:text-blue-700 underline break-words"
+        onClick={(e) => handleUrlClick(url, e)}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        {label}
+      </a>
+    );
+
+    lastIndex = offset + match.length;
+    return match;
+  });
+
+  // Remaining text after the last labeled link
+  const remaining = content.slice(lastIndex);
+
+  // Auto-link any remaining plain URLs with custom display
+  const urlRegex = /(https?:\/\/[^\s<>"'()]+[^\s<>"'().,;!?])/g;
+
+  remaining.split(urlRegex).forEach((part, index) => {
     if (part.match(urlRegex)) {
-      // Only clean trailing punctuation from URLs for the link href, but preserve original in display
       const cleanUrl = part.replace(/[).,;!?]+$/, "");
       const trailingPunct = part.slice(cleanUrl.length);
 
-      return (
-        <span key={index}>
+      parts.push(
+        <span key={`plain-${index}`}>
           <a
             href={cleanUrl}
-            className="text-blue-500 hover:text-blue-700 underline break-all"
+            className="text-blue-500 hover:text-blue-700 underline break-words"
             onClick={(e) => handleUrlClick(cleanUrl, e)}
+            target="_blank"
+            rel="noopener noreferrer"
           >
-            {cleanUrl}
+            official documentation here
           </a>
           {trailingPunct}
         </span>
       );
+    } else {
+      parts.push(
+        <span key={`text-${index}`} style={{ whiteSpace: "pre-wrap" }}>
+          {part}
+        </span>
+      );
     }
-    // Preserve all whitespace and newlines in the text parts
-    return <span key={index} style={{ whiteSpace: 'pre-wrap' }}>{part}</span>;
   });
+
+  return parts;
 };
+
+
 
 export const ChatMessage = ({ message, onClick, isFetching = false, isFetched = false }: ChatMessageProps) => {
   const isUser = message.sender === "user";
