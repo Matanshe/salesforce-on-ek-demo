@@ -1,5 +1,6 @@
 import type { Message } from "../../types/message";
 import { Card } from "@/components/ui/card";
+import agentforceLogo from "../../assets/agentforce_logo.webp";
 
 interface ChatMessageProps {
   message: Message;
@@ -149,7 +150,16 @@ export const ChatMessage = ({ message, onClick, isFetching = false, isFetched = 
   };
 
   return (
-    <div className={`flex ${isUser ? "justify-end" : "justify-start"} mb-3 sm:mb-4`}>
+    <div className={`flex ${isUser ? "justify-end" : "justify-start"} mb-3 sm:mb-4 items-start gap-2 sm:gap-3`}>
+      {isBot && (
+        <div className="flex-shrink-0 mt-1">
+          <img 
+            src={agentforceLogo} 
+            alt="Agentforce" 
+            className="w-6 h-6 sm:w-7 sm:h-7 rounded-full object-cover border-2 border-[#0176D3]"
+          />
+        </div>
+      )}
       <Card
         onClick={handleMessageClick}
         className={`
