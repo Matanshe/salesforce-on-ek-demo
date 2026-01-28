@@ -41,11 +41,13 @@ const handleUrlClick = (url: string, e: React.MouseEvent) => {
 };
 
 const parseMessageContent = (content: string) => {
+  // Preserve the original content formatting - don't modify newlines or whitespace
   const urlRegex = /(https?:\/\/[^\s)]+)/g;
   const parts = content.split(urlRegex);
-console.log("Elad this is the plain message content:", content);
+  
   return parts.map((part, index) => {
     if (part.match(urlRegex)) {
+      // Only clean trailing punctuation from URLs for the link href, but preserve original in display
       const cleanUrl = part.replace(/[).,;!?]+$/, "");
       const trailingPunct = part.slice(cleanUrl.length);
 
@@ -62,7 +64,8 @@ console.log("Elad this is the plain message content:", content);
         </span>
       );
     }
-    return <span key={index}>{part}</span>;
+    // Preserve all whitespace and newlines in the text parts
+    return <span key={index} style={{ whiteSpace: 'pre-wrap' }}>{part}</span>;
   });
 };
 
@@ -127,7 +130,7 @@ export const ChatMessage = ({ message, onClick, isFetching = false, isFetched = 
         `}
       >
         <div className="px-3 sm:px-4 py-2">
-          <p className="text-xs sm:text-sm text-left wrap-break-word break-words">{parseMessageContent(message.content)}</p>
+          <p className="text-xs sm:text-sm text-left wrap-break-word break-words whitespace-pre-wrap">{parseMessageContent(message.content)}</p>
           <span className="text-[10px] sm:text-xs opacity-70 mt-1 block text-left">
             {message.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
           </span>

@@ -187,7 +187,7 @@ export const MessageDisplay = ({ message, onBack }: MessageDisplayProps) => {
               )}
               <div className="col-span-1 sm:col-span-2 bg-gray-50 rounded-lg p-4 border border-gray-200">
                 <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-2">Content</span>
-                <p className="text-gray-900 text-sm leading-relaxed wrap-break-word">
+                <p className="text-gray-900 text-sm leading-relaxed wrap-break-word whitespace-pre-wrap">
                   {message.message || message.content}
                 </p>
               </div>
