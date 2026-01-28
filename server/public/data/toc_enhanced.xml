@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nav title="Data 360" homepage="c360_a_data_cloud.htm">
+   <nav title="About Salesforce Data 360" href="c360_a_data_cloud.htm" content__id="bede84636c16a905e44b042f68b93c2c">
+      <nav title="Data 360 Features and Learning Path" href="c360_a_customer360_lm.htm"/>
+      <nav title="Better Together: Data and AI" href="c360_a_dc_ai.htm">
+         <nav title="Example: Cumulus Financial Service Agent" href="c360_a_dc_ai_finserv.htm"/>
+      </nav>
+      <nav title="Data Builds the Foundation for Marketing" href="c360_a_datacloud_mktgnext.htm"/>
+      <nav title="Data to Decisions: Data 360 and Tableau Next" href="c360_a_datacloud_tableaunext.htm"/>
+      <nav title="About Data 360 Releases" href="c360_a_dc_releases.htm" content__id="53a0f2afe4e8b7a5cb91569cc19e4cb2"/>
+      <nav title="Data 360 Glossary of Terms" href="c360_a_glossary_guide.htm"/>
+      <nav title="Data 360 Resources" href="c360_a_dc_resources.htm"/>
+      <nav title="Data 360 Thought Leadership Content" href="c360_a_dc_blogs.htm"/>
+      <nav title="Data 360 and Cross-Cloud Implementation Guides" href="c360_a_imp_guides.htm"/>
+      <nav title="Data 360 Cross-Product Solutions" href="c360_a_solutions.htm">
+         <nav title="Connect Salesforce Data to Data 360" href="c360_a_connect_data_task_steps.htm"/>
+         <nav title="Consolidate Customer Service Data for Improved Support" href="c360_a_service_cloud_guide.htm">
+            <nav title="Configure Users and Install Service Cloud Data Bundle" href="c360_a_conf_connect_dc4service.htm"/>
+            <nav title="Ingest and Map Data from Service Cloud" href="c360_a_ingest_map_dc4service.htm"/>
+            <nav title="Unify Service Data with Identity Resolution" href="c360_a_unify_data_dc4service.htm"/>
+            <nav title="Analyze Service Data with Calculated Insights" href="c360_a_analyze_ci_dc4service.htm"/>
+            <nav title="Next Steps with Data Cloud" href="c360_a_summary_dc4sales.htm"/>
+         </nav>
+         <nav title="Contact Point and Activation Membership Filtering" href="c360_a_activation_filtering_main.htm">
+            <nav title="Email a Contract Renewal Notification (B2B) Use Case" href="c360_a_activation_filtering_uc1_contract_main.htm">
+               <nav title="Create the Audience Segment in Data Cloud" href="c360_a_activation_filtering_uc1_contract_create_segment.htm"/>
+               <nav title="Filter the Segment and Publish to Marketing Cloud Engagement" href="c360_a_activation_filtering_uc1_contract_filter_segment.htm"/>
+            </nav>
+            <nav title="Email a New Service Promo Notification (B2C) Use Case" href="c360_a_activation_filtering_uc2_service_main.htm">
+               <nav title="Create the Audience Segment in Data Cloud" href="c360_a_activation_filtering_uc2_service_create_segment.htm"/>
+               <nav title="Filter the Segment and Publish to Marketing Cloud Engagement" href="c360_a_activation_filtering_uc2_service_filter_segment.htm"/>
+            </nav>
+            <nav title="Text a Policy Change SMS Notification (B2C) Use Case" href="c360_a_activation_filtering_uc3_policy_main.htm">
+               <nav title="Create the Audience Segment in Data Cloud" href="c360_a_activation_filtering_uc3_policy_create_segment.htm"/>
+               <nav title="Filter the Segment and Publish to Marketing Cloud Engagement" href="c360_a_activation_filtering_uc3_policy_filter_segment.htm"/>
+            </nav>
+         </nav>
+         <nav title="Create Omnichannel Journeys Using Unified Individual Profiles in Data Cloud" href="c360_a_omni_home.htm">
+            <nav title="Associated Terms for Omnichannel Journeys Using Data 360" href="c360_a_omni_terms.htm"/>
+            <nav title="Model Your Contact Data for Omnichannel Journeys" href="c360_a_omni_model.htm"/>
+            <nav title="Omnichannel Journey Solution Workflow" href="c360_a_omni_workflow.htm"/>
+            <nav title="Stage Your Data in Data 360" href="c360_a_omni_stage.htm"/>
+            <nav title="Define Match Rules for Identity Resolution and Relate Separate Individuals" href="c360_a_omni_match.htm"/>
+            <nav title="Define Reconciliation Rules to Prioritize Values for the Unified Individual" href="c360_a_omni_reconciliation.htm"/>
+            <nav title="Create a Calculated Insight to Select the MobilePush SubscriberKey" href="c360_a_omni_ci.htm"/>
+            <nav title="Create an Omnichannel Audience in Data 360" href="c360_a_omni_audience.htm"/>
+            <nav title="Create a Segment to Qualify the Correct Unified Individuals" href="c360_a_omni_segment.htm"/>
+            <nav title="Activate an Audience with Contact Points and Attributes" href="c360_a_omni_activate.htm" content__id="66c981473ec5bfdf130b1f3a4273db92"/>
+         </nav>
+      </nav>
+   </nav>
+   <nav title="DLO Mappings" href="c360_a_dmo_mappings.htm">
+      <nav title="Account DLO Mappings" href="c360_a_account_dmo_mappings.htm" content__id="9b75b200f0731a3451d6ba6ccd673db2"/>
+      <nav title="AccountingPeriod DLO Mappings" href="c360_a_accountingperiod_dmo_mappings.htm" content__id="8c7be881f6167f862b8694e69167a0f8"/>
+      <nav title="AcademicCredential DLO Mappings" href="c360_a_academiccredential_dmo_mappings.htm" content__id="701ea15d254c56a0b48c4999b9aad7b3"/>
+      <nav title="AcademicSession DLO Mappings" href="c360_a_academicsession_dmo_mappings.htm" content__id="277394c3f2abb7658d8db5bceca65082"/>
+      <nav title="AcademicTerm DLO Mappings" href="c360_a_academicterm_dmo_mappings.htm" content__id="5ee0c6fd7f9ac8e0345374ed49fd8397"/>
+      <nav title="AcademicTermEnrollment DLO Mappings" href="c360_a_academictermenrollment_dmo_mappings.htm" content__id="7ff77d86e0408da2386a4971a880c094"/>
+      <nav title="AcademicTermRegstrnTimeline DLO Mappings" href="c360_a_academictermregstrntimeline_dmo_mappings.htm" content__id="1aa546ce041764a29dc3b1d6f71f8fa2"/>
+      <nav title="AcademicYear DLO Mappings" href="c360_a_academicyear_dmo_mappings.htm" content__id="fcd9a97d6870e7dea093df290284c7fc"/>
+   </nav>
+   <nav title="Data 360 FAQs" href="c360_a_data360_faqs.htm" content__id="0b41aac773e5b4e61aac65be52d10b5e">
+      <nav title="Data 360 Billing FAQs" href="c360_a_billing_faqs.htm"/>
+      <nav title="Data 360 Segmentation and Activation FAQs" href="c360_a_segmentation_activation_faqs.htm"/>
+   </nav>
+</nav>

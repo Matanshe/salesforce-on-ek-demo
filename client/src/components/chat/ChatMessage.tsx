@@ -43,7 +43,7 @@ const handleUrlClick = (url: string, e: React.MouseEvent) => {
 const parseMessageContent = (content: string) => {
   const urlRegex = /(https?:\/\/[^\s)]+)/g;
   const parts = content.split(urlRegex);
-
+console.log("Elad this is the plain message content:", content);
   return parts.map((part, index) => {
     if (part.match(urlRegex)) {
       const cleanUrl = part.replace(/[).,;!?]+$/, "");

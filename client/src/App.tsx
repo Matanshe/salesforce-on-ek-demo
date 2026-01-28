@@ -6,6 +6,7 @@ import { WelcomeContent } from "./components/content/WelcomeContent";
 import { ChatWidget } from "./components/chat/ChatWidget";
 import { ArticleView } from "./components/content/ArticleView";
 import { generateSignature } from "./utils/requestSigner";
+import TOC from "./components/TOC";
 import "./App.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
@@ -85,6 +86,7 @@ function App() {
       setMessageSequence((prev) => prev + 1);
 
       const agentResponse = data.messages?.[0];
+      console.log("this is the agent response:", data.messages?.[0]);
 
       if (!agentResponse) {
         throw new Error("No message received from agent");
@@ -240,9 +242,9 @@ function App() {
       }
 
       // If message has citation data, open article view
-      if (dccid && hudmo) {
-        fetchHarmonizationData(dccid, hudmo);
-      }
+          if (dccid && hudmo) {
+            fetchHarmonizationData(dccid, hudmo);
+          }
     }
   };
 
@@ -373,6 +375,7 @@ function App() {
 
       const data = await response.json();
       console.log("Session initialized:", data);
+      console.log("response:", response);
 
       // Store the actual session ID returned by Agentforce
       setAgentforceSessionId(data.sessionId);
@@ -424,8 +427,11 @@ function App() {
     <div className="min-h-screen flex flex-col">
       <Header />
 
-      <main className="flex-1 relative overflow-hidden">
-        {isArticleOpen && hudmoData ? (
+      <main className="flex-1 relative overflow-hidden flex">
+        <div className="w-64 border-r border-gray-200 bg-white flex-shrink-0">
+          <TOC />
+        </div>
+        <div className="flex-1 relative overflow-hidden">{isArticleOpen && hudmoData ? (
           <div className="flex flex-col md:flex-row h-full absolute inset-0">
             {/* Article View - Main Content */}
             <div className="flex-1 min-w-0 overflow-hidden order-2 md:order-1">
@@ -464,6 +470,7 @@ function App() {
             prefetchedHudmoData={prefetchedHudmoData}
           />
         )}
+        </div>
       </main>
 
       {/* Mobile Chat Toggle Button - Only show when article is open on mobile */}
