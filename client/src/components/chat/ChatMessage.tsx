@@ -41,9 +41,42 @@ const handleUrlClick = (url: string, e: React.MouseEvent) => {
 };
 
 const parseMessageContent = (content: string) => {
+  let cleanedContent = content;
+  const removedPieces: string[] = [];
+  
+  // Remove the "For more details" section with official documentation link
+  const officialDocPattern = /For more details, you can check the official documentation\s*["']here["']\s*\([^)]*runtime_cdp__dataHarmonizedModelObjRefRecordHome[^)]*\)\.?\s*Let me know if you need further assistance!?/gi;
+  const matches1 = cleanedContent.match(officialDocPattern);
+  if (matches1) {
+    removedPieces.push(...matches1);
+    cleanedContent = cleanedContent.replace(officialDocPattern, '').trim();
+  }
+  
+  // Also remove standalone patterns
+  const pattern2 = /For more details[^.!?]*official documentation[^.!?]*here[^.!?]*\([^)]*runtime_cdp__dataHarmonizedModelObjRefRecordHome[^)]*\)[^.!?]*\.?/gi;
+  const matches2 = cleanedContent.match(pattern2);
+  if (matches2) {
+    removedPieces.push(...matches2);
+    cleanedContent = cleanedContent.replace(pattern2, '').trim();
+  }
+  
+  const pattern3 = /Let me know if you need further assistance!?/gi;
+  const matches3 = cleanedContent.match(pattern3);
+  if (matches3) {
+    removedPieces.push(...matches3);
+    cleanedContent = cleanedContent.replace(pattern3, '').trim();
+  }
+  
+  // Log removed pieces if any were found
+  if (removedPieces.length > 0) {
+    console.log('🗑️ Removed "For more details" sections:', removedPieces);
+    console.log('📝 Original content length:', content.length);
+    console.log('✨ Cleaned content length:', cleanedContent.length);
+  }
+  
   // Preserve the original content formatting - don't modify newlines or whitespace
   const urlRegex = /(https?:\/\/[^\s)]+)/g;
-  const parts = content.split(urlRegex);
+  const parts = cleanedContent.split(urlRegex);
   
   return parts.map((part, index) => {
     if (part.match(urlRegex)) {
@@ -155,7 +188,7 @@ export const ChatMessage = ({ message, onClick, isFetching = false, isFetched = 
                         d="M5 13l4 4L19 7"
                       />
                     </svg>
-                    <span className="text-[10px] sm:text-xs font-semibold">Ready to view article</span>
+                    <span className="text-[10px] sm:text-xs font-semibold">View Sources</span>
                   </>
                 ) : (
                   <>
@@ -173,7 +206,7 @@ export const ChatMessage = ({ message, onClick, isFetching = false, isFetched = 
                         d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
                       />
                     </svg>
-                    <span className="text-[10px] sm:text-xs font-semibold">Click to view article</span>
+                    <span className="text-[10px] sm:text-xs font-semibold">View Sources</span>
                   </>
                 )}
               </div>
