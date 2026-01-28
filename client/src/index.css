@@ -136,5 +136,7 @@ ol.slds-breadcrumb {
 
 /* Hide h1 heading with slds-text-heading_large class */
 h1.slds-text-heading_large {
+/* Hide specific element */
+#content > div.slds-max-small-hide.slds-p-bottom_medium {
   display: none !important;
 }
