@@ -60,14 +60,10 @@ export const ChatWindow = ({
   prefetchedHudmoData = new Map(),
 }: ChatWindowProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+  // Disable auto-scroll to keep agent, text, and input in view
+  // User can manually scroll if needed
 
   return (
     <div className={`w-full ${minimized ? 'h-full' : embedded ? 'h-[500px] sm:h-[600px] md:h-[700px]' : 'sm:w-96 h-dvh sm:h-[600px] sm:rounded-lg'} bg-white ${embedded || minimized ? '' : 'shadow-2xl'} flex flex-col overflow-hidden`}>
@@ -123,7 +119,7 @@ export const ChatWindow = ({
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-2 sm:p-3 md:p-4 bg-gray-50">
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-2 sm:p-3 md:p-4 bg-gray-50">
         {messages.length === 0 && !isLoading && !sessionInitialized ? (
           <div className="flex flex-col items-center justify-center h-full text-gray-500 gap-3 sm:gap-4 px-3 sm:px-4">
             <p className="text-center text-xs sm:text-sm md:text-base">

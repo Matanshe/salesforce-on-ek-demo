@@ -136,8 +136,200 @@ ol.slds-breadcrumb {
 
 /* Hide h1 heading with slds-text-heading_large class */
 h1.slds-text-heading_large {
+  display: none !important;
+}
+
 /* Hide specific element */
 #content > div.slds-max-small-hide.slds-p-bottom_medium {
   display: none !important;
 }
+
+
+/* Hide "For more details" section with official documentation link in chat messages */
+/* Hide links to runtime_cdp__dataHarmonizedModelObjRefRecordHome */
+a[href*="runtime_cdp__dataHarmonizedModelObjRefRecordHome"] {
+  display: none !important;
 }
+
+/* Hide parent elements containing the official documentation link */
+p:has(a[href*="runtime_cdp__dataHarmonizedModelObjRefRecordHome"]),
+div:has(a[href*="runtime_cdp__dataHarmonizedModelObjRefRecordHome"]),
+span:has(a[href*="runtime_cdp__dataHarmonizedModelObjRefRecordHome"]) {
+  display: none !important;
+}
+
+/* Salesforce Fonts - Using Salesforce Sans font stack */
+body,
+#root,
+.prose,
+[class*="slds-"],
+.slds-box,
+.slds-media,
+.slds-media__body {
+  font-family: "Salesforce Sans", "Gotham SSm A", "Gotham SSm B", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+}
+
+/* Salesforce Lightning Design System (SLDS) Admonition Boxes */
+.slds-box {
+  border: 1px solid #d8dde6;
+  border-radius: 0.25rem;
+  padding: 0.75rem;
+  background-color: #ffffff;
+}
+
+.slds-box_x-small {
+  padding: 0.5rem;
+}
+
+.slds-box_small {
+  padding: 0.75rem;
+}
+
+.slds-box_medium {
+  padding: 1rem;
+}
+
+.slds-box_large {
+  padding: 1.5rem;
+}
+
+.slds-theme_shade {
+  background-color: #f3f2f2;
+  border-color: #d8dde6;
+}
+
+.slds-theme_info {
+  background-color: #e8f4f8;
+  border-color: #1589ee;
+}
+
+.slds-theme_warning {
+  background-color: #fff4e5;
+  border-color: #ffb75d;
+}
+
+.slds-theme_error {
+  background-color: #feded8;
+  border-color: #c23934;
+}
+
+.slds-theme_success {
+  background-color: #d8f5e8;
+  border-color: #04844b;
+}
+
+.slds-m-top_medium {
+  margin-top: 1rem;
+}
+
+.slds-m-bottom_medium {
+  margin-bottom: 1rem;
+}
+
+.slds-m-top_small {
+  margin-top: 0.5rem;
+}
+
+.slds-m-bottom_small {
+  margin-bottom: 0.5rem;
+}
+
+.slds-m-top_large {
+  margin-top: 1.5rem;
+}
+
+.slds-m-bottom_large {
+  margin-bottom: 1.5rem;
+}
+
+/* SLDS Media Object (for admonition content) */
+.slds-media {
+  display: flex;
+  align-items: flex-start;
+}
+
+.slds-media_responsive {
+  flex-direction: column;
+}
+
+@media (min-width: 48em) {
+  .slds-media_responsive {
+    flex-direction: row;
+  }
+}
+
+.slds-media__figure {
+  flex-shrink: 0;
+  margin-right: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+@media (min-width: 48em) {
+  .slds-media_responsive .slds-media__figure {
+    margin-bottom: 0;
+  }
+}
+
+.slds-media__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.slds-media__body p {
+  margin: 0;
+  margin-bottom: 0.5rem;
+}
+
+.slds-media__body p:last-child {
+  margin-bottom: 0;
+}
+
+/* SLDS Icon Container */
+.slds-icon_container {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+}
+
+.slds-icon_container_circle {
+  border-radius: 50%;
+  padding: 0.25rem;
+}
+
+.slds-icon-note-note {
+  background-color: #1589ee;
+}
+
+.slds-icon-note-note img {
+  width: 1rem;
+  height: 1rem;
+  display: block;
+}
+
+/* SLDS Text Styles */
+.slds-text-title_caps {
+  font-size: 0.75rem;
+  line-height: 1.25;
+  color: #3e3e3c;
+  text-transform: uppercase;
+  letter-spacing: 0.0625rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+/* Ensure admonition boxes have proper spacing and styling */
+.slds-box .slds-media {
+  margin: 0;
+}
+
+.slds-box .slds-media__body p {
+  color: #3e3e3c;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.slds-box .slds-media__body p:first-of-type {
+  margin-top: 0;
+}
+
