@@ -5,6 +5,11 @@ export interface CitedReference {
   type?: string;
 }
 
+export interface QAPair {
+  question?: string;
+  answer?: string;
+}
+
 export interface Message {
   id: string;
   content: string;
@@ -22,6 +27,8 @@ export interface Message {
   htmlContent?: string;
   dccid?: string;
   hudmo?: string;
+  qa?: QAPair[];
+  summary?: string;
 }
 
 export interface ChatWidgetProps {
