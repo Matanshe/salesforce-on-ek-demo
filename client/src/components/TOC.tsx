@@ -19,7 +19,7 @@ const TableOfContents = ({ onContentClick, currentContentId, isVisible = true }:
   const [tree, setTree] = useState<NavNode | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const OBJECT_API_NAME = "SFDCHelp7_DMO_harmonized__dlm";
+ // const OBJECT_API_NAME = "SFDCHelp7_DMO_harmonized__dlm";
 
   useEffect(() => {
     const loadXml = async () => {
