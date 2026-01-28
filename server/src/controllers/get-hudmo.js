@@ -58,6 +58,20 @@ const getHudmo = async (req, res) => {
 
     const data = await response.json();
 
+    // Log the full response from Salesforce API
+    console.log(`${getCurrentTimestamp()} 📄 - getHudmo - Full API Response:`, JSON.stringify(data, null, 2));
+    console.log(`${getCurrentTimestamp()} 📄 - getHudmo - Response data:`, data);
+    console.log(`${getCurrentTimestamp()} 📄 - getHudmo - Response attributes:`, data.attributes);
+    
+    // Log specific fields if they exist
+    if (data.attributes) {
+      console.log(`${getCurrentTimestamp()} 📄 - getHudmo - Content:`, data.attributes.content?.substring(0, 200) + "...");
+      console.log(`${getCurrentTimestamp()} 📄 - getHudmo - Title:`, data.attributes.title);
+      console.log(`${getCurrentTimestamp()} 📄 - getHudmo - Q&A:`, data.attributes.qa);
+      console.log(`${getCurrentTimestamp()} 📄 - getHudmo - Summary:`, data.attributes.summary);
+      console.log(`${getCurrentTimestamp()} 📄 - getHudmo - Metadata:`, data.attributes.metadata);
+    }
+
     if (data.attributes && data.attributes.content) {
       data.attributes.content = data.attributes.content
         .replace(/&lt;/g, "<")
