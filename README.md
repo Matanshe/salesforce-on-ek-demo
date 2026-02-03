@@ -74,7 +74,7 @@ The application exposes four RESTful endpoints, all protected by HMAC-SHA256 sig
 
 **GET /api/v1/start-session**
 
-- Initializes a new Agentforce session
+- Initializes a new Agentforce session. On Heroku, use `https://<your-app>.herokuapp.com/api/v1/start-session?...` (no `:3000` in the URL).
 - Query Parameters: `sessionId` (external session key)
 - Headers: `X-Timestamp`, `X-Signature`
 - Returns: `{ sessionId, messages }` (Agentforce internal session ID and welcome message)
@@ -271,8 +271,9 @@ Once you are happy with your application, you can deploy it to Heroku!
    heroku config:set CLIENT_SECRET=your_salesforce_client_secret
    heroku config:set AGENTFORCE_AGENT_ID=your_agentforce_agent_id
    heroku config:set API_SECRET=your_generated_secret_key
-   heroku config:set PORT=3000
    ```
+
+   **Note:** Do not set `PORT` on Heroku — Heroku sets it automatically. When calling the API, use the app URL **without** a port (e.g. `https://your-app.herokuapp.com/api/v1/start-session?...`), not `https://your-app.herokuapp.com:3000/...`.
 
 3. **Build and Deploy Client**
 

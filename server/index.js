@@ -8,10 +8,18 @@ import { getCurrentTimestamp } from "./src/utils/loggingUtil.js";
 const app = express();
 const port = process.env.APP_PORT || process.env.PORT || 3000;
 
-// CORS for local development
+// CORS: allow local dev (Vite) and production (same host or configured origin)
+const corsOrigin = process.env.CORS_ORIGIN || "http://localhost:5173";
+const allowedOrigins = corsOrigin.split(",").map((o) => o.trim());
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: (origin, cb) => {
+      // Same-origin (no Origin header) or allowed list
+      if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+      // Allow *.herokuapp.com in production
+      if (origin.endsWith(".herokuapp.com") && /^https:/.test(origin)) return cb(null, true);
+      cb(null, false);
+    },
     credentials: true,
   })
 );
