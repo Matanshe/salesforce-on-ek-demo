@@ -6,6 +6,7 @@ import { WelcomeContent } from "./components/content/WelcomeContent";
 import { ChatWidget } from "./components/chat/ChatWidget";
 import { ArticleView } from "./components/content/ArticleView";
 import { generateSignature } from "./utils/requestSigner";
+import TOC from "./components/TOC";
 import "./App.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
@@ -17,6 +18,8 @@ interface HudmoData {
     metadata?: {
       sourceUrl?: string;
     };
+    qa?: Array<{ question?: string; answer?: string }>;
+    summary?: string;
   };
 }
 
@@ -29,8 +32,11 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [hudmoData, setHudmoData] = useState<HudmoData | null>(null);
   const [isArticleOpen, setIsArticleOpen] = useState(false);
+  const [currentContentId, setCurrentContentId] = useState<string | null>(null);
   const [prefetchedHudmoData, setPrefetchedHudmoData] = useState<Map<string, HudmoData>>(new Map());
   const [fetchingHudmoFor, setFetchingHudmoFor] = useState<Set<string>>(new Set());
+  
+  const OBJECT_API_NAME = "SFDCHelp7_DMO_harmonized__dlm";
 
   const [externalSessionKey] = useState<string>(() => {
     const existingSession = sessionStorage.getItem("agentforce-session-key");
@@ -85,6 +91,12 @@ function App() {
       setMessageSequence((prev) => prev + 1);
 
       const agentResponse = data.messages?.[0];
+      console.log("this is the agent response:", data.messages?.[0]);
+      
+      // Check for URL_Redacted in agent response
+      if (agentResponse?.message?.includes("URL_Redacted") || agentResponse?.message?.includes("(URL_Redacted)")) {
+        console.log("⚠️ Found URL_Redacted in agent response message:", agentResponse.message);
+      }
 
       if (!agentResponse) {
         throw new Error("No message received from agent");
@@ -188,6 +200,36 @@ function App() {
 
       const result = await response.json();
       
+      // Log the full content API response
+      console.log("📄 Content API Response (get-hudmo):", JSON.stringify(result, null, 2));
+      console.log("📄 Content API Response (data):", result.data);
+      console.log("📄 Content API Response (attributes):", result.data?.attributes);
+      
+      // Check for URL_Redacted in content API response
+      const contentStr = JSON.stringify(result);
+      if (contentStr.includes("URL_Redacted") || contentStr.includes("(URL_Redacted)")) {
+        console.log("⚠️ Found URL_Redacted in content API response");
+        console.log("⚠️ Content with URL_Redacted:", result.data?.attributes?.content);
+      }
+      
+      // Extract Q&A and summary from content API response
+      const qa = result.data?.attributes?.qa;
+      const summary = result.data?.attributes?.summary;
+      
+      console.log("📋 Extracted Q&A:", qa);
+      console.log("📝 Extracted Summary:", summary);
+      
+      // Update message with Q&A and summary if messageId is provided
+      if (messageId && (qa || summary)) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === messageId
+              ? { ...msg, qa, summary }
+              : msg
+          )
+        );
+      }
+      
       if (prefetch) {
         // Store in cache for later use
         setPrefetchedHudmoData((prev) => {
@@ -201,10 +243,14 @@ function App() {
           return newSet;
         });
         console.log("Pre-fetched harmonization data for:", cacheKey);
+        if (qa || summary) {
+          console.log("Extracted Q&A and Summary from content API:", { qa, summary });
+        }
       } else {
         // Open article immediately
         setHudmoData(result.data);
         setIsArticleOpen(true);
+        setCurrentContentId(dccid); // Track current content ID
         console.log("Harmonization data:", result.data);
       }
     } catch (error) {
@@ -239,17 +285,24 @@ function App() {
         }
       }
 
-      // If message has citation data, open article view
-      if (dccid && hudmo) {
-        fetchHarmonizationData(dccid, hudmo);
-      }
+      // If message has citation data, open article view and extract Q&A/summary
+          if (dccid && hudmo) {
+            setCurrentContentId(dccid);
+            fetchHarmonizationData(dccid, hudmo, message.id, false);
+          }
     }
   };
 
   const handleCloseArticle = () => {
     setIsArticleOpen(false);
     setHudmoData(null);
+    setCurrentContentId(null);
   };
+
+  const handleTocContentClick = useCallback((contentId: string) => {
+    // Load content using content ID as dccid
+    fetchHarmonizationData(contentId, OBJECT_API_NAME);
+  }, [fetchHarmonizationData]);
 
   const handleDeleteSession = async () => {
     if (!agentforceSessionId) {
@@ -373,6 +426,7 @@ function App() {
 
       const data = await response.json();
       console.log("Session initialized:", data);
+      console.log("response:", response);
 
       // Store the actual session ID returned by Agentforce
       setAgentforceSessionId(data.sessionId);
@@ -424,8 +478,17 @@ function App() {
     <div className="min-h-screen flex flex-col">
       <Header />
 
-      <main className="flex-1 relative overflow-hidden">
-        {isArticleOpen && hudmoData ? (
+      <main className="flex-1 relative overflow-hidden flex">
+        {isArticleOpen && (
+          <div className="w-64 border-r border-gray-200 bg-white flex-shrink-0">
+            <TOC 
+              onContentClick={handleTocContentClick}
+              currentContentId={currentContentId}
+              isVisible={isArticleOpen}
+            />
+          </div>
+        )}
+        <div className="flex-1 relative overflow-hidden">{isArticleOpen && hudmoData ? (
           <div className="flex flex-col md:flex-row h-full absolute inset-0">
             {/* Article View - Main Content */}
             <div className="flex-1 min-w-0 overflow-hidden order-2 md:order-1">
@@ -464,6 +527,7 @@ function App() {
             prefetchedHudmoData={prefetchedHudmoData}
           />
         )}
+        </div>
       </main>
 
       {/* Mobile Chat Toggle Button - Only show when article is open on mobile */}
