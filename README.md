@@ -255,11 +255,13 @@ Once you are happy with your application, you can deploy it to Heroku!
 
 2. **Set Environment Variables**
 
-   Configure all required environment variables in Heroku. You can run the script that reads from `server/.env`:
+   Configure all required environment variables in Heroku. You can run the script that reads from `server/.env` (it also sets `VITE_API_SECRET` and `VITE_API_URL` so the client build during dyno start succeeds):
 
    ```bash
    node scripts/set-heroku-config.js
    ```
+
+   **If you already configured Heroku before:** run this script again so `VITE_API_SECRET` and `VITE_API_URL` are set; otherwise the app will crash on start with "VITE_API_SECRET is required for production builds".
 
    Or set them manually:
 
