@@ -249,7 +249,13 @@ Once you are happy with your application, you can deploy it to Heroku!
 
 2. **Set Environment Variables**
 
-   Configure all required environment variables in Heroku:
+   Configure all required environment variables in Heroku. You can run the script that reads from `server/.env`:
+
+   ```bash
+   node scripts/set-heroku-config.js
+   ```
+
+   Or set them manually:
 
    ```bash
    heroku config:set SALESFORCE_LOGIN_URL=https://your-instance.my.salesforce.com
@@ -262,7 +268,19 @@ Once you are happy with your application, you can deploy it to Heroku!
 
 3. **Build and Deploy Client**
 
-   Build the client with production environment variables. Set both the API URL (pointing to your Heroku app) and the API secret:
+   Build the client with production environment variables (API URL and API secret). You can use the script that reads `API_SECRET` from `server/.env`:
+
+   ```bash
+   npm run build-client:heroku -- your-app-name
+   ```
+
+   Or pass the full Heroku URL:
+
+   ```bash
+   node scripts/build-client-for-heroku.js https://your-app-name.herokuapp.com
+   ```
+
+   Or set env vars manually:
 
    ```bash
    cd client
