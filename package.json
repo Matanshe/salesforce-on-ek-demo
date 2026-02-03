@@ -3,6 +3,7 @@
     "start": "npm run build-client && npm run move-build && cd server && npm install && node index.js",
     "build-client": "cd client && npm install --include=dev && npm run build",
     "build-client:heroku": "node scripts/build-client-for-heroku.js",
+    "push-heroku": "node scripts/push-to-heroku.js",
     "move-build": "rm -rf server/public && mv client/dist server/public"
   }
 }

@@ -293,7 +293,23 @@ Once you are happy with your application, you can deploy it to Heroku!
 
 4. **Deploy to Heroku**
 
+   You can use the script to build the client, move it to `server/public`, commit, and push in one go (requires [Heroku CLI](https://devcenter.heroku.com/articles/heroku-cli) and a `heroku` git remote, e.g. `heroku git:remote -a your-app-name`):
+
    ```bash
+   npm run push-heroku -- your-app-name
+   ```
+
+   Or with an explicit branch (default is `main`):
+
+   ```bash
+   node scripts/push-to-heroku.js your-app-name main
+   ```
+
+   Or deploy manually after building and moving the client:
+
+   ```bash
+   git add server/public
+   git commit -m "Deploy: build client for Heroku"
    git push heroku main
    ```
 
