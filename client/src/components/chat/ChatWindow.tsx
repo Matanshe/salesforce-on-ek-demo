@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react";
+import { useRef } from "react";
 import type { Message } from "../../types/message";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
@@ -145,14 +145,17 @@ export const ChatWindow = ({
               const cacheKey = getCacheKey(message);
               const isFetching = cacheKey ? fetchingHudmoFor.has(cacheKey) : false;
               const isFetched = cacheKey ? prefetchedHudmoData.has(cacheKey) : false;
-              
+              const prefetched = cacheKey ? (prefetchedHudmoData.get(cacheKey) as { attributes?: { title?: string } } | undefined) : undefined;
+              const articleTitle = prefetched?.attributes?.title ?? message.articleTitle ?? null;
+
               return (
-                <ChatMessage 
-                  key={message.id} 
-                  message={message} 
+                <ChatMessage
+                  key={message.id}
+                  message={message}
                   onClick={onMessageClick}
                   isFetching={isFetching}
                   isFetched={isFetched}
+                  articleTitle={articleTitle}
                 />
               );
             })}
