@@ -273,7 +273,7 @@ Once you are happy with your application, you can deploy it to Heroku!
    heroku config:set API_SECRET=your_generated_secret_key
    ```
 
-   **Note:** Do not set `PORT` on Heroku — Heroku sets it automatically. When calling the API, use the app URL **without** a port (e.g. `https://your-app.herokuapp.com/api/v1/start-session?...`), not `https://your-app.herokuapp.com:3000/...`.
+   **Note:** Do not set `PORT` on Heroku — Heroku sets it automatically. When calling the API, use the app URL **without** a port (e.g. `https://your-app.herokuapp.com/api/v1/start-session?...`), not `https://your-app.herokuapp.com:3000/...`. The `VITE_API_URL` (and thus the client build) must use the **exact** Heroku app URL where the app is deployed (e.g. `https://ek-ht-poc-8a80d9816745.herokuapp.com`), otherwise the browser will treat API calls as cross-origin and CORS will block them.
 
 3. **Build and Deploy Client**
 

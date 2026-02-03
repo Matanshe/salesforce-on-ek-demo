@@ -29,6 +29,12 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(catalogRoutes);
 app.use(express.static("public"));
 
+// SPA fallback: serve index.html for client routes (e.g. /article/:id) so direct links and refresh work
+// Use a regex; Express 5 / path-to-regexp no longer accepts the "*" path.
+app.get(/^(?!\/api\/).+/, (req, res, next) => {
+  res.sendFile("index.html", { root: "public" }, (err) => (err ? next() : null));
+});
+
 app.listen(port, () => {
   console.log(`${getCurrentTimestamp()} - 🎬 index - Authentication server listening on port: ${port}`);
 });

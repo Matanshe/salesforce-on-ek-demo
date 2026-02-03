@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { Message } from "../../types/message";
 import { Card } from "@/components/ui/card";
 import agentforceLogo from "../../assets/agentforce_logo.webp";
@@ -30,10 +31,10 @@ const extractUrlParams = (url: string): { dccid: string | null; hudmo: string | 
   }
 };
 
-const extractUrlsFromContent = (content: string): string[] => {
+const extractUrlsFromContent = (content: string | null | undefined): string[] => {
+  const raw = content != null && typeof content === "string" ? content : "";
   const urlRegex = /(https?:\/\/[^\s)]+)/g;
-  const matches = content.match(urlRegex) || [];
-
+  const matches = raw.match(urlRegex) || [];
   return matches.map((url) => url.replace(/[).,;!?]+$/, ""));
 };
 
@@ -46,94 +47,102 @@ const handleUrlClick = (url: string, e: React.MouseEvent) => {
 
 
 
-const parseMessageContent = (content: string) => {
+/** Parses message content into text and links. Never throws; returns safe fallback on error. */
+const parseMessageContent = (content: string | null | undefined): ReactNode => {
+  const raw = content != null && typeof content === "string" ? content : "";
+  try {
+    let cleanedContent = raw;
+    const removedPieces: string[] = [];
 
-  let cleanedContent = content;
-  const removedPieces: string[] = [];
-  
-  // Remove the "For more details" section with official documentation link
-  const officialDocPattern = /For more details, you can check the official documentation\s*["']here["']\s*\([^)]*runtime_cdp__dataHarmonizedModelObjRefRecordHome[^)]*\)\.?\s*Let me know if you need further assistance!?/gi;
-  const matches1 = cleanedContent.match(officialDocPattern);
-  if (matches1) {
-    removedPieces.push(...matches1);
-    cleanedContent = cleanedContent.replace(officialDocPattern, '').trim();
-  }
-  
-  // Also remove standalone patterns
-  const pattern2 = /For more details[^.!?]*official documentation[^.!?]*here[^.!?]*\([^)]*runtime_cdp__dataHarmonizedModelObjRefRecordHome[^)]*\)[^.!?]*\.?/gi;
-  const matches2 = cleanedContent.match(pattern2);
-  if (matches2) {
-    removedPieces.push(...matches2);
-    cleanedContent = cleanedContent.replace(pattern2, '').trim();
-  }
-  
-  const pattern3 = /Let me know if you need further assistance!?/gi;
-  const matches3 = cleanedContent.match(pattern3);
-  if (matches3) {
-    removedPieces.push(...matches3);
-    cleanedContent = cleanedContent.replace(pattern3, '').trim();
-  }
-  
-  // Log removed pieces if any were found
-  if (removedPieces.length > 0) {
-    console.log('🗑️ Removed "For more details" sections:', removedPieces);
-    console.log('📝 Original content length:', content.length);
-    console.log('✨ Cleaned content length:', cleanedContent.length);
-  }
-  
-  // Preserve the original content formatting - don't modify newlines or whitespace
-  const urlRegex = /(https?:\/\/[^\s)]+)/g;
-  const parts = cleanedContent.split(urlRegex);
-  
-  return parts.map((part, index) => {
-    if (part.match(urlRegex)) {
-      const cleanUrl = part.replace(/[).,;!?]+$/, "");
-      const trailingPunct = part.slice(cleanUrl.length);
-      
-      return (
-        <span key={index}>
-          <a
-            href={cleanUrl}
-            className="text-blue-500 hover:text-blue-700 underline break-words"
-            onClick={(e) => handleUrlClick(cleanUrl, e)}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {cleanUrl}
-          </a>
-          {trailingPunct}
-        </span>
-      );
-    } else {
+    // Remove the "For more details" section with official documentation link
+    const officialDocPattern = /For more details, you can check the official documentation\s*["']here["']\s*\([^)]*runtime_cdp__dataHarmonizedModelObjRefRecordHome[^)]*\)\.?\s*Let me know if you need further assistance!?/gi;
+    const matches1 = cleanedContent.match(officialDocPattern);
+    if (matches1) {
+      removedPieces.push(...matches1);
+      cleanedContent = cleanedContent.replace(officialDocPattern, "").trim();
+    }
+
+    const pattern2 = /For more details[^.!?]*official documentation[^.!?]*here[^.!?]*\([^)]*runtime_cdp__dataHarmonizedModelObjRefRecordHome[^)]*\)[^.!?]*\.?/gi;
+    const matches2 = cleanedContent.match(pattern2);
+    if (matches2) {
+      removedPieces.push(...matches2);
+      cleanedContent = cleanedContent.replace(pattern2, "").trim();
+    }
+
+    const pattern3 = /Let me know if you need further assistance!?/gi;
+    const matches3 = cleanedContent.match(pattern3);
+    if (matches3) {
+      removedPieces.push(...matches3);
+      cleanedContent = cleanedContent.replace(pattern3, "").trim();
+    }
+
+    if (removedPieces.length > 0) {
+      console.log('🗑️ Removed "For more details" sections:', removedPieces);
+    }
+
+    // Use one regex for split (needs capture group); use a separate regex for "is URL?" check
+    // so we don't reuse a /g regex in a loop (lastIndex would cause wrong results).
+    const urlRegexSplit = /(https?:\/\/[^\s)]+)/g;
+    const parts = cleanedContent.split(urlRegexSplit);
+    const urlPatternOne = /^https?:\/\/[^\s)]+$/;
+
+    return parts.map((part, index) => {
+      if (typeof part !== "string") return <span key={index} />;
+      if (urlPatternOne.test(part)) {
+        const cleanUrl = part.replace(/[).,;!?]+$/, "");
+        const trailingPunct = part.slice(cleanUrl.length);
+        return (
+          <span key={index}>
+            <a
+              href={cleanUrl}
+              className="text-blue-500 hover:text-blue-700 underline break-words"
+              onClick={(e) => handleUrlClick(cleanUrl, e)}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {cleanUrl}
+            </a>
+            {trailingPunct}
+          </span>
+        );
+      }
       return (
         <span key={`text-${index}`} style={{ whiteSpace: "pre-wrap" }}>
           {part}
         </span>
       );
-    }
-  });
+    });
+  } catch {
+    return <span style={{ whiteSpace: "pre-wrap" }}>{raw || ""}</span>;
+  }
 };
 
 
 
 export const ChatMessage = ({ message, onClick, isFetching = false, isFetched: _isFetched = false, articleTitle }: ChatMessageProps) => {
-  const isUser = message.sender === "user";
-  const isBot = message.sender === "bot";
+  // Defensive: ensure message has required shape so rendering never throws
+  const safeContent = message?.content != null && typeof message.content === "string" ? message.content : "";
+  const safeMessage: Message = {
+    ...message,
+    id: message?.id ?? "unknown",
+    content: safeContent,
+    sender: message?.sender === "user" ? "user" : "bot",
+    timestamp: message?.timestamp instanceof Date ? message.timestamp : new Date(typeof message?.timestamp === "string" || typeof message?.timestamp === "number" ? message.timestamp : Date.now()),
+    qa: Array.isArray(message?.qa) ? message.qa : undefined,
+    summary: typeof message?.summary === "string" ? message.summary : undefined,
+    articleTitle: typeof message?.articleTitle === "string" ? message.articleTitle : undefined,
+  };
 
-  // Check if message has citation data (either directly or extractable from URLs)
+  const isUser = safeMessage.sender === "user";
+  const isBot = safeMessage.sender === "bot";
+
   const hasCitationData = () => {
-    // Check if message already has dccid and hudmo
-    if (message.dccid && message.hudmo) {
-      return true;
-    }
-
-    // Check if we can extract citation data from URLs in content
-    const urls = extractUrlsFromContent(message.content);
+    if (safeMessage.dccid && safeMessage.hudmo) return true;
+    const urls = extractUrlsFromContent(safeMessage.content);
     if (urls.length > 0) {
       const { dccid, hudmo } = extractUrlParams(urls[0]);
       return !!(dccid && hudmo);
     }
-
     return false;
   };
 
@@ -141,24 +150,16 @@ export const ChatMessage = ({ message, onClick, isFetching = false, isFetched: _
 
   const handleMessageClick = () => {
     if (!canViewArticle) return;
-
-    const urls = extractUrlsFromContent(message.content);
-
-    let updatedMessage = message;
-
+    const urls = extractUrlsFromContent(safeMessage.content);
+    let updatedMessage = safeMessage;
     if (urls.length > 0) {
       const { dccid, hudmo } = extractUrlParams(urls[0]);
-
       if (dccid && hudmo) {
-        console.log("Extracted URL parameters from message:", { dccid, hudmo });
-        updatedMessage = {
-          ...message,
-          dccid,
-          hudmo,
-        };
+        updatedMessage = { ...safeMessage, dccid, hudmo };
+        onClick(updatedMessage);
+        return;
       }
     }
-
     onClick(updatedMessage);
   };
 
@@ -186,10 +187,10 @@ export const ChatMessage = ({ message, onClick, isFetching = false, isFetched: _
         `}
       >
         <div className="px-3 sm:px-4 py-2">
-          <p className="text-xs sm:text-sm text-left wrap-break-word break-words whitespace-pre-wrap">{parseMessageContent(message.content)}</p>
-          
+          <p className="text-xs sm:text-sm text-left wrap-break-word break-words whitespace-pre-wrap">{parseMessageContent(safeMessage.content)}</p>
+
           {/* Summary Section */}
-          {isBot && message.summary && (
+          {isBot && safeMessage.summary && (
             <div className="mt-3 pt-3 border-t border-gray-200 border-opacity-30">
               <div className="flex items-start gap-2">
                 <svg className="w-4 h-4 sm:w-4 sm:h-4 shrink-0 mt-0.5 text-[#0176D3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -197,14 +198,14 @@ export const ChatMessage = ({ message, onClick, isFetching = false, isFetched: _
                 </svg>
                 <div className="flex-1">
                   <p className="text-[10px] sm:text-xs font-semibold text-gray-700 mb-1">Summary</p>
-                  <p className="text-xs sm:text-sm text-gray-600 wrap-break-word break-words whitespace-pre-wrap">{message.summary}</p>
+                  <p className="text-xs sm:text-sm text-gray-600 wrap-break-word break-words whitespace-pre-wrap">{safeMessage.summary}</p>
                 </div>
               </div>
             </div>
           )}
 
           {/* Q&A Section */}
-          {isBot && message.qa && message.qa.length > 0 && (
+          {isBot && Array.isArray(safeMessage.qa) && safeMessage.qa.length > 0 && (
             <div className="mt-3 pt-3 border-t border-gray-200 border-opacity-30">
               <div className="flex items-start gap-2 mb-2">
                 <svg className="w-4 h-4 sm:w-4 sm:h-4 shrink-0 mt-0.5 text-[#0176D3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -213,18 +214,18 @@ export const ChatMessage = ({ message, onClick, isFetching = false, isFetched: _
                 <p className="text-[10px] sm:text-xs font-semibold text-gray-700">Q&A</p>
               </div>
               <div className="space-y-3">
-                {message.qa.map((qaItem, index) => (
+                {safeMessage.qa.map((qaItem, index) => (
                   <div key={index} className="bg-gray-50 rounded-lg p-2 sm:p-3 border border-gray-200">
-                    {qaItem.question && (
+                    {qaItem && typeof qaItem === "object" && qaItem.question != null && (
                       <div className="mb-2">
                         <p className="text-[10px] sm:text-xs font-semibold text-gray-700 mb-1">Q:</p>
-                        <p className="text-xs sm:text-sm text-gray-800 wrap-break-word break-words whitespace-pre-wrap">{qaItem.question}</p>
+                        <p className="text-xs sm:text-sm text-gray-800 wrap-break-word break-words whitespace-pre-wrap">{String(qaItem.question)}</p>
                       </div>
                     )}
-                    {qaItem.answer && (
+                    {qaItem && typeof qaItem === "object" && qaItem.answer != null && (
                       <div>
                         <p className="text-[10px] sm:text-xs font-semibold text-gray-700 mb-1">A:</p>
-                        <p className="text-xs sm:text-sm text-gray-600 wrap-break-word break-words whitespace-pre-wrap">{qaItem.answer}</p>
+                        <p className="text-xs sm:text-sm text-gray-600 wrap-break-word break-words whitespace-pre-wrap">{String(qaItem.answer)}</p>
                       </div>
                     )}
                   </div>
@@ -234,7 +235,9 @@ export const ChatMessage = ({ message, onClick, isFetching = false, isFetched: _
           )}
 
           <span className="text-[10px] sm:text-xs opacity-70 mt-1 block text-left">
-            {message.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            {safeMessage.timestamp instanceof Date
+              ? safeMessage.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+              : new Date(safeMessage.timestamp as string | number).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
           </span>
           {isBot && canViewArticle && (
             <div className="mt-2 pt-2 border-t border-gray-300 border-opacity-30">
