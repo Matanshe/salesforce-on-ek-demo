@@ -241,6 +241,12 @@ Once you are happy with your application, you can deploy it to Heroku!
 
 **Deployment Steps:**
 
+0. **Validate environment (optional)**  
+   Ensure `server/.env` exists and has all required vars before using the scripts:
+   ```bash
+   npm run validate-env
+   ```
+
 1. **Create a Heroku App**
 
    ```bash
@@ -319,6 +325,19 @@ Once you are happy with your application, you can deploy it to Heroku!
    ```
 
 For more detailed deployment instructions, please follow the [official Heroku documentation](https://devcenter.heroku.com/articles/git).
+
+**Troubleshooting: "API_SECRET is not configured" in the browser**
+
+This error means the client bundle running in the browser was built without `VITE_API_SECRET` (Vite inlines env vars at build time). Fix it by rebuilding the client with the secret and redeploying:
+
+1. Ensure `server/.env` has `API_SECRET` and run `npm run validate-env`.
+2. Rebuild and push in one step (use your real Heroku app name):
+   ```bash
+   npm run push-heroku -- your-heroku-app-name
+   ```
+   The build script will verify the secret is inlined; if verification fails, the deploy is aborted.
+3. After pushing, do a **hard refresh** so the browser doesn’t use a cached bundle: **Ctrl+Shift+R** (Windows/Linux) or **Cmd+Shift+R** (Mac), or open the app in an incognito/private window.
+4. If it still fails: run `npm run build-client:heroku -- your-heroku-app-name` and confirm the log shows "Verified: API_SECRET is inlined in client/dist/assets/", then run `npm run move-build`, commit `server/public`, and `git push heroku main`.
 
 **Security Note:** When deploying publicly, be aware that the `API_SECRET` will be visible in the client bundle. For production use with external users, consider implementing additional security measures such as user authentication or IP whitelisting.
 
