@@ -31,7 +31,7 @@ function run(cmd, opts = {}) {
 }
 
 console.log('Step 1/4: Building client for Heroku...');
-run(`node scripts/build-client-for-heroku.js ${appArg}`);
+execSync('node', ['scripts/build-client-for-heroku.js', appArg], { cwd: repoRoot, stdio: 'inherit' });
 
 console.log('Step 2/4: Moving build to server/public...');
 run('npm run move-build');

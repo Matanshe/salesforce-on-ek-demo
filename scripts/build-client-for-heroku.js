@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Builds the client for Heroku using API secret from server/.env.
+ * Builds the client for Heroku using API_SECRET from server/.env.
  * Run from repo root: node scripts/build-client-for-heroku.js <heroku-app-name-or-url>
  *
  * Examples:
@@ -8,31 +8,25 @@
  *   node scripts/build-client-for-heroku.js https://my-app.herokuapp.com
  */
 import { execSync } from 'child_process';
-import { readFileSync } from 'fs';
+import { readFileSync, readdirSync, existsSync, statSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { loadServerEnv } from './lib/env.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(__dirname, '..');
-const envPath = join(repoRoot, 'server', '.env');
 const clientDir = join(repoRoot, 'client');
+const distDir = join(clientDir, 'dist');
 
-function parseEnv(path) {
-  const env = {};
-  const content = readFileSync(path, 'utf8');
-  for (const line of content.split('\n')) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
-    const eq = trimmed.indexOf('=');
-    if (eq === -1) continue;
-    const key = trimmed.slice(0, eq).trim();
-    let value = trimmed.slice(eq + 1).trim();
-    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-      value = value.slice(1, -1);
-    }
-    env[key] = value;
+/** Recursively find all .js files under dir */
+function findJsFiles(dir, list = []) {
+  if (!existsSync(dir)) return list;
+  for (const name of readdirSync(dir)) {
+    const path = join(dir, name);
+    if (statSync(path).isDirectory()) findJsFiles(path, list);
+    else if (name.endsWith('.js')) list.push(path);
   }
-  return env;
+  return list;
 }
 
 const appArg = process.argv[2];
@@ -41,19 +35,27 @@ if (!appArg) {
   process.exit(1);
 }
 
-let viteApiUrl = appArg;
-if (!viteApiUrl.startsWith('http')) {
-  viteApiUrl = `https://${appArg.replace(/\.herokuapp\.com$/i, '')}.herokuapp.com`;
+const { env, errors } = loadServerEnv();
+if (errors.length > 0) {
+  console.error('Cannot build: server/.env validation failed:');
+  errors.forEach((e) => console.error('  -', e));
+  console.error('\nRun: node scripts/validate-env.js');
+  process.exit(1);
 }
 
-const env = parseEnv(envPath);
 const apiSecret = env.API_SECRET;
 if (!apiSecret) {
   console.error('API_SECRET not found in server/.env');
   process.exit(1);
 }
 
+let viteApiUrl = appArg;
+if (!viteApiUrl.startsWith('http')) {
+  viteApiUrl = `https://${appArg.replace(/\.herokuapp\.com$/i, '')}.herokuapp.com`;
+}
+
 console.log('Building client for', viteApiUrl);
+console.log('VITE_API_SECRET length:', apiSecret.length, '(will be inlined into bundle)');
 execSync('npm run build', {
   cwd: clientDir,
   stdio: 'inherit',
@@ -63,4 +65,27 @@ execSync('npm run build', {
     VITE_API_SECRET: apiSecret,
   },
 });
+
+// Verify the secret was inlined (so we don't deploy a bundle that will show "API_SECRET is not configured")
+console.log('Verifying API_SECRET is inlined in build output...');
+const jsFiles = findJsFiles(distDir);
+const snippet = apiSecret.slice(0, 8);
+let found = false;
+for (const file of jsFiles) {
+  try {
+    if (readFileSync(file, 'utf8').includes(snippet)) {
+      found = true;
+      break;
+    }
+  } catch (_) {}
+}
+if (jsFiles.length === 0) {
+  console.error('Verification failed: no JS files in client/dist/. Build may have failed.');
+  process.exit(1);
+}
+if (!found) {
+  console.error('Verification failed: API_SECRET was not found in built JS. The bundle may show "API_SECRET is not configured" in the browser.');
+  process.exit(1);
+}
+console.log('Verified: API_SECRET is inlined in client/dist/');
 console.log('Done. Output in client/dist/');

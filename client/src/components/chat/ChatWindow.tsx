@@ -1,8 +1,9 @@
-import { useRef } from "react";
+import { type ErrorInfo, type ReactNode, Component, useRef } from "react";
 import type { Message } from "../../types/message";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 
 interface ChatWindowProps {
   messages: Message[];
@@ -31,16 +32,50 @@ const extractUrlParams = (url: string): { dccid: string | null; hudmo: string | 
   }
 };
 
-const getCacheKey = (message: Message): string | null => {
-  if (message.dccid && message.hudmo) {
-    return `${message.dccid}-${message.hudmo}`;
+/** Catches errors rendering a single message so one bad message does not break the whole chat. */
+class MessageErrorBoundary extends Component<
+  { children: ReactNode; messageId: string },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
   }
-  const urls = message.content.match(/(https?:\/\/[^\s)]+)/g) || [];
-  if (urls.length > 0 && urls[0]) {
-    const { dccid, hudmo } = extractUrlParams(urls[0]);
-    if (dccid && hudmo) {
-      return `${dccid}-${hudmo}`;
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("ChatMessage render error:", this.props.messageId, error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex justify-start mb-3 sm:mb-4">
+          <Card className="max-w-[85%] sm:max-w-[80%] p-3 bg-white border-gray-200 text-gray-500 text-sm">
+            Message could not be displayed.
+          </Card>
+        </div>
+      );
     }
+    return this.props.children;
+  }
+}
+
+/** Safe extraction of cache key; never throws. */
+const getCacheKey = (message: Message): string | null => {
+  try {
+    if (message?.dccid && message?.hudmo) {
+      return `${String(message.dccid)}-${String(message.hudmo)}`;
+    }
+    const content = message?.content;
+    if (typeof content !== "string") return null;
+    const urls = content.match(/(https?:\/\/[^\s)]+)/g) || [];
+    if (urls.length > 0 && urls[0]) {
+      const { dccid, hudmo } = extractUrlParams(urls[0]);
+      if (dccid && hudmo) return `${dccid}-${hudmo}`;
+    }
+  } catch {
+    // ignore
   }
   return null;
 };
@@ -141,22 +176,25 @@ export const ChatWindow = ({
           </div>
         ) : (
           <>
-            {messages.map((message) => {
+            {messages.map((message, index) => {
               const cacheKey = getCacheKey(message);
               const isFetching = cacheKey ? fetchingHudmoFor.has(cacheKey) : false;
               const isFetched = cacheKey ? prefetchedHudmoData.has(cacheKey) : false;
               const prefetched = cacheKey ? (prefetchedHudmoData.get(cacheKey) as { attributes?: { title?: string } } | undefined) : undefined;
               const articleTitle = prefetched?.attributes?.title ?? message.articleTitle ?? null;
+              // Stable unique key: id can be missing or duplicated from API; index keeps list order correct
+              const messageKey = message?.id ? `${String(message.id)}-${index}` : `msg-${index}`;
 
               return (
-                <ChatMessage
-                  key={message.id}
-                  message={message}
-                  onClick={onMessageClick}
-                  isFetching={isFetching}
-                  isFetched={isFetched}
-                  articleTitle={articleTitle}
-                />
+                <MessageErrorBoundary key={messageKey} messageId={message?.id ?? String(index)}>
+                  <ChatMessage
+                    message={message}
+                    onClick={onMessageClick}
+                    isFetching={isFetching}
+                    isFetched={isFetched}
+                    articleTitle={articleTitle}
+                  />
+                </MessageErrorBoundary>
               );
             })}
             {isLoading && (

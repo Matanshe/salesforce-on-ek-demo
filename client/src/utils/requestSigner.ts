@@ -5,7 +5,11 @@ export async function generateSignature(
   const secret = import.meta.env.VITE_API_SECRET;
 
   if (!secret) {
-    throw new Error("API_SECRET is not configured");
+    throw new Error(
+      "VITE_API_SECRET is not set. The client was built without the API secret. " +
+        "Rebuild for production with: npm run build-client:heroku -- <your-heroku-app-name> " +
+        "then redeploy (e.g. npm run push-heroku -- <your-heroku-app-name>)."
+    );
   }
 
   const timestamp = Date.now().toString();
