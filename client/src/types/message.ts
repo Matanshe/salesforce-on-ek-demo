@@ -29,6 +29,8 @@ export interface Message {
   hudmo?: string;
   qa?: QAPair[];
   summary?: string;
+  /** Article title from get-hudmo (attributes.title), set when we have the response */
+  articleTitle?: string;
 }
 
 export interface ChatWidgetProps {

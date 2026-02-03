@@ -54,7 +54,7 @@ export const HarmonizedDataModal = ({ isOpen, onClose, data }: HarmonizedDataMod
                 rel="noopener noreferrer"
                 className="text-xs text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1"
               >
-                View Source
+                View Source{data.attributes?.title ? `: ${data.attributes.title}` : ""}
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"

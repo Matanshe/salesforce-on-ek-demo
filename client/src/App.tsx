@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { type ErrorInfo, type ReactNode, Component, useState, useCallback, useEffect, useRef } from "react";
 import type { Message } from "./types/message";
 import { Header } from "./components/layout/Header";
 import { Footer } from "./components/layout/Footer";
@@ -8,6 +8,42 @@ import { ArticleView } from "./components/content/ArticleView";
 import { generateSignature } from "./utils/requestSigner";
 import TOC from "./components/TOC";
 import "./App.css";
+
+class ArticleErrorBoundary extends Component<
+  { children: ReactNode; onClose: () => void },
+  { hasError: boolean; error?: Error }
+> {
+  state = { hasError: false as boolean, error: undefined as Error | undefined };
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("ArticleView error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full p-6 bg-white">
+          <p className="text-gray-700 mb-4">Something went wrong opening the document.</p>
+          <button
+            type="button"
+            onClick={() => this.setState({ hasError: false })}
+            className="text-[#0176D3] underline"
+          >
+            Try again
+          </button>
+          <button type="button" onClick={this.props.onClose} className="mt-2 text-gray-600 underline">
+            Close
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
@@ -35,7 +71,9 @@ function App() {
   const [currentContentId, setCurrentContentId] = useState<string | null>(null);
   const [prefetchedHudmoData, setPrefetchedHudmoData] = useState<Map<string, HudmoData>>(new Map());
   const [fetchingHudmoFor, setFetchingHudmoFor] = useState<Set<string>>(new Set());
-  
+  const prefetchedHudmoDataRef = useRef(prefetchedHudmoData);
+  prefetchedHudmoDataRef.current = prefetchedHudmoData;
+
   const OBJECT_API_NAME = "SFDCHelp7_DMO_harmonized__dlm";
 
   const [externalSessionKey] = useState<string>(() => {
@@ -155,9 +193,10 @@ function App() {
 
   const fetchHarmonizationData = useCallback(async (dccid: string, hudmo: string, messageId?: string, prefetch = false) => {
     const cacheKey = `${dccid}-${hudmo}`;
-    
+    const cache = prefetchedHudmoDataRef.current;
+
     // If prefetching and already cached, skip
-    if (prefetch && prefetchedHudmoData.has(cacheKey)) {
+    if (prefetch && cache.has(cacheKey)) {
       return;
     }
 
@@ -166,11 +205,15 @@ function App() {
       return;
     }
 
-    // If not prefetching, check cache first
-    if (!prefetch && prefetchedHudmoData.has(cacheKey)) {
-      setHudmoData(prefetchedHudmoData.get(cacheKey)!);
-      setIsArticleOpen(true);
-      return;
+    // If not prefetching, check cache first (use ref so we always have latest)
+    if (!prefetch && cache.has(cacheKey)) {
+      const cached = cache.get(cacheKey);
+      if (cached && (cached.attributes?.content != null || cached.attributes?.title != null)) {
+        setHudmoData(cached);
+        setIsArticleOpen(true);
+        setCurrentContentId(dccid);
+        return;
+      }
     }
 
     // Mark as fetching
@@ -212,19 +255,21 @@ function App() {
         console.log("⚠️ Content with URL_Redacted:", result.data?.attributes?.content);
       }
       
-      // Extract Q&A and summary from content API response
+      // Extract Q&A, summary, and title from content API response
       const qa = result.data?.attributes?.qa;
       const summary = result.data?.attributes?.summary;
-      
+      const articleTitle = result.data?.attributes?.title;
+
       console.log("📋 Extracted Q&A:", qa);
       console.log("📝 Extracted Summary:", summary);
-      
-      // Update message with Q&A and summary if messageId is provided
-      if (messageId && (qa || summary)) {
+      console.log("📌 Extracted Title:", articleTitle);
+
+      // Update message with Q&A, summary, and title when we have the get-hudmo response
+      if (messageId && (qa || summary || articleTitle)) {
         setMessages((prev) =>
           prev.map((msg) =>
             msg.id === messageId
-              ? { ...msg, qa, summary }
+              ? { ...msg, qa, summary, articleTitle }
               : msg
           )
         );
@@ -247,11 +292,16 @@ function App() {
           console.log("Extracted Q&A and Summary from content API:", { qa, summary });
         }
       } else {
-        // Open article immediately
-        setHudmoData(result.data);
-        setIsArticleOpen(true);
-        setCurrentContentId(dccid); // Track current content ID
-        console.log("Harmonization data:", result.data);
+        // Open article only if we have valid data
+        const data = result?.data;
+        if (data && (data.attributes?.content != null || data.attributes?.title != null)) {
+          setHudmoData(data);
+          setIsArticleOpen(true);
+          setCurrentContentId(dccid);
+          console.log("Harmonization data:", data);
+        } else {
+          console.warn("get-hudmo returned no usable content:", result);
+        }
       }
     } catch (error) {
       console.error("Error fetching harmonization data:", error);
@@ -492,7 +542,9 @@ function App() {
           <div className="flex flex-col md:flex-row h-full absolute inset-0">
             {/* Article View - Main Content */}
             <div className="flex-1 min-w-0 overflow-hidden order-2 md:order-1">
-              <ArticleView data={hudmoData} onClose={handleCloseArticle} />
+              <ArticleErrorBoundary onClose={handleCloseArticle}>
+                <ArticleView data={hudmoData} onClose={handleCloseArticle} />
+              </ArticleErrorBoundary>
             </div>
             {/* Minimized Chat Widget - Right Side (hidden on mobile, shown on desktop) */}
             <div className="hidden md:block w-80 border-l border-gray-200 bg-white flex-shrink-0 overflow-hidden order-1 md:order-2">
