@@ -41,19 +41,42 @@ export function parseEnvFile(path) {
 }
 
 /**
- * Load and validate server/.env. Returns { env, errors }.
+ * True when running on Heroku (env comes from Config Vars, not server/.env).
+ * Uses DYNO (set by Heroku) or fallback: no .env file but all required vars in process.env.
+ */
+function detectHeroku() {
+  if (typeof process.env.DYNO === 'string' && process.env.DYNO.length > 0) return true;
+  if (!existsSync(SERVER_ENV_PATH)) {
+    const allInEnv = SERVER_ENV_VARS.every((k) => process.env[k] != null && String(process.env[k]).trim() !== '');
+    if (allInEnv) return true;
+  }
+  return false;
+}
+
+export const isHeroku = detectHeroku();
+
+/**
+ * Load and validate server env. On Heroku uses process.env; locally uses server/.env.
+ * Returns { env, errors }.
  */
 export function loadServerEnv() {
   const errors = [];
-  if (!existsSync(SERVER_ENV_PATH)) {
+  const fromFile = existsSync(SERVER_ENV_PATH);
+  const useProcessEnv =
+    isHeroku ||
+    (!fromFile && SERVER_ENV_VARS.every((k) => process.env[k] != null && String(process.env[k]).trim() !== ''));
+  if (!fromFile && !useProcessEnv) {
     errors.push(`server/.env not found at ${SERVER_ENV_PATH}`);
     return { env: {}, errors };
   }
-  const env = parseEnvFile(SERVER_ENV_PATH);
+  const env = fromFile
+    ? parseEnvFile(SERVER_ENV_PATH)
+    : Object.fromEntries(SERVER_ENV_VARS.map((k) => [k, process.env[k]]));
+  const source = fromFile ? 'server/.env' : 'process.env (Heroku Config Vars)';
   for (const key of SERVER_ENV_VARS) {
     const value = env[key];
     if (value == null || value === '') {
-      errors.push(`Missing or empty in server/.env: ${key}`);
+      errors.push(`Missing or empty in ${source}: ${key}`);
     }
   }
   return { env: env || {}, errors };
