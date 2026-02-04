@@ -68,7 +68,7 @@ console.log('Building client for', viteApiUrl);
 console.log('VITE_API_SECRET length:', apiSecret.length, '(will be inlined into bundle)');
 if (isHeroku) {
   console.log('Installing client dependencies (tsc, vite)...');
-  execSync('npm install', { cwd: clientDir, stdio: 'inherit' });
+  execSync('npm install --include=dev', { cwd: clientDir, stdio: 'inherit' });
 }
 execSync('npm run build', {
   cwd: clientDir,
