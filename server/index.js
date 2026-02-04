@@ -3,6 +3,8 @@ import express from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
 import catalogRoutes from "./src/routes/catalog.js";
+import fastSearch from "./src/controllers/fast-search.js";
+import { validateSignature } from "./src/middleware/validateSignature.js";
 import { getCurrentTimestamp } from "./src/utils/loggingUtil.js";
 
 const app = express();
@@ -26,6 +28,9 @@ app.use(
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+// Register fast-search on app so it always matches (Express 5 router can be strict)
+app.get("/api/v1/fast-search", validateSignature, fastSearch);
 app.use(catalogRoutes);
 app.use(express.static("public"));
 

@@ -13,6 +13,7 @@ import {
 } from "./components/ui/dialog";
 import { Button } from "./components/ui/button";
 import { WelcomeContent } from "./components/content/WelcomeContent";
+import { SearchResultsPage } from "./components/content/SearchResultsPage";
 import { ChatWidget } from "./components/chat/ChatWidget";
 import { ArticleView } from "./components/content/ArticleView";
 import { generateSignature } from "./utils/requestSigner";
@@ -186,6 +187,7 @@ function App() {
     ? searchParams.get("hudmo") || OBJECT_API_NAME
     : OBJECT_API_NAME;
   const isArticleOpen = !!contentIdFromUrl;
+  const isSearchPage = location.pathname === "/search";
 
   const [externalSessionKey] = useState<string>(() => {
     const existingSession = sessionStorage.getItem("agentforce-session-key");
@@ -666,7 +668,7 @@ function App() {
       <Header />
 
       <main className="flex-1 relative overflow-hidden flex">
-        {isArticleOpen && (
+        {isArticleOpen && !isSearchPage && (
           <div className="w-64 border-r border-gray-200 bg-white flex-shrink-0">
             <TOC 
               onContentClick={handleTocContentClick}
@@ -676,7 +678,9 @@ function App() {
           </div>
         )}
         <div className="flex-1 relative overflow-hidden">
-          {isArticleOpen ? (
+          {isSearchPage ? (
+            <SearchResultsPage />
+          ) : isArticleOpen ? (
             hudmoData ? (
               <div className="flex flex-col md:flex-row h-full absolute inset-0">
                 {/* Article View - Main Content */}

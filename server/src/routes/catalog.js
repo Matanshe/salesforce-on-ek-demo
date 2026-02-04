@@ -11,5 +11,6 @@ catalogRoutes.get("/api/v1/start-session", validateSignature, startSession);
 catalogRoutes.post("/api/v1/send-message", validateSignature, sendMessage);
 catalogRoutes.delete("/api/v1/delete-session", validateSignature, deleteSession);
 catalogRoutes.post("/api/v1/get-hudmo", validateSignature, getHudmo);
+// fast-search is registered on app in index.js so it always matches
 
 export default catalogRoutes;
