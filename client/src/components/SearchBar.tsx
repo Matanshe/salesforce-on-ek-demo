@@ -5,28 +5,23 @@ import {
   fetchFastSearch,
   getResultTitle,
   getResultContentId,
+  getHelpSearchConfig,
   type FastSearchResult,
 } from "../api/fastSearch";
 
 const DEBOUNCE_MS = 350;
 const MIN_QUERY_LENGTH = 2;
 
-const SEARCH_CONFIGS = [
-  { value: "", label: "Global search" },
-  { value: "SFDCHelp7 DMO harmonized", label: "Help (SFDCHelp7 DMO harmonized)" },
-] as const;
-
 export function SearchBar() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
-  const [config, setConfig] = useState("");
   const [results, setResults] = useState<FastSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  const runSearch = useCallback(async (q: string, configurationName: string) => {
+  const runSearch = useCallback(async (q: string) => {
     if (!q.trim() || q.trim().length < MIN_QUERY_LENGTH) {
       setResults([]);
       return;
@@ -37,7 +32,7 @@ export function SearchBar() {
       const data = await fetchFastSearch({
         q: q.trim(),
         rankingMode: "Interleaved",
-        configurationName: configurationName.trim() || undefined,
+        configurationName: getHelpSearchConfig(),
       });
       setResults(data.results ?? []);
     } catch (e) {
@@ -56,10 +51,10 @@ export function SearchBar() {
       return;
     }
     const t = setTimeout(() => {
-      runSearch(query, config);
+      runSearch(query);
     }, DEBOUNCE_MS);
     return () => clearTimeout(t);
-  }, [query, config, runSearch]);
+  }, [query, runSearch]);
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -84,9 +79,7 @@ export function SearchBar() {
 
   const goToSearchPage = () => {
     if (query.trim().length < MIN_QUERY_LENGTH) return;
-    const params = new URLSearchParams({ q: query.trim() });
-    if (config.trim()) params.set("configurationName", config.trim());
-    navigate(`/search?${params.toString()}`);
+    navigate(`/search?q=${encodeURIComponent(query.trim())}`);
     setOpen(false);
   };
 
@@ -94,14 +87,14 @@ export function SearchBar() {
 
   return (
     <div ref={wrapperRef} className="relative w-full">
-      <div className="flex gap-2 items-center w-full">
+      <div className="flex items-center w-full">
         <div className="relative flex-1">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
             <SearchIcon className="h-4 w-4" />
           </span>
           <Input
             type="search"
-            placeholder="Search documents…"
+            placeholder="Search help articles…"
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
@@ -114,42 +107,31 @@ export function SearchBar() {
               }
             }}
             onFocus={() => setOpen(true)}
-            className="pl-9"
+            className="pl-10 pr-4 h-10 rounded-lg border-gray-200 bg-gray-50/80 focus:bg-white focus:border-[#0176D3] focus:ring-2 focus:ring-[#0176D3]/20 transition-colors placeholder:text-gray-400"
             aria-label="Search"
             aria-expanded={showDropdown}
             aria-autocomplete="list"
           />
         </div>
-        <select
-          value={config}
-          onChange={(e) => setConfig(e.target.value)}
-          className="h-9 rounded-md border border-input bg-transparent px-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-          aria-label="Search scope"
-        >
-          {SEARCH_CONFIGS.map(({ value, label }) => (
-            <option key={value || "global"} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
       </div>
 
       {showDropdown && (
         <div
-          className="absolute top-full left-0 right-0 mt-1 rounded-md border border-border bg-popover text-popover-foreground shadow-md z-50 max-h-[min(60vh,320px)] overflow-y-auto"
+          className="absolute top-full left-0 right-0 mt-2 rounded-xl border border-gray-200 bg-white shadow-lg z-50 max-h-[min(60vh,360px)] overflow-y-auto"
           role="listbox"
         >
           {loading && (
-            <div className="px-3 py-4 text-sm text-muted-foreground text-center">
+            <div className="flex items-center justify-center gap-2 px-4 py-6 text-sm text-gray-500">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#0176D3] border-t-transparent" />
               Searching…
             </div>
           )}
           {!loading && error && (
-            <div className="px-3 py-2 text-sm text-destructive">{error}</div>
+            <div className="px-4 py-3 text-sm text-red-600 bg-red-50 border-b border-red-100">{error}</div>
           )}
           {!loading && !error && results.length === 0 && query.trim().length >= MIN_QUERY_LENGTH && (
-            <div className="px-3 py-4 text-sm text-muted-foreground text-center">
-              No results for &quot;{query.trim()}&quot;. Try <strong>Global search</strong> or a different query.
+            <div className="px-4 py-5 text-sm text-gray-500 text-center">
+              No results for “{query.trim()}”
             </div>
           )}
           {!loading && results.length > 0 && (
@@ -164,24 +146,21 @@ export function SearchBar() {
                       <button
                         type="button"
                         onClick={() => onResultClick(result)}
-                        className={`w-full text-left px-3 py-2 text-sm hover:bg-accent focus:bg-accent focus:outline-none ${isArticle ? "cursor-pointer" : "cursor-default"}`}
+                        className={`w-full text-left px-4 py-2.5 text-sm rounded-lg mx-1 my-0.5 transition-colors focus:outline-none focus:ring-1 focus:ring-[#0176D3]/30 ${isArticle ? "hover:bg-[#0176D3]/10 cursor-pointer" : "cursor-default text-gray-600"}`}
                         role="option"
                       >
-                        <span className="font-medium text-foreground">{title}</span>
-                        <span className="ml-2 text-xs text-muted-foreground">
-                          {result.apiName}
-                          {isArticle && " · Open in Help"}
-                        </span>
+                        <span className={`font-medium block ${isArticle ? "text-gray-900" : "text-gray-700"}`}>{title}</span>
+                        {isArticle && <span className="text-xs text-[#0176D3] mt-0.5 block">Open in Help</span>}
                       </button>
                     </li>
                   );
                 })}
               </ul>
-              <div className="border-t border-border px-3 py-2">
+              <div className="border-t border-gray-100 px-3 py-2.5 bg-gray-50/80 rounded-b-xl">
                 <button
                   type="button"
                   onClick={goToSearchPage}
-                  className="text-sm text-[#0176D3] hover:underline w-full text-left"
+                  className="text-sm font-medium text-[#0176D3] hover:text-[#014486] w-full text-left px-2 py-1.5 rounded-md hover:bg-[#0176D3]/10 transition-colors"
                 >
                   See all results →
                 </button>
@@ -189,11 +168,11 @@ export function SearchBar() {
             </>
           )}
           {!loading && query.trim().length >= MIN_QUERY_LENGTH && (results.length === 0 || error) && (
-            <div className="border-t border-border px-3 py-2">
+            <div className="border-t border-gray-100 px-3 py-2.5 bg-gray-50/80 rounded-b-xl">
               <button
                 type="button"
                 onClick={goToSearchPage}
-                className="text-sm text-[#0176D3] hover:underline w-full text-left"
+                className="text-sm font-medium text-[#0176D3] hover:text-[#014486] w-full text-left px-2 py-1.5 rounded-md hover:bg-[#0176D3]/10 transition-colors"
               >
                 Open search results page →
               </button>

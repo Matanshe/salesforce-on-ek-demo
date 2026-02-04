@@ -2,10 +2,10 @@ import { generateSignature } from "../utils/requestSigner";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "";
 
-export interface FastSearchFieldValue {
-  value: string | null;
-  displayValue: string | null;
-}
+/** API can return { value, displayValue } or raw string */
+export type FastSearchFieldValue =
+  | { value?: string | null; displayValue?: string | null; Value?: string | null; DisplayValue?: string | null }
+  | string;
 
 export interface FastSearchResult {
   id: string;
@@ -58,24 +58,54 @@ export async function fetchFastSearch(params: FastSearchParams): Promise<FastSea
   return response.json();
 }
 
+const HELP_SEARCH_CONFIG = "SFDCHelp7 DMO harmonized";
+
+function fieldValue(f: FastSearchFieldValue | undefined): string | null {
+  if (f == null) return null;
+  if (typeof f === "string") return f.trim() || null;
+  if (typeof f !== "object") return null;
+  const v = (f as Record<string, unknown>).displayValue ?? (f as Record<string, unknown>).DisplayValue ?? (f as Record<string, unknown>).value ?? (f as Record<string, unknown>).Value ?? null;
+  if (v == null) return null;
+  const s = typeof v === "string" ? v : String(v);
+  return s.trim() || null;
+}
+
 /**
- * Get a display title for a Fast Search result from common field names.
+ * Get display title from the API response. Uses result.fields.title (or any field with "title" in the key).
  */
 export function getResultTitle(result: FastSearchResult): string {
-  const prefer = ["Title", "Name", "Label", "Subject", "Description"];
-  for (const key of prefer) {
-    const f = result.fields?.[key];
-    const v = f?.displayValue ?? f?.value;
-    if (v != null && String(v).trim()) return String(v).trim();
-  }
-  // Fallback: first non-empty field value
-  if (result.fields) {
-    for (const [, f] of Object.entries(result.fields)) {
-      const v = f?.displayValue ?? f?.value;
-      if (v != null && String(v).trim()) return String(v).trim();
+  const fields = result.fields;
+  if (!fields || typeof fields !== "object") return result.apiName || result.id || "Result";
+
+  // 1) Explicit result.fields.title (lowercase)
+  const v1 = fieldValue(fields.title);
+  if (v1) return v1;
+  // 2) result.fields.Title
+  const v2 = fieldValue(fields.Title);
+  if (v2) return v2;
+  // 3) Any field whose key contains "title" (e.g. Title__c)
+  for (const [key, f] of Object.entries(fields)) {
+    if (key.toLowerCase().includes("title")) {
+      const v = fieldValue(f);
+      if (v) return v;
     }
   }
+  // 4) Other common display fields
+  for (const key of ["Name", "Label", "Subject", "Description"]) {
+    const v = fieldValue(fields[key]);
+    if (v) return v;
+  }
+  // 5) First non-empty field (skip Id-like keys so we don't show id as title)
+  for (const [key, f] of Object.entries(fields)) {
+    if (key === "Id" || key === "id" || key === "Content_ID__c") continue;
+    const v = fieldValue(f);
+    if (v) return v;
+  }
   return result.apiName || result.id || "Result";
+}
+
+export function getHelpSearchConfig(): string {
+  return HELP_SEARCH_CONFIG;
 }
 
 /**
@@ -83,9 +113,8 @@ export function getResultTitle(result: FastSearchResult): string {
  */
 export function getResultContentId(result: FastSearchResult): string | null {
   if (result.apiName === "SFDCHelp7_DMO_harmonized__dlm") {
-    const f = result.fields?.Content_ID__c;
-    const v = f?.value ?? f?.displayValue;
-    if (v != null && String(v).trim()) return String(v).trim();
+    const v = fieldValue(result.fields?.Content_ID__c);
+    if (v) return v;
   }
   return null;
 }
