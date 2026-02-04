@@ -11,7 +11,7 @@ import { execSync } from 'child_process';
 import { readFileSync, readdirSync, existsSync, statSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { loadServerEnv } from './lib/env.js';
+import { loadServerEnv, isHeroku } from './lib/env.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(__dirname, '..');
@@ -30,7 +30,7 @@ function findJsFiles(dir, list = []) {
 }
 
 const appArg = process.argv[2];
-if (!appArg) {
+if (!appArg && !isHeroku) {
   console.error('Usage: node scripts/build-client-for-heroku.js <heroku-app-name-or-url>');
   process.exit(1);
 }
@@ -39,23 +39,37 @@ const { env, errors } = loadServerEnv();
 if (errors.length > 0) {
   console.error('Cannot build: server/.env validation failed:');
   errors.forEach((e) => console.error('  -', e));
-  console.error('\nRun: node scripts/validate-env.js');
+  console.error(isHeroku ? '\nSet missing vars in Heroku: heroku config:set KEY=value' : '\nRun: node scripts/validate-env.js');
   process.exit(1);
 }
 
 const apiSecret = env.API_SECRET;
 if (!apiSecret) {
-  console.error('API_SECRET not found in server/.env');
+  console.error('API_SECRET not found (server/.env or Heroku Config Vars)');
   process.exit(1);
 }
 
-let viteApiUrl = appArg;
-if (!viteApiUrl.startsWith('http')) {
-  viteApiUrl = `https://${appArg.replace(/\.herokuapp\.com$/i, '')}.herokuapp.com`;
+// On Heroku use VITE_API_URL from Config Vars (required); otherwise use script arg
+let viteApiUrl;
+if (isHeroku) {
+  viteApiUrl = process.env.VITE_API_URL || '';
+  if (!viteApiUrl.startsWith('https://')) {
+    console.error('On Heroku set VITE_API_URL to your app URL, e.g. heroku config:set VITE_API_URL=https://your-app.herokuapp.com');
+    process.exit(1);
+  }
+} else {
+  viteApiUrl = appArg;
+  if (!viteApiUrl.startsWith('http')) {
+    viteApiUrl = `https://${appArg.replace(/\.herokuapp\.com$/i, '')}.herokuapp.com`;
+  }
 }
 
 console.log('Building client for', viteApiUrl);
 console.log('VITE_API_SECRET length:', apiSecret.length, '(will be inlined into bundle)');
+if (isHeroku) {
+  console.log('Installing client dependencies (tsc, vite)...');
+  execSync('npm install', { cwd: clientDir, stdio: 'inherit' });
+}
 execSync('npm run build', {
   cwd: clientDir,
   stdio: 'inherit',

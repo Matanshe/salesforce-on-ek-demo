@@ -11,14 +11,18 @@
  * Requires: Heroku CLI installed, logged in, and heroku remote configured (heroku git:remote -a my-app).
  */
 import { execSync } from 'child_process';
+import { rmSync, renameSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(__dirname, '..');
+const clientDist = join(repoRoot, 'client', 'dist');
+const serverPublic = join(repoRoot, 'server', 'public');
 
-const appArg = process.argv[2];
-const branch = process.argv[3] || 'main';
+const args = process.argv.slice(2).filter((a) => a !== '--');
+const appArg = args[0];
+const branch = args[1] || 'main';
 
 if (!appArg) {
   console.error('Usage: node scripts/push-to-heroku.js <heroku-app-name-or-url> [branch]');
@@ -33,8 +37,14 @@ function run(cmd, opts = {}) {
 console.log('Step 1/4: Building client for Heroku...');
 execSync('node', ['scripts/build-client-for-heroku.js', appArg], { cwd: repoRoot, stdio: 'inherit' });
 
+if (!existsSync(clientDist)) {
+  console.error('client/dist not found after build. Build may have failed or wrote to a different path.');
+  process.exit(1);
+}
+
 console.log('Step 2/4: Moving build to server/public...');
-run('npm run move-build');
+if (existsSync(serverPublic)) rmSync(serverPublic, { recursive: true });
+renameSync(clientDist, serverPublic);
 
 console.log('Step 3/4: Staging and committing...');
 run('git add server/public');
