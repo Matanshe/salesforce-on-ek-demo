@@ -29,6 +29,15 @@ const startSession = async (req, res) => {
       console.warn(`${getCurrentTimestamp()} ⚠️ - startSession - Agent ID is empty! Customer ID: ${customerId || "none"}`);
     }
 
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/bebf9a71-04a2-4e86-a513-895cda001ee7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'start-session.js:agent params',message:'startSession customer and agent',data:{customerId:customerId ?? null,agentIdEmpty:!agentId,agentIdLength:agentId?.length ?? 0},timestamp:Date.now(),hypothesisId:'H2'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/bebf9a71-04a2-4e86-a513-895cda001ee7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'start-session.js:customerId',message:'customerId forwarded to startSession',data:{customerId:customerId ?? null},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
+    // #endregion
+
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/bebf9a71-04a2-4e86-a513-895cda001ee7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'start-session.js:chunkTypes',message:'session streamingCapabilities',data:{chunkTypes:['Text']},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
+    // #endregion
+
     const body = {
       externalSessionKey: sessionId,
       instanceConfig: {
