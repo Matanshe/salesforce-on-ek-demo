@@ -1,10 +1,15 @@
 import salesforceLogo from "../../assets/Salesforce Logo.jpeg";
+import { CustomerSelector } from "../CustomerSelector";
 
-export const Header = () => {
+interface HeaderProps {
+  onCustomerChange: (customerId: string | null) => void;
+}
+
+export const Header = ({ onCustomerChange }: HeaderProps) => {
   return (
     <header className="w-full bg-white border-b border-gray-200 sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-center py-4">
+        <div className="flex items-center justify-between py-4">
           <div className="flex items-center gap-3">
             <a 
               href="https://www.salesforce.com" 
@@ -26,6 +31,7 @@ export const Header = () => {
               </h1>
             </div>
           </div>
+          <CustomerSelector onCustomerChange={onCustomerChange} />
         </div>
       </div>
     </header>

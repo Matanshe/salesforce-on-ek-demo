@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { fetchRelatedDmoData, type RelatedDmoData } from "@/api/fetchRelatedDmoData";
 
 export interface ParsedMetaTag {
   name?: string;
@@ -147,10 +148,22 @@ interface ArticleViewProps {
     };
   } | null;
   onClose: () => void;
+  customerId?: string | null;
 }
 
-export const ArticleView = ({ data, onClose }: ArticleViewProps) => {
+export const ArticleView = ({ data, onClose, customerId }: ArticleViewProps) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [relatedDmoData, setRelatedDmoData] = useState<RelatedDmoData | null>(null);
+
+  // Debug logging
+  console.log("🔍 ArticleView render:", {
+    hasData: !!data,
+    hasAttributes: !!data?.attributes,
+    hasContent: !!data?.attributes?.content,
+    hasTitle: !!data?.attributes?.title,
+    contentType: typeof data?.attributes?.content,
+    contentLength: data?.attributes?.content?.length || 0,
+  });
 
   // Meta tags parsed from the get-hudmo response HTML (data.attributes.content)
   const metaTags = useMemo(() => {
@@ -164,11 +177,34 @@ export const ArticleView = ({ data, onClose }: ArticleViewProps) => {
     [data?.attributes?.metadata, metaTags]
   );
 
-  const metaFields = metadataEntries.filter((e) => !e.isLongText);
+  // Fetch related DMO data when article title is available
+  // Match by title internally
+  useEffect(() => {
+    const title = data?.attributes?.title;
+    if (title) {
+      fetchRelatedDmoData(title, customerId)
+        .then((relatedData) => {
+          setRelatedDmoData(relatedData);
+        })
+        .catch((error) => {
+          console.error("Error loading related DMO data:", error);
+          setRelatedDmoData(null);
+        });
+    } else {
+      setRelatedDmoData(null);
+    }
+  }, [data?.attributes?.title, customerId]);
+
+  // Filter to show only: Last updated
+  const allowedFields = ["Last updated"];
+  const filteredMetaFields = metadataEntries.filter((e) => 
+    !e.isLongText && allowedFields.includes(e.title)
+  );
+  
   const abstractEntry = metadataEntries.find((e) => e.title === "Abstract");
   const descriptionEntry = metadataEntries.find((e) => e.title === "Description");
 
-  const hasMeta = metadataEntries.length > 0;
+  const hasMeta = filteredMetaFields.length > 0 || relatedDmoData || abstractEntry || descriptionEntry;
 
   useEffect(() => {
     if (data?.attributes) {
@@ -190,7 +226,28 @@ export const ArticleView = ({ data, onClose }: ArticleViewProps) => {
     }
   }, [data?.attributes?.content, data?.attributes?.title]);
 
-  if (!data) return null;
+  if (!data) {
+    console.warn("⚠️ ArticleView: No data provided, returning null");
+    return (
+      <div className="flex items-center justify-center h-full p-8 bg-white">
+        <div className="text-center">
+          <p className="text-gray-600">No article data available</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!data.attributes) {
+    console.warn("⚠️ ArticleView: No attributes in data, data structure:", data);
+    return (
+      <div className="flex items-center justify-center h-full p-8 bg-white">
+        <div className="text-center">
+          <p className="text-gray-600">Invalid article data structure</p>
+          <p className="text-sm text-gray-500 mt-2">Missing attributes</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full h-full flex flex-col bg-white overflow-hidden">
@@ -220,19 +277,44 @@ export const ArticleView = ({ data, onClose }: ArticleViewProps) => {
           {hasMeta && (
             <div className="mb-4 space-y-4">
               {/* Detail fields: small chips in one row, blue styling */}
-              {metaFields.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {metaFields.map(({ title, value }) => (
-                    <span
-                      key={title}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-[#0176D3]/10 text-[#0176D3] border border-[#0176D3]/30"
-                    >
-                      <span className="text-[#0176D3]/80">{title}:</span>
-                      <span className="text-gray-800">{value}</span>
-                    </span>
-                  ))}
-                </div>
-              )}
+              {/* Show in order: Last updated, Product, Major Version, Minor Version, Patch Version */}
+              <div className="flex flex-wrap gap-2">
+                {/* 1. Last updated from metadata */}
+                {filteredMetaFields.find((e) => e.title === "Last updated") && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-[#0176D3]/10 text-[#0176D3] border border-[#0176D3]/30">
+                    <span className="text-[#0176D3]/80">Last updated:</span>
+                    <span className="text-gray-800">{filteredMetaFields.find((e) => e.title === "Last updated")?.value}</span>
+                  </span>
+                )}
+                {/* 2. Product from related DMO */}
+                {relatedDmoData?.product_name__c && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-[#0176D3]/10 text-[#0176D3] border border-[#0176D3]/30">
+                    <span className="text-[#0176D3]/80">Product:</span>
+                    <span className="text-gray-800">{relatedDmoData.product_name__c}</span>
+                  </span>
+                )}
+                {/* 3. Major Version from related DMO */}
+                {relatedDmoData && relatedDmoData.major_version__c !== null && relatedDmoData.major_version__c !== undefined && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-[#0176D3]/10 text-[#0176D3] border border-[#0176D3]/30">
+                    <span className="text-[#0176D3]/80">Major Version:</span>
+                    <span className="text-gray-800">{relatedDmoData.major_version__c}</span>
+                  </span>
+                )}
+                {/* 4. Minor Version from related DMO */}
+                {relatedDmoData && relatedDmoData.minor_version__c !== null && relatedDmoData.minor_version__c !== undefined && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-[#0176D3]/10 text-[#0176D3] border border-[#0176D3]/30">
+                    <span className="text-[#0176D3]/80">Minor Version:</span>
+                    <span className="text-gray-800">{relatedDmoData.minor_version__c}</span>
+                  </span>
+                )}
+                {/* 5. Patch Version from related DMO */}
+                {relatedDmoData && relatedDmoData.patch_version__c !== null && relatedDmoData.patch_version__c !== undefined && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-[#0176D3]/10 text-[#0176D3] border border-[#0176D3]/30">
+                    <span className="text-[#0176D3]/80">Patch Version:</span>
+                    <span className="text-gray-800">{relatedDmoData.patch_version__c}</span>
+                  </span>
+                )}
+              </div>
               {/* Abstract: only when there is no description */}
               {abstractEntry && !descriptionEntry && (
                 <div className="p-3 rounded-lg bg-gray-50 border border-gray-200">
