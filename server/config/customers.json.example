@@ -1,0 +1,22 @@
+{
+  "customers": [
+    {
+      "id": "salesforce",
+      "name": "Salesforce",
+      "salesforceLoginUrl": "https://your-instance.my.salesforce.com",
+      "clientId": "YOUR_CLIENT_ID",
+      "clientSecret": "YOUR_CLIENT_SECRET",
+      "agentforceAgentId": "YOUR_AGENT_ID",
+      "objectApiName": "YOUR_OBJECT_API_NAME"
+    },
+    {
+      "id": "stryker",
+      "name": "Stryker",
+      "salesforceLoginUrl": "https://your-instance.my.salesforce.com",
+      "clientId": "YOUR_CLIENT_ID",
+      "clientSecret": "YOUR_CLIENT_SECRET",
+      "agentforceAgentId": "YOUR_AGENT_ID",
+      "objectApiName": "YOUR_OBJECT_API_NAME"
+    }
+  ]
+}
