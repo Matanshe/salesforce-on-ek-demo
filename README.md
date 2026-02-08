@@ -74,7 +74,7 @@ The application exposes four RESTful endpoints, all protected by HMAC-SHA256 sig
 
 **GET /api/v1/start-session**
 
-- Initializes a new Agentforce session
+- Initializes a new Agentforce session. On Heroku, use `https://<your-app>.herokuapp.com/api/v1/start-session?...` (no `:3000` in the URL).
 - Query Parameters: `sessionId` (external session key)
 - Headers: `X-Timestamp`, `X-Signature`
 - Returns: `{ sessionId, messages }` (Agentforce internal session ID and welcome message)
@@ -241,6 +241,12 @@ Once you are happy with your application, you can deploy it to Heroku!
 
 **Deployment Steps:**
 
+0. **Validate environment (optional)**  
+   Ensure `server/.env` exists and has all required vars before using the scripts:
+   ```bash
+   npm run validate-env
+   ```
+
 1. **Create a Heroku App**
 
    ```bash
@@ -249,11 +255,13 @@ Once you are happy with your application, you can deploy it to Heroku!
 
 2. **Set Environment Variables**
 
-   Configure all required environment variables in Heroku. You can run the script that reads from `server/.env`:
+   Configure all required environment variables in Heroku. You can run the script that reads from `server/.env` (it also sets `VITE_API_SECRET` and `VITE_API_URL` so the client build during dyno start succeeds):
 
    ```bash
    node scripts/set-heroku-config.js
    ```
+
+   **If you already configured Heroku before:** run this script again so `VITE_API_SECRET` and `VITE_API_URL` are set; otherwise the app will crash on start with "VITE_API_SECRET is required for production builds".
 
    Or set them manually:
 
@@ -263,8 +271,9 @@ Once you are happy with your application, you can deploy it to Heroku!
    heroku config:set CLIENT_SECRET=your_salesforce_client_secret
    heroku config:set AGENTFORCE_AGENT_ID=your_agentforce_agent_id
    heroku config:set API_SECRET=your_generated_secret_key
-   heroku config:set PORT=3000
    ```
+
+   **Note:** Do not set `PORT` on Heroku — Heroku sets it automatically. When calling the API, use the app URL **without** a port (e.g. `https://your-app.herokuapp.com/api/v1/start-session?...`), not `https://your-app.herokuapp.com:3000/...`. The `VITE_API_URL` (and thus the client build) must use the **exact** Heroku app URL where the app is deployed (e.g. `https://ek-ht-poc-8a80d9816745.herokuapp.com`), otherwise the browser will treat API calls as cross-origin and CORS will block them.
 
 3. **Build and Deploy Client**
 
@@ -319,6 +328,19 @@ Once you are happy with your application, you can deploy it to Heroku!
    ```
 
 For more detailed deployment instructions, please follow the [official Heroku documentation](https://devcenter.heroku.com/articles/git).
+
+**Troubleshooting: "API_SECRET is not configured" in the browser**
+
+This error means the client bundle running in the browser was built without `VITE_API_SECRET` (Vite inlines env vars at build time). Fix it by rebuilding the client with the secret and redeploying:
+
+1. Ensure `server/.env` has `API_SECRET` and run `npm run validate-env`.
+2. Rebuild and push in one step (use your real Heroku app name):
+   ```bash
+   npm run push-heroku -- your-heroku-app-name
+   ```
+   The build script will verify the secret is inlined; if verification fails, the deploy is aborted.
+3. After pushing, do a **hard refresh** so the browser doesn’t use a cached bundle: **Ctrl+Shift+R** (Windows/Linux) or **Cmd+Shift+R** (Mac), or open the app in an incognito/private window.
+4. If it still fails: run `npm run build-client:heroku -- your-heroku-app-name` and confirm the log shows "Verified: API_SECRET is inlined in client/dist/assets/", then run `npm run move-build`, commit `server/public`, and `git push heroku main`.
 
 **Security Note:** When deploying publicly, be aware that the `API_SECRET` will be visible in the client bundle. For production use with external users, consider implementing additional security measures such as user authentication or IP whitelisting.
 

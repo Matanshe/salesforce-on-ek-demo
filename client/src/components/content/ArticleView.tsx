@@ -139,6 +139,142 @@ function buildDisplayEntries(
   return entries;
 }
 
+export interface ParsedMetaTag {
+  name?: string;
+  property?: string;
+  content: string;
+}
+
+/**
+ * Extracts name/property and content from a meta tag attribute string.
+ * Handles both double- and single-quoted values; value can contain the other quote.
+ */
+function getMetaAttr(attrs: string, attrName: string): string | undefined {
+  const re = new RegExp(`\\b${attrName}\\s*=\\s*(["'])([^"']*)\\1`, "i");
+  const m = attrs.match(re);
+  return m ? m[2].trim() : undefined;
+}
+
+/**
+ * Parses <meta> tags from the HTML string (get-hudmo response attributes.content).
+ * Uses regex so full documents with <head><meta .../></head> are reliably parsed.
+ */
+function parseMetaTagsFromHtml(html: string): ParsedMetaTag[] {
+  if (typeof html !== "string" || !html.trim()) return [];
+
+  const result: ParsedMetaTag[] = [];
+  // Match <meta ...> or <meta .../> anywhere in the string (handles full HTML like your sample)
+  const metaRegex = /<meta\s+([^>]*?)\s*\/?>/gi;
+  let match: RegExpExecArray | null;
+  while ((match = metaRegex.exec(html)) !== null) {
+    const attrs = match[1];
+    const content = getMetaAttr(attrs, "content");
+    if (!content) continue;
+    const name = getMetaAttr(attrs, "name");
+    const property = getMetaAttr(attrs, "property");
+    if (name || property) result.push({ name, property, content });
+  }
+  return result;
+}
+
+/** Get nested value by path (e.g. "DC.Language" or "data.ReleaseName") */
+function getMetaValue(obj: Record<string, unknown> | undefined, path: string): unknown {
+  if (!obj) return undefined;
+  const parts = path.split(".");
+  let current: unknown = obj;
+  for (const part of parts) {
+    if (current == null || typeof current !== "object") return undefined;
+    current = (current as Record<string, unknown>)[part];
+  }
+  return current;
+}
+
+const METADATA_FIELDS: { path: string; title: string }[] = [
+  { path: "DC.Language", title: "Language" },
+  { path: "sfdcProducts", title: "Products" },
+  { path: "DC.Type", title: "Type" },
+  { path: "data.ReleaseName", title: "Release" },
+  { path: "updatedAt", title: "Last updated" },
+  { path: "abstract", title: "Abstract" },
+  { path: "description", title: "Description" },
+];
+
+/** Format a single metadata value for display (safe for circular refs) */
+function formatMetaValue(value: unknown, path: string): string {
+  if (value == null) return "";
+  if (path === "updatedAt" && typeof value === "string") {
+    const date = new Date(value);
+    if (!Number.isNaN(date.getTime())) return date.toLocaleString();
+  }
+  if (path === "updatedAt" && typeof value === "object" && value !== null && "toISOString" in (value as Date)) {
+    return (value as Date).toLocaleString();
+  }
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) return value.map((v) => (typeof v === "string" ? v : String(v))).join(", ");
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (typeof value === "object") {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return String(value);
+    }
+  }
+  return String(value);
+}
+
+/**
+ * Build display entries from both attributes.metadata and HTML meta tags.
+ * For each field we check API metadata first, then meta tags (name or property matching path).
+ */
+function buildDisplayEntries(
+  metadata: Record<string, unknown> | undefined,
+  metaTags: ParsedMetaTag[]
+): { title: string; value: string; isLongText?: boolean }[] {
+  const metaByKey = new Map<string, string>();
+  for (const m of metaTags) {
+    const key = m.property ?? m.name;
+    if (key && m.content) metaByKey.set(key, m.content);
+  }
+
+  const safeMeta = metadata != null && typeof metadata === "object" && !Array.isArray(metadata)
+    ? metadata
+    : undefined;
+
+  const entries: { title: string; value: string; isLongText?: boolean }[] = [];
+  for (const { path, title } of METADATA_FIELDS) {
+    let raw: unknown;
+    if (safeMeta) {
+      // Try nested path (e.g. metadata.DC.Language) then flat key (e.g. metadata["DC.Language"])
+      raw = path.includes(".") ? getMetaValue(safeMeta, path) : safeMeta[path];
+      if ((raw == null || raw === "") && path.includes(".")) {
+        raw = safeMeta[path];
+      }
+    }
+    if ((raw == null || raw === "") && metaByKey.has(path)) {
+      raw = metaByKey.get(path);
+    }
+    // Also check common meta names used in HTML
+    if ((raw == null || raw === "") && path === "description") {
+      raw = metaByKey.get("og:description") ?? metaByKey.get("description");
+    }
+    if ((raw == null || raw === "") && path === "abstract") {
+      raw = metaByKey.get("abstract");
+    }
+    if ((raw == null || raw === "") && path === "data.ReleaseName") {
+      raw = metaByKey.get("releaseName") ?? metaByKey.get("ReleaseName");
+    }
+    if (raw == null || raw === "") continue;
+    const value = formatMetaValue(raw, path);
+    if (!value) continue;
+    entries.push({
+      title,
+      value,
+      isLongText: path === "abstract" || path === "description",
+    });
+  }
+  return entries;
+}
+
 interface ArticleViewProps {
   data: {
     attributes?: {
@@ -215,6 +351,33 @@ export const ArticleView = ({ data, onClose, customerId }: ArticleViewProps) => 
     if (metadataEntries.length > 0) console.log("Metadata (merged):", metadataEntries);
   }, [data?.attributes?.metadata, metaTags, metadataEntries]);
 
+  // Meta tags parsed from the get-hudmo response HTML (data.attributes.content)
+  const metaTags = useMemo(() => {
+    const content = data?.attributes?.content;
+    return typeof content === "string" ? parseMetaTagsFromHtml(content) : [];
+  }, [data?.attributes?.content]);
+
+  // Merge attributes.metadata + HTML meta tags into display entries (only relevant fields)
+  const metadataEntries = useMemo(
+    () => buildDisplayEntries(data?.attributes?.metadata, metaTags),
+    [data?.attributes?.metadata, metaTags]
+  );
+
+  const metaFields = metadataEntries.filter((e) => !e.isLongText);
+  const abstractEntry = metadataEntries.find((e) => e.title === "Abstract");
+  const descriptionEntry = metadataEntries.find((e) => e.title === "Description");
+
+  const hasMeta = metadataEntries.length > 0;
+
+  useEffect(() => {
+    if (data?.attributes) {
+      console.log("Article attributes.metadata (API):", data.attributes.metadata);
+      const metaKeys = metaTags.map((m) => m.property ?? m.name).filter(Boolean);
+      if (metaKeys.length > 0) console.log("HTML meta name/property keys:", metaKeys);
+    }
+    if (metadataEntries.length > 0) console.log("Metadata (merged):", metadataEntries);
+  }, [data?.attributes?.metadata, metaTags, metadataEntries]);
+
   // Scroll to top when content changes
   useEffect(() => {
     if (data && scrollContainerRef.current) {
@@ -279,35 +442,30 @@ export const ArticleView = ({ data, onClose, customerId }: ArticleViewProps) => 
               {/* Detail fields: small chips in one row, blue styling */}
               {/* Show in order: Last updated, Product, Major Version, Minor Version, Patch Version */}
               <div className="flex flex-wrap gap-2">
-                {/* 1. Last updated from metadata */}
                 {filteredMetaFields.find((e) => e.title === "Last updated") && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-[#0176D3]/10 text-[#0176D3] border border-[#0176D3]/30">
                     <span className="text-[#0176D3]/80">Last updated:</span>
                     <span className="text-gray-800">{filteredMetaFields.find((e) => e.title === "Last updated")?.value}</span>
                   </span>
                 )}
-                {/* 2. Product from related DMO */}
                 {relatedDmoData?.product_name__c && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-[#0176D3]/10 text-[#0176D3] border border-[#0176D3]/30">
                     <span className="text-[#0176D3]/80">Product:</span>
                     <span className="text-gray-800">{relatedDmoData.product_name__c}</span>
                   </span>
                 )}
-                {/* 3. Major Version from related DMO */}
                 {relatedDmoData && relatedDmoData.major_version__c !== null && relatedDmoData.major_version__c !== undefined && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-[#0176D3]/10 text-[#0176D3] border border-[#0176D3]/30">
                     <span className="text-[#0176D3]/80">Major Version:</span>
                     <span className="text-gray-800">{relatedDmoData.major_version__c}</span>
                   </span>
                 )}
-                {/* 4. Minor Version from related DMO */}
                 {relatedDmoData && relatedDmoData.minor_version__c !== null && relatedDmoData.minor_version__c !== undefined && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-[#0176D3]/10 text-[#0176D3] border border-[#0176D3]/30">
                     <span className="text-[#0176D3]/80">Minor Version:</span>
                     <span className="text-gray-800">{relatedDmoData.minor_version__c}</span>
                   </span>
                 )}
-                {/* 5. Patch Version from related DMO */}
                 {relatedDmoData && relatedDmoData.patch_version__c !== null && relatedDmoData.patch_version__c !== undefined && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-[#0176D3]/10 text-[#0176D3] border border-[#0176D3]/30">
                     <span className="text-[#0176D3]/80">Patch Version:</span>

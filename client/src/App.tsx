@@ -1,8 +1,19 @@
 import { type ErrorInfo, type ReactNode, Component, useState, useCallback, useEffect, useRef } from "react";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import type { Message } from "./types/message";
 import { Header } from "./components/layout/Header";
 import { Footer } from "./components/layout/Footer";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "./components/ui/dialog";
+import { Button } from "./components/ui/button";
 import { WelcomeContent } from "./components/content/WelcomeContent";
+import { SearchResultsPage } from "./components/content/SearchResultsPage";
 import { ChatWidget } from "./components/chat/ChatWidget";
 import { ArticleView } from "./components/content/ArticleView";
 import { generateSignature } from "./utils/requestSigner";
@@ -16,7 +27,6 @@ class ArticleErrorBoundary extends Component<
   state = { hasError: false as boolean, error: undefined as Error | undefined };
 
   static getDerivedStateFromError(error: Error) {
-    console.error("ArticleErrorBoundary caught error:", error);
     return { hasError: true, error };
   }
 
@@ -24,29 +34,116 @@ class ArticleErrorBoundary extends Component<
     console.error("ArticleView error:", error, errorInfo);
   }
 
+  handleCloseDialog = () => this.setState({ hasError: false, error: undefined });
+
   render() {
     if (this.state.hasError) {
+      const message = this.state.error?.message ?? "The document could not be loaded.";
       return (
-        <div className="flex flex-col items-center justify-center h-full p-6 bg-white">
-          <p className="text-gray-700 mb-4">Something went wrong opening the document.</p>
-          <button
-            type="button"
-            onClick={() => this.setState({ hasError: false })}
-            className="text-[#0176D3] underline"
-          >
-            Try again
-          </button>
-          <button type="button" onClick={this.props.onClose} className="mt-2 text-gray-600 underline">
-            Close
-          </button>
-        </div>
+        <>
+          <div className="flex flex-col items-center justify-center h-full p-6 bg-white text-center">
+            <p className="text-gray-500 text-sm">There was a problem opening this document. See the message below.</p>
+          </div>
+          <Dialog open={true} onOpenChange={(open) => { if (!open) this.handleCloseDialog(); }}>
+            <DialogContent showCloseButton={true} className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle className="text-[#0176D3]">Document error</DialogTitle>
+                <DialogDescription className="text-gray-600 pt-1">
+                  {message}
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="pt-4 gap-2">
+                <Button onClick={this.handleCloseDialog} variant="outline">
+                  Try again
+                </Button>
+                <Button onClick={this.props.onClose} className="bg-[#0176D3] hover:bg-[#014486]">
+                  Close
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </>
       );
     }
     return this.props.children;
   }
 }
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+/** Catches render errors and shows a dialog popup over the app shell (no white screen). */
+class AppErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean; error?: Error }
+> {
+  state = { hasError: false as boolean, error: undefined as Error | undefined };
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("App render error (recovered):", error, errorInfo);
+  }
+
+  handleClose = () => this.setState({ hasError: false, error: undefined });
+
+  render() {
+    if (this.state.hasError) {
+      const message = this.state.error?.message ?? "An unexpected error occurred.";
+      return (
+        <>
+          <div className="min-h-screen flex flex-col bg-gray-50">
+            <Header onCustomerChange={() => {}} />
+            <main className="flex-1 flex items-center justify-center px-4 py-8">
+              <p className="text-gray-500 text-sm text-center max-w-md">
+                Something went wrong. Use the button below to try again or refresh the page.
+              </p>
+            </main>
+            <Footer />
+          </div>
+          <Dialog open={true} onOpenChange={(open) => { if (!open) this.handleClose(); }}>
+            <DialogContent showCloseButton={true} className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle className="text-[#0176D3]">Something went wrong</DialogTitle>
+                <DialogDescription className="text-gray-600 pt-1">
+                  {message}
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="pt-4">
+                <Button onClick={this.handleClose} className="bg-[#0176D3] hover:bg-[#014486]">
+                  Try again
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
+
+/** Extract display text from Agentforce API message (supports .message string or .messageParts array). Never throws. */
+function getAgentMessageText(
+  msg: { message?: string; messageParts?: Array<{ type?: string; text?: string }> } | null | undefined,
+  fallback: string
+): string {
+  try {
+    if (!msg || typeof msg !== "object") return fallback;
+    if (typeof msg.message === "string" && msg.message.trim()) return msg.message;
+    const parts = msg.messageParts;
+    if (Array.isArray(parts)) {
+      const text = parts
+        .map((p) => (p && typeof p === "object" && typeof (p as { text?: string }).text === "string" ? (p as { text: string }).text : ""))
+        .join("");
+      if (typeof text === "string" && text.trim()) return text;
+    }
+  } catch (_e) {
+    // API may return unexpected shape; avoid crashing the app
+  }
+  return fallback;
+}
 
 interface HudmoData {
   attributes?: {
@@ -60,7 +157,14 @@ interface HudmoData {
   };
 }
 
+/** Path pattern for article URLs: /article/:contentId */
+const ARTICLE_PATH_REGEX = /^\/article\/([^/?#]+)/;
+
 function App() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [isChatOpen, setIsChatOpen] = useState(true);
   const [messageSequence, setMessageSequence] = useState(1);
@@ -68,21 +172,7 @@ function App() {
   const [agentforceSessionId, setAgentforceSessionId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [hudmoData, setHudmoData] = useState<HudmoData | null>(null);
-  const [isArticleOpen, setIsArticleOpen] = useState(false);
   const [currentContentId, setCurrentContentId] = useState<string | null>(null);
-
-  // Debug: Log state changes
-  useEffect(() => {
-    console.log("🔍 State update - isArticleOpen:", isArticleOpen, "hudmoData:", !!hudmoData, "currentContentId:", currentContentId);
-    if (hudmoData) {
-      console.log("🔍 hudmoData structure:", {
-        hasAttributes: !!hudmoData.attributes,
-        hasContent: !!hudmoData.attributes?.content,
-        hasTitle: !!hudmoData.attributes?.title,
-        contentLength: hudmoData.attributes?.content?.length || 0,
-      });
-    }
-  }, [isArticleOpen, hudmoData, currentContentId]);
   const [prefetchedHudmoData, setPrefetchedHudmoData] = useState<Map<string, HudmoData>>(new Map());
   const [fetchingHudmoFor, setFetchingHudmoFor] = useState<Set<string>>(new Set());
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>("salesforce");
@@ -90,59 +180,53 @@ function App() {
   const prefetchedHudmoDataRef = useRef(prefetchedHudmoData);
   prefetchedHudmoDataRef.current = prefetchedHudmoData;
 
-  // Track if this is the initial load and previous customer ID
   const isInitialLoadRef = useRef(true);
   const previousCustomerIdRef = useRef<string | null>("salesforce");
-  
-  // Reset session when customer changes
+
   const handleCustomerChange = useCallback(async (customerId: string | null) => {
     const previousCustomerId = previousCustomerIdRef.current;
-    console.log(`Customer changed from ${previousCustomerId} to: ${customerId} (initialLoad: ${isInitialLoadRef.current})`);
-    
-    // Only reset session state if customer actually changed (not on initial load)
     const customerChanged = previousCustomerId !== customerId && !isInitialLoadRef.current;
-    
+
     setSelectedCustomerId(customerId);
     previousCustomerIdRef.current = customerId;
-    
-    // Fetch customer details to get objectApiName
+
     if (customerId) {
       try {
         const response = await fetch(`${API_URL}/api/v1/customers/${customerId}`);
         if (response.ok) {
           const data = await response.json();
           if (data.customer?.objectApiName) {
-            console.log(`Setting objectApiName to: ${data.customer.objectApiName} for customer: ${customerId}`);
             setObjectApiName(data.customer.objectApiName);
-          } else {
-            console.warn(`No objectApiName found for customer: ${customerId}`);
           }
-        } else {
-          const errorText = await response.text();
-          console.error(`Failed to fetch customer details: ${response.status} ${response.statusText}`, errorText);
         }
       } catch (error) {
-        console.error('Error fetching customer details:', error);
+        console.error("Error fetching customer details:", error);
       }
     }
-    
-    // Reset session state only when customer actually changes (not on initial load)
+
     if (customerChanged) {
-      console.log('Resetting session state due to customer change');
       setSessionInitialized(false);
       setAgentforceSessionId(null);
       setMessages([]);
       setMessageSequence(1);
       setPrefetchedHudmoData(new Map());
       setFetchingHudmoFor(new Set());
-      setIsArticleOpen(false);
       setHudmoData(null);
       setCurrentContentId(null);
+      navigate("/", { replace: true });
     } else {
-      console.log('Initial load or same customer - skipping session reset');
       isInitialLoadRef.current = false;
     }
-  }, []);
+  }, [navigate]);
+
+  // Derive article state from URL
+  const articleMatch = location.pathname.match(ARTICLE_PATH_REGEX);
+  const contentIdFromUrl = articleMatch ? articleMatch[1] : null;
+  const hudmoFromUrl = contentIdFromUrl
+    ? searchParams.get("hudmo") || objectApiName
+    : objectApiName;
+  const isArticleOpen = !!contentIdFromUrl;
+  const isSearchPage = location.pathname === "/search";
 
   const [externalSessionKey] = useState<string>(() => {
     const existingSession = sessionStorage.getItem("agentforce-session-key");
@@ -211,20 +295,30 @@ function App() {
         throw new Error("No message received from agent");
       }
 
+      const messageText = getAgentMessageText(agentResponse, "Response received");
+      if (messageText.includes("URL_Redacted") || messageText.includes("(URL_Redacted)")) {
+        console.log("⚠️ Found URL_Redacted in agent response message:", messageText);
+      }
+
+      // Build bot message with only safe, serializable values so rendering never throws.
+      // Ensure unique id so React keys stay stable (API may reuse or omit id).
+      const baseId = typeof agentResponse.id === "string" ? agentResponse.id : `msg-${Date.now()}-bot`;
+      const safeId = `${baseId}-${Date.now()}`;
+      const safeContent = typeof messageText === "string" ? messageText : "Response received";
       const botMessage: Message = {
-        id: agentResponse.id || `msg-${Date.now()}-bot`,
-        content: agentResponse.message || "Response received",
+        id: safeId,
+        content: safeContent,
         timestamp: new Date(),
         sender: "bot",
-        type: agentResponse.type,
-        feedbackId: agentResponse.feedbackId,
-        isContentSafe: agentResponse.isContentSafe,
-        message: agentResponse.message,
-        metrics: agentResponse.metrics,
-        planId: agentResponse.planId,
-        result: agentResponse.result,
-        citedReferences: agentResponse.citedReferences,
       };
+      if (typeof agentResponse.type === "string") botMessage.type = agentResponse.type;
+      if (typeof agentResponse.feedbackId === "string") botMessage.feedbackId = agentResponse.feedbackId;
+      if (typeof agentResponse.isContentSafe === "boolean") botMessage.isContentSafe = agentResponse.isContentSafe;
+      if (agentResponse.message !== undefined && typeof agentResponse.message === "string") botMessage.message = agentResponse.message;
+      if (agentResponse.metrics != null && typeof agentResponse.metrics === "object" && !Array.isArray(agentResponse.metrics)) botMessage.metrics = agentResponse.metrics;
+      if (typeof agentResponse.planId === "string") botMessage.planId = agentResponse.planId;
+      if (Array.isArray(agentResponse.result)) botMessage.result = agentResponse.result;
+      if (Array.isArray(agentResponse.citedReferences)) botMessage.citedReferences = agentResponse.citedReferences;
 
       setMessages((prev) => [...prev, botMessage]);
       console.log("✅ Bot message added to messages, current message count:", messages.length + 1);
@@ -341,7 +435,6 @@ function App() {
       const cached = cache.get(cacheKey);
       if (cached && (cached.attributes?.content != null || cached.attributes?.title != null)) {
         setHudmoData(cached);
-        setIsArticleOpen(true);
         setCurrentContentId(dccid);
         return;
       }
@@ -374,13 +467,11 @@ function App() {
       }
 
       const result = await response.json();
-      
-      // Validate response structure
+
       if (!result || !result.data) {
-        console.error("❌ Invalid API response structure:", result);
         throw new Error("Invalid API response: missing data property");
       }
-      
+
       // Log the full content API response
       console.log("📄 Content API Response (get-hudmo):", JSON.stringify(result, null, 2));
       console.log("📄 Content API Response (data):", result.data);
@@ -398,24 +489,20 @@ function App() {
       const summary = result.data?.attributes?.summary;
       const articleTitle = result.data?.attributes?.title;
 
-      console.log("📋 Extracted Q&A:", qa);
-      console.log("📝 Extracted Summary:", summary);
-      console.log("📌 Extracted Title:", articleTitle);
-      
-      // Validate that we have at least some content
-      if (!result.data.attributes?.content && !result.data.attributes?.title) {
-        console.warn("⚠️ API response has no content or title:", result.data);
-      }
-
-      // Update message with Q&A, summary, and title when we have the get-hudmo response
-      if (messageId && (qa || summary || articleTitle)) {
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === messageId
-              ? { ...msg, qa, summary, articleTitle }
-              : msg
-          )
-        );
+      // Update message with Q&A, summary, and title when we have the get-hudmo response (only set safe values)
+      if (messageId) {
+        const safeQa = Array.isArray(qa) ? qa : undefined;
+        const safeSummary = typeof summary === "string" ? summary : undefined;
+        const safeArticleTitle = typeof articleTitle === "string" ? articleTitle : undefined;
+        if (safeQa || safeSummary || safeArticleTitle) {
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === messageId
+                ? { ...msg, ...(safeQa && { qa: safeQa }), ...(safeSummary && { summary: safeSummary }), ...(safeArticleTitle && { articleTitle: safeArticleTitle }) }
+                : msg
+            )
+          );
+        }
       }
       
       if (prefetch) {
@@ -431,31 +518,18 @@ function App() {
           return newSet;
         });
         console.log("Pre-fetched harmonization data for:", cacheKey);
-        if (qa || summary) {
-          console.log("Extracted Q&A and Summary from content API:", { qa, summary });
-        }
+      } else {
+        const data = result?.data;
+        if (data && (data.attributes?.content != null || data.attributes?.title != null)) {
+          setHudmoData(data);
+          setCurrentContentId(dccid);
         } else {
-          // Open article only if we have valid data
-          const data = result?.data;
-          console.log(`Article fetch result - has data: ${!!data}, has content: ${!!data?.attributes?.content}, has title: ${!!data?.attributes?.title}`);
-          console.log(`Article fetch result - full data structure:`, JSON.stringify(data, null, 2));
-          if (data && (data.attributes?.content != null || data.attributes?.title != null)) {
-            console.log(`Setting hudmoData and opening article for customer: ${selectedCustomerId}`);
-            console.log(`Data being set:`, JSON.stringify(data, null, 2));
-            // Use setTimeout to ensure state updates happen in the right order
-            setCurrentContentId(dccid);
-            setHudmoData(data);
-            setIsArticleOpen(true);
-            console.log("✅ Successfully loaded harmonization data and opened article");
-            console.log("✅ State after update - isArticleOpen should be true, hudmoData should be set");
-          } else {
-            console.warn("❌ get-hudmo returned no usable content:", result);
-            console.warn("❌ Full result object:", JSON.stringify(result, null, 2));
-            if (!prefetch) {
-              alert(`Article could not be loaded. The API returned no content. Please check if the object "${hudmo}" and content ID "${dccid}" are correct for customer "${selectedCustomerId}".`);
-            }
+          console.warn("get-hudmo returned no usable content:", result);
+          if (!prefetch) {
+            alert(`Article could not be loaded. Please check if the object "${hudmo}" and content ID "${dccid}" are correct for customer "${selectedCustomerId}".`);
           }
         }
+      }
     } catch (error) {
       console.error("❌ Error fetching harmonization data:", error);
       console.error("❌ Error details:", {
@@ -467,14 +541,11 @@ function App() {
         errorStack: error instanceof Error ? error.stack : undefined,
       });
       if (!prefetch) {
-        // Show error message to user if not a prefetch
         const errorMsg = error instanceof Error ? error.message : String(error);
-        console.error("❌ Showing error alert to user:", errorMsg);
-        alert(`Failed to load article. Please try again.\n\nError: ${errorMsg}\n\nCheck the browser console for more details.`);
-        // Don't set article open state if there's an error
-        setIsArticleOpen(false);
+        alert(`Failed to load article. Please try again.\n\nError: ${errorMsg}`);
         setHudmoData(null);
         setCurrentContentId(null);
+        navigate("/", { replace: true });
       }
       if (prefetch && messageId) {
         setFetchingHudmoFor((prev) => {
@@ -484,7 +555,7 @@ function App() {
         });
       }
     }
-  }, [prefetchedHudmoData, fetchingHudmoFor, objectApiName, selectedCustomerId]);
+  }, [prefetchedHudmoData, fetchingHudmoFor, objectApiName, selectedCustomerId, navigate]);
 
   const handleMessageClick = (message: Message) => {
     if (message.sender === "bot") {
@@ -506,48 +577,31 @@ function App() {
         }
       }
 
-      // Override hudmo with current customer's objectApiName only if they don't match
-      // This ensures we use the correct object name for the selected customer
       if (dccid && hudmo && objectApiName && hudmo !== objectApiName) {
-        console.log(`Using objectApiName ${objectApiName} instead of ${hudmo} from URL for customer ${selectedCustomerId}`);
         hudmo = objectApiName;
       }
 
-      // If message has citation data, open article view and extract Q&A/summary
       if (dccid && hudmo) {
-        console.log(`🔵 Opening article - dccid: ${dccid}, hudmo: ${hudmo}, objectApiName: ${objectApiName}, customerId: ${selectedCustomerId}`);
-        console.log(`🔵 Setting state: setIsArticleOpen(true), setCurrentContentId(${dccid})`);
-        console.log(`🔵 Current state before update - isArticleOpen: ${isArticleOpen}, hasHudmoData: ${!!hudmoData}`);
-        setCurrentContentId(dccid);
-        setIsArticleOpen(true); // Explicitly set article open state
-        console.log(`🔵 State set - isArticleOpen should now be true, fetching data...`);
-        fetchHarmonizationData(dccid, hudmo, message.id, false).catch((error) => {
-          console.error("🔴 Error fetching harmonization data in handleMessageClick:", error);
-          // Reset state on error
-          setIsArticleOpen(false);
-          setHudmoData(null);
-          setCurrentContentId(null);
-        });
-      } else {
-        console.warn("Missing citation data - dccid:", dccid, "hudmo:", hudmo, "objectApiName:", objectApiName);
+        const hudmoQuery = hudmo !== objectApiName ? `?hudmo=${encodeURIComponent(hudmo)}` : "";
+        navigate(`/article/${encodeURIComponent(dccid)}${hudmoQuery}`);
+        fetchHarmonizationData(dccid, hudmo, message.id, false);
       }
     }
   };
 
   const handleCloseArticle = () => {
-    setIsArticleOpen(false);
+    navigate("/", { replace: true });
     setHudmoData(null);
     setCurrentContentId(null);
   };
 
-  const handleTocContentClick = useCallback((contentId: string) => {
-    // Load content using content ID as dccid
-    if (!objectApiName) {
-      console.error('objectApiName is not set, cannot fetch harmonization data');
-      return;
-    }
-    fetchHarmonizationData(contentId, objectApiName);
-  }, [fetchHarmonizationData, objectApiName]);
+  const handleTocContentClick = useCallback(
+    (contentId: string) => {
+      const hudmoQuery = objectApiName ? `?hudmo=${encodeURIComponent(objectApiName)}` : "";
+      navigate(`/article/${encodeURIComponent(contentId)}${hudmoQuery}`);
+    },
+    [navigate, objectApiName]
+  );
 
   const handleDeleteSession = async () => {
     if (!agentforceSessionId) {
@@ -625,15 +679,16 @@ function App() {
       setSessionInitialized(true);
 
       if (data.messages?.[0]) {
+        const welcomeText = getAgentMessageText(data.messages[0], "Hi, I'm Agentforce on EK. How can I help you?");
         const welcomeMessage: Message = {
           id: data.messages[0].id || `msg-${Date.now()}-welcome`,
-          content: data.messages[0].message || "Hi, I'm Agentforce on EK. How can I help you?",
+          content: welcomeText,
           timestamp: new Date(),
           sender: "bot",
           type: data.messages[0].type,
           feedbackId: data.messages[0].feedbackId,
           isContentSafe: data.messages[0].isContentSafe,
-          message: data.messages[0].message,
+          message: welcomeText,
           metrics: data.messages[0].metrics,
           planId: data.messages[0].planId,
           result: data.messages[0].result,
@@ -685,15 +740,16 @@ function App() {
 
       // Optionally add the welcome message from Agentforce
       if (data.messages?.[0]) {
+        const welcomeText = getAgentMessageText(data.messages[0], "Hi, I'm Agentforce on EK. How can I help you?");
         const welcomeMessage: Message = {
           id: data.messages[0].id || `msg-${Date.now()}-welcome`,
-          content: data.messages[0].message || "Hi, I'm Agentforce on EK. How can I help you?",
+          content: welcomeText,
           timestamp: new Date(),
           sender: "bot",
           type: data.messages[0].type,
           feedbackId: data.messages[0].feedbackId,
           isContentSafe: data.messages[0].isContentSafe,
-          message: data.messages[0].message,
+          message: welcomeText,
           metrics: data.messages[0].metrics,
           planId: data.messages[0].planId,
           result: data.messages[0].result,
@@ -745,6 +801,17 @@ function App() {
     }
   }, [sessionInitialized, initializeSession, selectedCustomerId]);
 
+  // Sync URL -> article state: load article when URL is /article/:contentId, clear when on /
+  useEffect(() => {
+    if (contentIdFromUrl) {
+      setCurrentContentId(contentIdFromUrl);
+      fetchHarmonizationData(contentIdFromUrl, hudmoFromUrl);
+    } else {
+      setHudmoData(null);
+      setCurrentContentId(null);
+    }
+  }, [contentIdFromUrl, hudmoFromUrl, fetchHarmonizationData]);
+
   const handleChatToggle = async () => {
     const newIsOpen = !isChatOpen;
 
@@ -766,32 +833,13 @@ function App() {
     );
   }
 
-  // Debug logging for rendering state
-  console.log("🔍 App render state:", {
-    isArticleOpen,
-    hasHudmoData: !!hudmoData,
-    hudmoDataStructure: hudmoData ? {
-      hasAttributes: !!hudmoData.attributes,
-      hasContent: !!hudmoData.attributes?.content,
-      hasTitle: !!hudmoData.attributes?.title,
-      contentLength: hudmoData.attributes?.content?.length || 0,
-    } : null,
-    currentContentId,
-    objectApiName,
-    selectedCustomerId,
-  });
-
   return (
+    <AppErrorBoundary>
     <div className="min-h-screen flex flex-col bg-white">
-      {/* Debug indicator - always visible */}
-      <div className="fixed top-0 left-0 right-0 bg-yellow-400 text-black text-xs p-1 z-50 text-center">
-        DEBUG: App rendering - Customer: {selectedCustomerId || 'none'} | Article Open: {String(isArticleOpen)} | Has Data: {String(!!hudmoData)}
-      </div>
-      <div className="pt-6"> {/* Add padding to account for debug bar */}
       <Header onCustomerChange={handleCustomerChange} />
 
       <main className="flex-1 relative overflow-hidden flex">
-        {isArticleOpen && (
+        {isArticleOpen && !isSearchPage && (
           <div className="w-64 border-r border-gray-200 bg-white flex-shrink-0">
             <TOC 
               onContentClick={handleTocContentClick}
@@ -800,81 +848,54 @@ function App() {
             />
           </div>
         )}
-        <div className="flex-1 relative overflow-hidden bg-gray-100" style={{ minHeight: '100vh', position: 'relative' }}>
-          {(() => {
-            console.log("🔍 Rendering main content area:", { isArticleOpen, hasHudmoData: !!hudmoData });
-            if (isArticleOpen) {
-              if (hudmoData) {
-                console.log("🔍 Rendering article view with data");
-                return (
-                  <div className="flex flex-col md:flex-row h-full w-full bg-white" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1 }}>
-                    {/* Article View - Main Content */}
-                    <div className="flex-1 min-w-0 overflow-hidden order-2 md:order-1 bg-white" style={{ minHeight: '100%' }}>
-                      <ArticleErrorBoundary onClose={handleCloseArticle}>
-                        {hudmoData && hudmoData.attributes ? (
-                          <ArticleView data={hudmoData} onClose={handleCloseArticle} customerId={selectedCustomerId} />
-                        ) : (
-                          <div className="flex items-center justify-center h-full p-8 bg-yellow-50">
-                            <div className="text-center">
-                              <p className="text-gray-600 mb-4">Invalid article data</p>
-                              <p className="text-sm text-gray-500">hudmoData: {JSON.stringify(hudmoData, null, 2)}</p>
-                            </div>
-                          </div>
-                        )}
-                      </ArticleErrorBoundary>
-                    </div>
-                    {/* Minimized Chat Widget - Right Side (hidden on mobile, shown on desktop) */}
-                    <div className="hidden md:block w-80 border-l border-gray-200 bg-white flex-shrink-0 overflow-hidden order-1 md:order-2">
-                      <ChatWidget
-                        messages={messages}
-                        onMessageClick={handleMessageClick}
-                        onSendMessage={handleSendMessage}
-                        onDeleteSession={handleDeleteSession}
-                        onStartNewSession={handleStartNewSession}
-                        sessionInitialized={sessionInitialized}
-                        isLoading={isLoading}
-                        isOpen={true}
-                        onToggle={handleChatToggle}
-                        minimized={true}
-                        fetchingHudmoFor={fetchingHudmoFor}
-                        prefetchedHudmoData={prefetchedHudmoData}
-                      />
-                    </div>
-                  </div>
-                );
-              } else {
-                console.log("🔍 Rendering loading state (no hudmoData)");
-                return (
-                  <div className="flex items-center justify-center h-full bg-white" style={{ minHeight: '100vh' }}>
-                    <div className="text-center p-8">
-                      <p className="text-gray-600 mb-4">Loading article...</p>
-                      <p className="text-sm text-gray-500 mb-2">objectApiName: {objectApiName || "not set"}</p>
-                      <p className="text-sm text-gray-500 mb-2">currentContentId: {currentContentId || "not set"}</p>
-                      <p className="text-sm text-gray-500 mb-4">isArticleOpen: {String(isArticleOpen)}</p>
-                      <p className="text-sm text-gray-500">hudmoData: {hudmoData ? "exists" : "null"}</p>
-                    </div>
-                  </div>
-                );
-              }
-            } else {
-              console.log("🔍 Rendering welcome content (article not open)");
-              return (
-                <WelcomeContent
-                  messages={messages}
-                  onMessageClick={handleMessageClick}
-                  onSendMessage={handleSendMessage}
-                  onDeleteSession={handleDeleteSession}
-                  onStartNewSession={handleStartNewSession}
-                  sessionInitialized={sessionInitialized}
-                  isLoading={isLoading}
-                  isOpen={isChatOpen}
-                  onToggle={handleChatToggle}
-                  fetchingHudmoFor={fetchingHudmoFor}
-                  prefetchedHudmoData={prefetchedHudmoData}
-                />
-              );
-            }
-          })()}
+        <div className="flex-1 relative overflow-hidden">
+          {isSearchPage ? (
+            <SearchResultsPage />
+          ) : isArticleOpen ? (
+            hudmoData ? (
+              <div className="flex flex-col md:flex-row h-full absolute inset-0">
+                <div className="flex-1 min-w-0 overflow-hidden order-2 md:order-1">
+                  <ArticleErrorBoundary onClose={handleCloseArticle}>
+                    <ArticleView data={hudmoData} onClose={handleCloseArticle} customerId={selectedCustomerId} />
+                  </ArticleErrorBoundary>
+                </div>
+                <div className="hidden md:block w-80 border-l border-gray-200 bg-white flex-shrink-0 overflow-hidden order-1 md:order-2">
+                  <ChatWidget
+                    messages={messages}
+                    onMessageClick={handleMessageClick}
+                    onSendMessage={handleSendMessage}
+                    onDeleteSession={handleDeleteSession}
+                    onStartNewSession={handleStartNewSession}
+                    sessionInitialized={sessionInitialized}
+                    isLoading={isLoading}
+                    isOpen={true}
+                    onToggle={handleChatToggle}
+                    minimized={true}
+                    fetchingHudmoFor={fetchingHudmoFor}
+                    prefetchedHudmoData={prefetchedHudmoData}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-full bg-white">
+                <p className="text-gray-500">Loading article…</p>
+              </div>
+            )
+          ) : (
+            <WelcomeContent
+              messages={messages}
+              onMessageClick={handleMessageClick}
+              onSendMessage={handleSendMessage}
+              onDeleteSession={handleDeleteSession}
+              onStartNewSession={handleStartNewSession}
+              sessionInitialized={sessionInitialized}
+              isLoading={isLoading}
+              isOpen={isChatOpen}
+              onToggle={handleChatToggle}
+              fetchingHudmoFor={fetchingHudmoFor}
+              prefetchedHudmoData={prefetchedHudmoData}
+            />
+          )}
         </div>
       </main>
 
@@ -898,8 +919,8 @@ function App() {
       )}
 
       <Footer />
-      </div> {/* Close padding div */}
     </div>
+    </AppErrorBoundary>
   );
 }
 

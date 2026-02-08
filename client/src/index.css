@@ -151,10 +151,11 @@ a[href*="runtime_cdp__dataHarmonizedModelObjRefRecordHome"] {
   display: none !important;
 }
 
-/* Hide parent elements containing the official documentation link */
-p:has(a[href*="runtime_cdp__dataHarmonizedModelObjRefRecordHome"]),
-div:has(a[href*="runtime_cdp__dataHarmonizedModelObjRefRecordHome"]),
-span:has(a[href*="runtime_cdp__dataHarmonizedModelObjRefRecordHome"]) {
+/* Hide direct parent elements containing the official documentation link */
+/* Use :has(> a) to only match immediate children, not all descendants */
+p:has(> a[href*="runtime_cdp__dataHarmonizedModelObjRefRecordHome"]),
+div:has(> a[href*="runtime_cdp__dataHarmonizedModelObjRefRecordHome"]),
+span:has(> a[href*="runtime_cdp__dataHarmonizedModelObjRefRecordHome"]) {
   display: none !important;
 }
 
