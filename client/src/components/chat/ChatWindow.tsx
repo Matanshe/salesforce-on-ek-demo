@@ -1,4 +1,4 @@
-import { type ErrorInfo, type ReactNode, Component, useRef } from "react";
+import { type ErrorInfo, type ReactNode, Component, useRef, useEffect } from "react";
 import type { Message } from "../../types/message";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
@@ -97,8 +97,10 @@ export const ChatWindow = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
-  // Disable auto-scroll to keep agent, text, and input in view
-  // User can manually scroll if needed
+  // Auto-scroll to the last message (bottom) when the agent adds a message or loading state changes
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages.length, isLoading]);
 
   return (
     <div className={`w-full ${minimized ? 'h-full' : embedded ? 'h-[500px] sm:h-[600px] md:h-[700px]' : 'sm:w-96 h-dvh sm:h-[600px] sm:rounded-lg'} bg-white ${embedded || minimized ? '' : 'shadow-2xl'} flex flex-col overflow-hidden`}>
