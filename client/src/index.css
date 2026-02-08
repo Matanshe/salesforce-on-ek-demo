@@ -145,20 +145,6 @@ h1.slds-text-heading_large {
 }
 
 
-/* Hide "For more details" section with official documentation link in chat messages */
-/* Hide links to runtime_cdp__dataHarmonizedModelObjRefRecordHome */
-a[href*="runtime_cdp__dataHarmonizedModelObjRefRecordHome"] {
-  display: none !important;
-}
-
-/* Hide direct parent elements containing the official documentation link */
-/* Use :has(> a) to only match immediate children, not all descendants */
-p:has(> a[href*="runtime_cdp__dataHarmonizedModelObjRefRecordHome"]),
-div:has(> a[href*="runtime_cdp__dataHarmonizedModelObjRefRecordHome"]),
-span:has(> a[href*="runtime_cdp__dataHarmonizedModelObjRefRecordHome"]) {
-  display: none !important;
-}
-
 /* Salesforce Fonts - Using Salesforce Sans font stack */
 body,
 #root,

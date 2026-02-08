@@ -51,34 +51,7 @@ const handleUrlClick = (url: string, e: React.MouseEvent) => {
 const parseMessageContent = (content: string | null | undefined): ReactNode => {
   const raw = content != null && typeof content === "string" ? content : "";
   try {
-    let cleanedContent = raw;
-    const removedPieces: string[] = [];
-
-    // Remove the "For more details" section with official documentation link
-    const officialDocPattern = /For more details, you can check the official documentation\s*["']here["']\s*\([^)]*runtime_cdp__dataHarmonizedModelObjRefRecordHome[^)]*\)\.?\s*Let me know if you need further assistance!?/gi;
-    const matches1 = cleanedContent.match(officialDocPattern);
-    if (matches1) {
-      removedPieces.push(...matches1);
-      cleanedContent = cleanedContent.replace(officialDocPattern, "").trim();
-    }
-
-    const pattern2 = /For more details[^.!?]*official documentation[^.!?]*here[^.!?]*\([^)]*runtime_cdp__dataHarmonizedModelObjRefRecordHome[^)]*\)[^.!?]*\.?/gi;
-    const matches2 = cleanedContent.match(pattern2);
-    if (matches2) {
-      removedPieces.push(...matches2);
-      cleanedContent = cleanedContent.replace(pattern2, "").trim();
-    }
-
-    const pattern3 = /Let me know if you need further assistance!?/gi;
-    const matches3 = cleanedContent.match(pattern3);
-    if (matches3) {
-      removedPieces.push(...matches3);
-      cleanedContent = cleanedContent.replace(pattern3, "").trim();
-    }
-
-    if (removedPieces.length > 0) {
-      console.log('🗑️ Removed "For more details" sections:', removedPieces);
-    }
+    const cleanedContent = raw;
 
     // Use one regex for split (needs capture group); use a separate regex for "is URL?" check
     // so we don't reuse a /g regex in a loop (lastIndex would cause wrong results).
@@ -95,12 +68,13 @@ const parseMessageContent = (content: string | null | undefined): ReactNode => {
           <span key={index}>
             <a
               href={cleanUrl}
-              className="text-blue-500 hover:text-blue-700 underline break-words"
+              title={cleanUrl}
+              className="text-blue-500 hover:text-blue-700 underline break-words cursor-pointer"
               onClick={(e) => handleUrlClick(cleanUrl, e)}
               target="_blank"
               rel="noopener noreferrer"
             >
-              {cleanUrl}
+              link
             </a>
             {trailingPunct}
           </span>
@@ -175,7 +149,6 @@ export const ChatMessage = ({ message, onClick, isFetching = false, isFetched: _
         </div>
       )}
       <Card
-        onClick={handleMessageClick}
         className={`
           max-w-[85%] sm:max-w-[80%] p-0 transition-all text-left
           ${
@@ -183,7 +156,7 @@ export const ChatMessage = ({ message, onClick, isFetching = false, isFetched: _
               ? "bg-[#0176D3] text-white hover:bg-[#014486] border-[#0176D3]"
               : "bg-white text-gray-900 hover:bg-gray-50 hover:shadow-md border-gray-200"
           }
-          ${isBot && canViewArticle ? "cursor-pointer" : ""}
+          ${isBot ? "cursor-default" : ""}
         `}
       >
         <div className="px-3 sm:px-4 py-2">
@@ -240,7 +213,13 @@ export const ChatMessage = ({ message, onClick, isFetching = false, isFetched: _
               : new Date(safeMessage.timestamp as string | number).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
           </span>
           {isBot && canViewArticle && (
-            <div className="mt-2 pt-2 border-t border-gray-300 border-opacity-30">
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={handleMessageClick}
+              onKeyDown={(e) => e.key === "Enter" && handleMessageClick()}
+              className="mt-2 pt-2 border-t border-gray-300 border-opacity-30 cursor-pointer"
+            >
               <div className="flex items-center text-[#0176D3]">
                 {isFetching ? (
                   <span className="text-[10px] sm:text-xs font-semibold">Preparing article...</span>
