@@ -144,6 +144,59 @@ h1.slds-text-heading_large {
   display: none !important;
 }
 
+/* Tables in article/content (prose and raw HTML content) */
+.prose table,
+[class*="prose"] table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0 1.5rem;
+  font-size: 0.875rem;
+  display: block;
+  overflow-x: auto;
+}
+
+.prose thead,
+[class*="prose"] thead {
+  background-color: #f3f2f2;
+  border-bottom: 2px solid #d8dde6;
+}
+
+.prose th,
+[class*="prose"] th {
+  padding: 0.625rem 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  color: #3e3e3c;
+  border: 1px solid #d8dde6;
+}
+
+.prose td,
+[class*="prose"] td {
+  padding: 0.625rem 0.75rem;
+  border: 1px solid #d8dde6;
+  color: #3e3e3c;
+  vertical-align: top;
+}
+
+.prose tbody tr:nth-child(even),
+[class*="prose"] tbody tr:nth-child(even) {
+  background-color: #fafaf9;
+}
+
+.prose tbody tr:hover,
+[class*="prose"] tbody tr:hover {
+  background-color: #f3f2f2;
+}
+
+.prose tbody tr,
+[class*="prose"] tbody tr {
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.prose tbody tr:last-child,
+[class*="prose"] tbody tr:last-child {
+  border-bottom: 1px solid #d8dde6;
+}
 
 /* Salesforce Fonts - Using Salesforce Sans font stack */
 body,
