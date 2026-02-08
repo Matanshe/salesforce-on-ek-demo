@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Input } from './ui/input';
-// @ts-ignore: Vite's import.meta.glob ESM asset import workaround, import as URL string
-const tocXmlUrl = '/data/toc_enhanced.xml';
+
+const DEFAULT_TOC_URL = '/data/toc_enhanced.xml';
 
 interface NavNode {
   title: string | null;
@@ -12,21 +12,23 @@ interface NavNode {
 }
 
 interface TableOfContentsProps {
+  tocUrl?: string | null;
   onContentClick?: (contentId: string) => void;
   currentContentId?: string | null;
   isVisible?: boolean;
 }
 
-const TableOfContents = ({ onContentClick: _onContentClick, currentContentId, isVisible = true }: TableOfContentsProps) => {
+const TableOfContents = ({ tocUrl: tocUrlProp, onContentClick: _onContentClick, currentContentId, isVisible = true }: TableOfContentsProps) => {
   const [tree, setTree] = useState<NavNode | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
- // const OBJECT_API_NAME = "SFDCHelp7_DMO_harmonized__dlm";
+  const tocXmlUrl = tocUrlProp ?? DEFAULT_TOC_URL;
 
   useEffect(() => {
     const loadXml = async () => {
       try {
+        setError(null);
         const response = await fetch(tocXmlUrl);
         if (!response.ok) throw new Error(`Failed to load TOC data`);
         const text = await response.text();
@@ -34,12 +36,14 @@ const TableOfContents = ({ onContentClick: _onContentClick, currentContentId, is
         const xmlDoc = parser.parseFromString(text, "text/xml");
         const root = xmlDoc.getElementsByTagName('nav')[0];
         if (root) setTree(parseNode(root));
+        else setTree(null);
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : String(err));
+        setTree(null);
       }
     };
     loadXml();
-  }, []);
+  }, [tocXmlUrl]);
 
   const parseNode = (node: Element): NavNode => ({
     title: node.getAttribute('title'),
@@ -129,7 +133,7 @@ const TableOfContents = ({ onContentClick: _onContentClick, currentContentId, is
             backgroundColor: isCurrentPage ? '#e3f2fd' : '#f3f2f2',
             cursor: hasContentId ? 'pointer' : (hasChildren ? 'pointer' : 'not-allowed'),
             transition: 'background-color 0.2s',
-            borderLeft: isCurrentPage ? '3px solid #0176D3' : 'none',
+            borderLeft: isCurrentPage ? '3px solid var(--theme-primary)' : 'none',
           }}
           onMouseEnter={(e) => {
             if (hasContentId || hasChildren) {
@@ -163,7 +167,7 @@ const TableOfContents = ({ onContentClick: _onContentClick, currentContentId, is
               to={titleHref}
               style={{ 
                 textDecoration: 'none', 
-                color: isCurrentPage ? '#0176D3' : '#0070d2', 
+                color: isCurrentPage ? 'var(--theme-primary)' : 'var(--theme-primary)', 
                 fontSize: '13px',
                 fontWeight: (hasChildren || isCurrentPage) ? 'bold' : 'normal',
                 fontFamily: 'Salesforce Sans, Arial, sans-serif',
@@ -173,7 +177,7 @@ const TableOfContents = ({ onContentClick: _onContentClick, currentContentId, is
             >
               {item.title}
               {isCurrentPage && (
-                <span style={{ marginLeft: '8px', fontSize: '10px', color: '#0176D3', fontWeight: 'bold' }}>●</span>
+                <span style={{ marginLeft: '8px', fontSize: '10px', color: 'var(--theme-primary)', fontWeight: 'bold' }}>●</span>
               )}
             </Link>
           ) : (

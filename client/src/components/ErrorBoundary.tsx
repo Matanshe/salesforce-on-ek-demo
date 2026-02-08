@@ -41,7 +41,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                 this.setState({ hasError: false, error: undefined });
                 window.location.reload();
               }}
-              className="px-4 py-2 bg-[#0176D3] text-white rounded hover:bg-[#014486]"
+              className="px-4 py-2 bg-[var(--theme-primary)] text-white rounded hover:bg-[var(--theme-primary-hover)]"
             >
               Reload Page
             </button>

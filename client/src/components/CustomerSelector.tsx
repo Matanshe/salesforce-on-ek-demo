@@ -85,7 +85,7 @@ export const CustomerSelector = ({ onCustomerChange }: CustomerSelectorProps) =>
         id="customer-select"
         value={selectedCustomer || ''}
         onChange={(e) => handleCustomerChange(e.target.value)}
-        className="px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#0176D3] focus:border-transparent"
+        className="px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)] focus:border-transparent"
       >
         {customers.map((customer) => (
           <option key={customer.id} value={customer.id}>
