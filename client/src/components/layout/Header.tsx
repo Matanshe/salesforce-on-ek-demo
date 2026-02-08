@@ -1,5 +1,8 @@
 import salesforceLogo from "../../assets/Salesforce Logo.jpeg";
 import { SearchBar } from "../SearchBar";
+import { ConfigDropdown } from "./ConfigDropdown";
+
+const isDev = import.meta.env.DEV;
 
 export const Header = () => {
   return (
@@ -17,6 +20,12 @@ export const Header = () => {
           </a>
           <div className="border-l border-gray-300 h-6 hidden sm:block" aria-hidden />
           <h1 className="text-lg sm:text-xl font-semibold text-gray-900">Help</h1>
+          {isDev && (
+            <>
+              <div className="border-l border-gray-300 h-6 hidden sm:block" aria-hidden />
+              <ConfigDropdown />
+            </>
+          )}
         </div>
         <div className="w-full pb-4">
           <div className="w-full max-w-2xl mx-auto min-w-0">
