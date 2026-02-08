@@ -18,6 +18,7 @@ import { ChatWidget } from "./components/chat/ChatWidget";
 import { ArticleView } from "./components/content/ArticleView";
 import { generateSignature } from "./utils/requestSigner";
 import TOC from "./components/TOC";
+import { ThemeProvider } from "./contexts/ThemeContext";
 import "./App.css";
 
 class ArticleErrorBoundary extends Component<
@@ -47,7 +48,7 @@ class ArticleErrorBoundary extends Component<
           <Dialog open={true} onOpenChange={(open) => { if (!open) this.handleCloseDialog(); }}>
             <DialogContent showCloseButton={true} className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle className="text-[#0176D3]">Document error</DialogTitle>
+                <DialogTitle className="text-[var(--theme-primary)]">Document error</DialogTitle>
                 <DialogDescription className="text-gray-600 pt-1">
                   {message}
                 </DialogDescription>
@@ -56,7 +57,7 @@ class ArticleErrorBoundary extends Component<
                 <Button onClick={this.handleCloseDialog} variant="outline">
                   Try again
                 </Button>
-                <Button onClick={this.props.onClose} className="bg-[#0176D3] hover:bg-[#014486]">
+                <Button onClick={this.props.onClose} className="bg-[var(--theme-primary)] hover:bg-[var(--theme-primary-hover)]">
                   Close
                 </Button>
               </DialogFooter>
@@ -103,13 +104,13 @@ class AppErrorBoundary extends Component<
           <Dialog open={true} onOpenChange={(open) => { if (!open) this.handleClose(); }}>
             <DialogContent showCloseButton={true} className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle className="text-[#0176D3]">Something went wrong</DialogTitle>
+                <DialogTitle className="text-[var(--theme-primary)]">Something went wrong</DialogTitle>
                 <DialogDescription className="text-gray-600 pt-1">
                   {message}
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter className="pt-4">
-                <Button onClick={this.handleClose} className="bg-[#0176D3] hover:bg-[#014486]">
+                <Button onClick={this.handleClose} className="bg-[var(--theme-primary)] hover:bg-[var(--theme-primary-hover)]">
                   Try again
                 </Button>
               </DialogFooter>
@@ -175,13 +176,14 @@ function App() {
   const [currentContentId, setCurrentContentId] = useState<string | null>(null);
   const [prefetchedHudmoData, setPrefetchedHudmoData] = useState<Map<string, HudmoData>>(new Map());
   const [fetchingHudmoFor, setFetchingHudmoFor] = useState<Set<string>>(new Set());
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>("salesforce");
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [objectApiName, setObjectApiName] = useState<string>("SFDCHelp7_DMO_harmonized__dlm");
+  const [tocUrl, setTocUrl] = useState<string | null>(null);
   const prefetchedHudmoDataRef = useRef(prefetchedHudmoData);
   prefetchedHudmoDataRef.current = prefetchedHudmoData;
 
   const isInitialLoadRef = useRef(true);
-  const previousCustomerIdRef = useRef<string | null>("salesforce");
+  const previousCustomerIdRef = useRef<string | null>(null);
 
   const handleCustomerChange = useCallback(async (customerId: string | null) => {
     const previousCustomerId = previousCustomerIdRef.current;
@@ -197,6 +199,11 @@ function App() {
           const data = await response.json();
           if (data.customer?.objectApiName) {
             setObjectApiName(data.customer.objectApiName);
+          }
+          if (data.customer?.tocUrl != null) {
+            setTocUrl(data.customer.tocUrl);
+          } else {
+            setTocUrl(null);
           }
         }
       } catch (error) {
@@ -278,6 +285,14 @@ function App() {
       }
 
       const data = await response.json();
+
+      // #region agent log
+      const _keys = data ? Object.keys(data) : [];
+      const _msgs = data?.messages;
+      const _first = _msgs?.[0];
+      fetch('http://127.0.0.1:7242/ingest/bebf9a71-04a2-4e86-a513-895cda001ee7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:handleSendMessage',message:'client received sendMessage response',data:{responseKeys:_keys,messagesLength:Array.isArray(_msgs)?_msgs.length:null,firstMessageKeys:_first?Object.keys(_first):null,hasMessageText:!!_first?.message,citedRefsCount:_first?.citedReferences?.length??null},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/bebf9a71-04a2-4e86-a513-895cda001ee7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:first message',message:'first message content',data:{firstType:_first?.type,hasContent:!!_first?.message},timestamp:Date.now(),hypothesisId:'H5'})}).catch(()=>{});
+      // #endregion
 
       setMessageSequence((prev) => prev + 1);
 
@@ -779,6 +794,11 @@ function App() {
             } else {
               console.warn(`No objectApiName found for customer: ${selectedCustomerId}`);
             }
+            if (data.customer?.tocUrl != null) {
+              setTocUrl(data.customer.tocUrl);
+            } else {
+              setTocUrl(null);
+            }
           } else {
             const errorText = await response.text();
             console.error(`Failed to fetch customer details: ${response.status} ${response.statusText}`, errorText);
@@ -822,26 +842,23 @@ function App() {
     setIsChatOpen(newIsOpen);
   };
 
-  // Add error boundary for the entire app
-  if (!selectedCustomerId) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-600">Loading customer configuration...</p>
-        </div>
-      </div>
-    );
-  }
-
+  // Show loading until CustomerSelector has loaded and set the customer from dropdown/localStorage
   return (
     <AppErrorBoundary>
+    <ThemeProvider customerId={selectedCustomerId}>
     <div className="min-h-screen flex flex-col bg-white">
       <Header onCustomerChange={handleCustomerChange} />
-
+      {!selectedCustomerId ? (
+        <main className="flex-1 flex items-center justify-center">
+          <p className="text-gray-600">Loading customer configuration...</p>
+        </main>
+      ) : (
+      <>
       <main className="flex-1 relative overflow-hidden flex">
-        {isArticleOpen && !isSearchPage && (
+        {isArticleOpen && !isSearchPage && tocUrl && (
           <div className="w-64 border-r border-gray-200 bg-white flex-shrink-0">
             <TOC 
+              tocUrl={tocUrl}
               onContentClick={handleTocContentClick}
               currentContentId={currentContentId}
               isVisible={isArticleOpen}
@@ -919,7 +936,10 @@ function App() {
       )}
 
       <Footer />
+      </>
+      )}
     </div>
+    </ThemeProvider>
     </AppErrorBoundary>
   );
 }
