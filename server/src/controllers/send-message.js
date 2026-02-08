@@ -47,6 +47,7 @@ const sendMessage = async (req, res) => {
     const data = await response.json();
 
     console.log(`${getCurrentTimestamp()} ✅ - sendMessage - Message sent!`);
+    console.log(`${getCurrentTimestamp()} 📤 - sendMessage - Agent response:`, JSON.stringify(data.messages, null, 2));
 
     res.status(200).json({
       messages: data.messages,
