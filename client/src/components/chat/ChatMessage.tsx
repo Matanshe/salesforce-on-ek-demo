@@ -193,7 +193,7 @@ export const ChatMessage = ({ message, onClick, isFetching = false, isFetched: _
           <img 
             src={agentforceLogo} 
             alt="Agentforce" 
-            className="w-6 h-6 sm:w-7 sm:h-7 rounded-full object-cover border-2 border-[#0176D3]"
+            className="w-6 h-6 sm:w-7 sm:h-7 rounded-full object-cover border-2 border-[var(--theme-primary)]"
           />
         </div>
       )}
@@ -203,7 +203,7 @@ export const ChatMessage = ({ message, onClick, isFetching = false, isFetched: _
           max-w-[85%] sm:max-w-[80%] p-0 transition-all text-left
           ${
             isUser
-              ? "bg-[#0176D3] text-white hover:bg-[#014486] border-[#0176D3]"
+              ? "bg-[var(--theme-primary)] text-white hover:bg-[var(--theme-primary-hover)] border-[var(--theme-primary)]"
               : "bg-white text-gray-900 hover:bg-gray-50 hover:shadow-md border-gray-200"
           }
           ${isBot && canViewArticle ? "cursor-pointer" : ""}
@@ -216,7 +216,7 @@ export const ChatMessage = ({ message, onClick, isFetching = false, isFetched: _
           {isBot && safeMessage.summary && (
             <div className="mt-3 pt-3 border-t border-gray-200 border-opacity-30">
               <div className="flex items-start gap-2">
-                <svg className="w-4 h-4 sm:w-4 sm:h-4 shrink-0 mt-0.5 text-[#0176D3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 sm:w-4 sm:h-4 shrink-0 mt-0.5 text-[var(--theme-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
                 <div className="flex-1">
@@ -231,7 +231,7 @@ export const ChatMessage = ({ message, onClick, isFetching = false, isFetched: _
           {isBot && Array.isArray(safeMessage.qa) && safeMessage.qa.length > 0 && (
             <div className="mt-3 pt-3 border-t border-gray-200 border-opacity-30">
               <div className="flex items-start gap-2 mb-2">
-                <svg className="w-4 h-4 sm:w-4 sm:h-4 shrink-0 mt-0.5 text-[#0176D3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 sm:w-4 sm:h-4 shrink-0 mt-0.5 text-[var(--theme-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <p className="text-[10px] sm:text-xs font-semibold text-gray-700">Q&A</p>
@@ -265,7 +265,7 @@ export const ChatMessage = ({ message, onClick, isFetching = false, isFetched: _
           {isBot && canViewArticle && (
             <div className="mt-2 pt-2 border-t border-gray-300 border-opacity-30">
               <div
-                className="flex items-center text-[#0176D3] cursor-pointer hover:underline"
+                className="flex items-center text-[var(--theme-primary)] hover:text-[var(--theme-primary-hover)] cursor-pointer hover:underline"
                 onClick={handleMessageClick}
                 role="button"
                 tabIndex={0}

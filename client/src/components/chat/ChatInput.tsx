@@ -52,7 +52,7 @@ export const ChatInput = ({ onSend }: ChatInputProps) => {
         <Button 
           type="submit" 
           disabled={!input.trim()} 
-          className="shrink-0 bg-[#0176D3] hover:bg-[#014486] text-white h-[36px] sm:h-10 px-3 sm:px-4 text-sm sm:text-base"
+          className="shrink-0 bg-[var(--theme-primary)] hover:bg-[var(--theme-primary-hover)] text-white h-[36px] sm:h-10 px-3 sm:px-4 text-sm sm:text-base"
         >
           Send
         </Button>
