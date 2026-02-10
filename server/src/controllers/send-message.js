@@ -49,6 +49,20 @@ const sendMessage = async (req, res) => {
     console.log(`${getCurrentTimestamp()} ✅ - sendMessage - Message sent!`);
     console.log(`${getCurrentTimestamp()} 📤 - sendMessage - Agent response:`, JSON.stringify(data.messages, null, 2));
 
+    // Inspect first message shape for chunks table, chunk record id, citation metadata
+    const first = data.messages?.[0];
+    if (first) {
+      console.log(`${getCurrentTimestamp()} 🔍 - sendMessage - [Shape] Top-level keys:`, Object.keys(first));
+      if (Array.isArray(first.citedReferences) && first.citedReferences.length > 0) {
+        console.log(`${getCurrentTimestamp()} 🔍 - sendMessage - [Shape] citedReferences count:`, first.citedReferences.length);
+        console.log(`${getCurrentTimestamp()} 🔍 - sendMessage - [Shape] First ref keys:`, Object.keys(first.citedReferences[0]));
+        console.log(`${getCurrentTimestamp()} 🔍 - sendMessage - [Shape] First citedReference:`, JSON.stringify(first.citedReferences[0], null, 2));
+      }
+      if (first.result != null) {
+        console.log(`${getCurrentTimestamp()} 🔍 - sendMessage - [Shape] result (first 500 chars):`, JSON.stringify(first.result).slice(0, 500));
+      }
+    }
+
     res.status(200).json({
       messages: data.messages,
     });

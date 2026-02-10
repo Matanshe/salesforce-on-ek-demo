@@ -242,7 +242,21 @@ function App() {
       setMessageSequence((prev) => prev + 1);
 
       const agentResponse = data.messages?.[0];
-      console.log("this is the agent response:", data.messages?.[0]);
+      // Inspect full agent response shape (chunks table, chunk record id, citation metadata)
+      if (agentResponse) {
+        console.log("[Agent response shape] Top-level keys:", Object.keys(agentResponse));
+        if (Array.isArray(agentResponse.citedReferences) && agentResponse.citedReferences.length > 0) {
+          console.log("[Agent response shape] citedReferences count:", agentResponse.citedReferences.length);
+          console.log("[Agent response shape] First citedReference keys:", Object.keys(agentResponse.citedReferences[0]));
+          console.log("[Agent response shape] First citedReference (full):", JSON.stringify(agentResponse.citedReferences[0], null, 2));
+          console.log("[Agent response shape] All citedReferences:", JSON.stringify(agentResponse.citedReferences, null, 2));
+        }
+        if (agentResponse.result != null) {
+          console.log("[Agent response shape] result type:", Array.isArray(agentResponse.result) ? "array" : typeof agentResponse.result);
+          console.log("[Agent response shape] result (full):", JSON.stringify(agentResponse.result, null, 2));
+        }
+        console.log("[Agent response shape] Full message:", JSON.stringify(agentResponse, null, 2));
+      }
 
       if (!agentResponse) {
         throw new Error("No message received from agent");

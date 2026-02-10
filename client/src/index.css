@@ -621,6 +621,8 @@ body,
 
 .slds-icon-note-note {
   background-color: #1589ee;
+  height: 25px;
+  margin-top: -10px;
 }
 
 .slds-icon-note-note img {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -139,12 +139,19 @@ function buildDisplayEntries(
   return entries;
 }
 
+interface QaItem {
+  question?: string;
+  answer?: string;
+}
+
 interface ArticleViewProps {
   data: {
     attributes?: {
       content?: string;
       title?: string;
       metadata?: Record<string, unknown>;
+      summary?: string;
+      qa?: QaItem[];
     };
   } | null;
   onClose: () => void;
@@ -153,6 +160,12 @@ interface ArticleViewProps {
 export const ArticleView = ({ data, onClose }: ArticleViewProps) => {
   const navigate = useNavigate();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [qaExpanded, setQaExpanded] = useState(false);
+
+  const summary = data?.attributes?.summary;
+  const qa = data?.attributes?.qa;
+  const hasSummary = typeof summary === "string" && summary.trim() !== "";
+  const hasQa = Array.isArray(qa) && qa.length > 0;
 
   const handleContentClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const anchor = e.target instanceof HTMLElement ? e.target.closest("a[data-dccid]") : null;
@@ -231,6 +244,16 @@ export const ArticleView = ({ data, onClose }: ArticleViewProps) => {
       {/* Content */}
       <ScrollArea className="flex-1 min-h-0">
         <div ref={scrollContainerRef} className="px-3 sm:px-4 md:px-6 py-4 sm:py-6">
+          {/* AI-generated document summary (above description), Salesforce blue highlight */}
+          {hasSummary && (
+            <div className="mb-4 p-3 sm:p-4 rounded-lg bg-[#0176D3]/10 border border-[#0176D3]/30">
+              <h2 className="text-sm font-semibold text-[#0176D3] mb-2">AI-generated document summary</h2>
+              <p className="text-sm text-[#014486] leading-relaxed whitespace-pre-wrap break-words">
+                {summary}
+              </p>
+            </div>
+          )}
+
           {hasMeta && (
             <div className="mb-4 space-y-4">
               {/* Detail fields: small chips in one row, blue styling */}
@@ -267,6 +290,55 @@ export const ArticleView = ({ data, onClose }: ArticleViewProps) => {
               )}
             </div>
           )}
+
+          {/* Q&A expand/collapse */}
+          {hasQa && (
+            <div className="mb-4 rounded-lg border border-gray-200 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setQaExpanded((prev) => !prev)}
+                className="w-full flex items-center justify-between gap-2 px-3 py-3 sm:px-4 sm:py-3 bg-gray-50 hover:bg-gray-100 text-left transition-colors"
+                aria-expanded={qaExpanded}
+              >
+                <span className="text-sm font-semibold text-gray-700">Q&A</span>
+                <svg
+                  className={`w-4 h-4 text-gray-500 shrink-0 transition-transform ${qaExpanded ? "rotate-180" : ""}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {qaExpanded && (
+                <div className="border-t border-gray-200 bg-white">
+                  <div className="p-3 sm:p-4 space-y-4">
+                    {qa!.map((qaItem, index) => (
+                      <div key={index} className="rounded-lg p-3 bg-gray-50 border border-gray-200">
+                        {qaItem?.question != null && String(qaItem.question).trim() !== "" && (
+                          <div className="mb-2">
+                            <p className="text-xs font-semibold text-gray-700 mb-1">Q:</p>
+                            <p className="text-sm text-gray-800 wrap-break-word break-words whitespace-pre-wrap">
+                              {String(qaItem.question)}
+                            </p>
+                          </div>
+                        )}
+                        {qaItem?.answer != null && String(qaItem.answer).trim() !== "" && (
+                          <div>
+                            <p className="text-xs font-semibold text-gray-700 mb-1">A:</p>
+                            <p className="text-sm text-gray-600 wrap-break-word break-words whitespace-pre-wrap">
+                              {String(qaItem.answer)}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {data.attributes?.content ? (
             <div
               role="article"
