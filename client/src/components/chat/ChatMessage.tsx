@@ -12,7 +12,9 @@ interface ChatMessageProps {
   articleTitle?: string | null;
 }
 
-const extractUrlParams = (url: string): { dccid: string | null; hudmo: string | null } => {
+const extractUrlParams = (
+  url: string
+): { dccid: string | null; hudmo: string | null; chunkObjectApiName: string | null; chunkRecordIds: string | null } => {
   try {
     const cleanUrl = url.replace(/[).,;!?]+$/, "");
     const urlObj = new URL(cleanUrl);
@@ -25,9 +27,12 @@ const extractUrlParams = (url: string): { dccid: string | null; hudmo: string | 
       hudmo = urlObj.searchParams.get("c__objectApiName");
     }
 
-    return { dccid, hudmo };
+    const chunkObjectApiName = urlObj.searchParams.get("c__chunkObjectApiName");
+    const chunkRecordIds = urlObj.searchParams.get("c__chunkRecordIds");
+
+    return { dccid, hudmo, chunkObjectApiName, chunkRecordIds };
   } catch {
-    return { dccid: null, hudmo: null };
+    return { dccid: null, hudmo: null, chunkObjectApiName: null, chunkRecordIds: null };
   }
 };
 
@@ -127,9 +132,16 @@ export const ChatMessage = ({ message, onClick, isFetching = false, isFetched: _
     const urls = extractUrlsFromContent(safeMessage.content);
     let updatedMessage = safeMessage;
     if (urls.length > 0) {
-      const { dccid, hudmo } = extractUrlParams(urls[0]);
+      const { dccid, hudmo, chunkObjectApiName, chunkRecordIds } = extractUrlParams(urls[0]);
       if (dccid && hudmo) {
-        updatedMessage = { ...safeMessage, dccid, hudmo };
+        updatedMessage = {
+          ...safeMessage,
+          dccid,
+          hudmo,
+          ...(chunkObjectApiName && chunkRecordIds
+            ? { chunkObjectApiName, chunkRecordIds }
+            : {}),
+        };
         onClick(updatedMessage);
         return;
       }

@@ -1,3 +1,8 @@
+export interface ChunkRow {
+  Chunk__c?: string;
+  Citation__c?: string | null;
+}
+
 export interface CitedReference {
   id: string;
   name?: string;
@@ -27,6 +32,9 @@ export interface Message {
   htmlContent?: string;
   dccid?: string;
   hudmo?: string;
+  /** Chunk params from citation URL (for highlight); set when prefetch has chunk params */
+  chunkObjectApiName?: string;
+  chunkRecordIds?: string;
   qa?: QAPair[];
   summary?: string;
   /** Article title from get-hudmo (attributes.title), set when we have the response */
