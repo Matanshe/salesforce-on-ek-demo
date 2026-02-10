@@ -182,7 +182,6 @@ export function highlightChunksInElement(container: HTMLElement, chunkTexts: str
 
   // Process segments from last to first so DOM changes don't invalidate node refs
   const segIndices = [...bySegMerged.keys()].sort((a, b) => b - a);
-  let firstHighlight: HTMLElement | null = null;
 
   for (const segIdx of segIndices) {
     const segment = segments[segIdx];
@@ -206,7 +205,6 @@ export function highlightChunksInElement(container: HTMLElement, chunkTexts: str
       span.className = HIGHLIGHT_CLASS;
       span.appendChild(doc.createTextNode(text.slice(s, e)));
       frag.appendChild(span);
-      if (!firstHighlight) firstHighlight = span;
       lastEnd = e;
     }
     if (lastEnd < text.length) {
@@ -215,6 +213,8 @@ export function highlightChunksInElement(container: HTMLElement, chunkTexts: str
     parent.replaceChild(frag, node);
   }
 
+  // Return first highlight in DOM order so scroll goes to top of chunk, not bottom
+  const firstHighlight = container.querySelector(`.${HIGHLIGHT_CLASS}`) as HTMLElement | null;
   if (firstHighlight) {
     console.log("[chunkHighlight] Applied highlights, first element in DOM");
   }
