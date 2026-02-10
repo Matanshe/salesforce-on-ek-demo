@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import type { ChunkRow } from "@/types/message";
+import { highlightChunksInElement } from "@/utils/chunkHighlight";
 
 export interface ParsedMetaTag {
   name?: string;
@@ -154,13 +156,20 @@ interface ArticleViewProps {
       qa?: QaItem[];
     };
   } | null;
+  /** Optional chunk rows for highlighting; when present, matching text is highlighted and scrolled into view */
+  chunkRows?: ChunkRow[];
   onClose: () => void;
 }
 
-export const ArticleView = ({ data, onClose }: ArticleViewProps) => {
+export const ArticleView = ({ data, chunkRows = [], onClose }: ArticleViewProps) => {
   const navigate = useNavigate();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const contentProseRef = useRef<HTMLDivElement>(null);
   const [qaExpanded, setQaExpanded] = useState(false);
+
+  if (data) {
+    console.log("[chunk] ArticleView render: title=" + (data.attributes?.title ?? "")?.slice(0, 40) + " chunkRows.length=" + (chunkRows?.length ?? 0));
+  }
 
   const summary = data?.attributes?.summary;
   const qa = data?.attributes?.qa;
@@ -206,16 +215,64 @@ export const ArticleView = ({ data, onClose }: ArticleViewProps) => {
     if (metadataEntries.length > 0) console.log("Metadata (merged):", metadataEntries);
   }, [data?.attributes?.metadata, metaTags, metadataEntries]);
 
+  // Set article content in DOM via ref so highlight spans persist (React won't overwrite innerHTML on re-render)
+  useLayoutEffect(() => {
+    const content = data?.attributes?.content;
+    const container = contentProseRef.current;
+    if (container && typeof content === "string") {
+      container.innerHTML = content;
+    }
+  }, [data?.attributes?.content]);
+
   // Scroll to top when content changes
   useEffect(() => {
     if (data && scrollContainerRef.current) {
       const scrollArea = scrollContainerRef.current.closest('[data-slot="scroll-area"]');
       const viewport = scrollArea?.querySelector('[data-slot="scroll-area-viewport"]') as HTMLElement;
       if (viewport) {
-        viewport.scrollTo({ top: 0, behavior: 'smooth' });
+        viewport.scrollTo({ top: 0, behavior: "smooth" });
       }
     }
   }, [data?.attributes?.content, data?.attributes?.title]);
+
+  // Chunk highlighting: after content is in DOM, find chunk text, wrap in highlights, scroll to first
+  useEffect(() => {
+    const hasContent = !!(data?.attributes?.content);
+    const hasRef = !!contentProseRef.current;
+    const rowCount = chunkRows?.length ?? 0;
+    console.log("[chunk] ArticleView chunk effect run: hasContent=" + hasContent + " hasRef=" + hasRef + " chunkRows.length=" + rowCount);
+    if (!hasContent || !hasRef || rowCount === 0) {
+      return;
+    }
+    const chunkTexts = chunkRows
+      .map((r) => (typeof r.Chunk__c === "string" ? r.Chunk__c : ""))
+      .filter((t) => t.trim().length > 0);
+    if (chunkTexts.length === 0) {
+      console.log("[chunk] ArticleView: chunkRows has no non-empty Chunk__c");
+      return;
+    }
+    console.log("[chunk] ArticleView: running highlight for", chunkTexts.length, "chunk text(s), content length:", data?.attributes?.content?.length);
+    const container = contentProseRef.current;
+    const runHighlight = () => {
+      if (!container) return;
+      const firstHighlight = highlightChunksInElement(container, chunkTexts);
+      if (firstHighlight) {
+        console.log("[chunk] ArticleView: highlight applied, scrolling to first match");
+        const scrollArea = scrollContainerRef.current?.closest('[data-slot="scroll-area"]');
+        const viewport = scrollArea?.querySelector('[data-slot="scroll-area-viewport"]') as HTMLElement | undefined;
+        if (viewport) {
+          firstHighlight.scrollIntoView({ behavior: "smooth", block: "start" });
+        } else {
+          firstHighlight.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      } else {
+        console.log("[chunk] ArticleView: no match found in content for chunk text(s)");
+      }
+    };
+    requestAnimationFrame(() => {
+      requestAnimationFrame(runHighlight);
+    });
+  }, [data?.attributes?.content, chunkRows]);
 
   if (!data) return null;
 
@@ -341,10 +398,10 @@ export const ArticleView = ({ data, onClose }: ArticleViewProps) => {
 
           {data.attributes?.content ? (
             <div
+              ref={contentProseRef}
               role="article"
               onClick={handleContentClick}
-              className="content-prose pb-6 sm:pb-8"
-              dangerouslySetInnerHTML={{ __html: data.attributes.content }}
+              className="content-prose pb-6 sm:pb-8 chunk-highlight-container"
             />
           ) : (
             <div className="bg-gray-900 rounded-lg p-4 overflow-auto border border-gray-700">

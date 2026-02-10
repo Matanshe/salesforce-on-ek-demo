@@ -1,6 +1,6 @@
 import { type ErrorInfo, type ReactNode, Component, useState, useCallback, useEffect, useRef } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import type { Message } from "./types/message";
+import type { Message, ChunkRow } from "./types/message";
 import { Header } from "./components/layout/Header";
 import { Footer } from "./components/layout/Footer";
 import {
@@ -157,6 +157,27 @@ interface HudmoData {
   };
 }
 
+/** Build article URL query string (hudmo + optional chunk params). */
+function buildArticleQuery(params: {
+  hudmo: string;
+  objectApiName: string;
+  chunkObjectApiName?: string | null;
+  chunkRecordIds?: string | null;
+}): string {
+  const search = new URLSearchParams();
+  if (params.hudmo !== params.objectApiName) {
+    search.set("hudmo", params.hudmo);
+  }
+  if (params.chunkObjectApiName) {
+    search.set("chunkObjectApiName", params.chunkObjectApiName);
+  }
+  if (params.chunkRecordIds) {
+    search.set("chunkRecordIds", params.chunkRecordIds);
+  }
+  const qs = search.toString();
+  return qs ? `?${qs}` : "";
+}
+
 /** Path pattern for article URLs: /article/:contentId */
 const ARTICLE_PATH_REGEX = /^\/article\/([^/?#]+)/;
 
@@ -172,20 +193,30 @@ function App() {
   const [agentforceSessionId, setAgentforceSessionId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [hudmoData, setHudmoData] = useState<HudmoData | null>(null);
+  const [chunkRows, setChunkRows] = useState<ChunkRow[]>([]);
   const [currentContentId, setCurrentContentId] = useState<string | null>(null);
   const [prefetchedHudmoData, setPrefetchedHudmoData] = useState<Map<string, HudmoData>>(new Map());
   const [fetchingHudmoFor, setFetchingHudmoFor] = useState<Set<string>>(new Set());
   const prefetchedHudmoDataRef = useRef(prefetchedHudmoData);
   prefetchedHudmoDataRef.current = prefetchedHudmoData;
+  const chunkParamsByMessageIdRef = useRef<Record<string, { chunkObjectApiName: string; chunkRecordIds: string }>>({});
 
   const OBJECT_API_NAME = "SFDCHelp7_DMO_harmonized__dlm";
 
-  // Derive article state from URL
+  // Derive article state from URL (support /article/:id and Lightning-style ?c__contentId=...)
   const articleMatch = location.pathname.match(ARTICLE_PATH_REGEX);
-  const contentIdFromUrl = articleMatch ? articleMatch[1] : null;
+  const contentIdFromPath = articleMatch ? articleMatch[1] : null;
+  const contentIdFromSearch = searchParams.get("c__contentId");
+  const contentIdFromUrl = contentIdFromPath ?? contentIdFromSearch ?? null;
   const hudmoFromUrl = contentIdFromUrl
-    ? searchParams.get("hudmo") || OBJECT_API_NAME
+    ? searchParams.get("hudmo") || searchParams.get("c__objectApiName") || OBJECT_API_NAME
     : OBJECT_API_NAME;
+  const chunkObjectApiNameFromUrl = contentIdFromUrl
+    ? searchParams.get("chunkObjectApiName") ?? searchParams.get("c__chunkObjectApiName") ?? null
+    : null;
+  const chunkRecordIdsFromUrl = contentIdFromUrl
+    ? searchParams.get("chunkRecordIds") ?? searchParams.get("c__chunkRecordIds") ?? null
+    : null;
   const isArticleOpen = !!contentIdFromUrl;
   const isSearchPage = location.pathname === "/search";
 
@@ -289,7 +320,7 @@ function App() {
 
       setMessages((prev) => [...prev, botMessage]);
 
-      // Pre-fetch citation data if available
+      // Pre-fetch citation data if available (include chunk params from c__chunkObjectApiName / c__chunkRecordIds)
       const urls = botMessage.content.match(/(https?:\/\/[^\s)]+)/g) || [];
       if (urls.length > 0 && urls[0]) {
         try {
@@ -297,10 +328,28 @@ function App() {
           const urlObj = new URL(cleanUrl);
           const dccid = urlObj.searchParams.get("c__dccid") || urlObj.searchParams.get("c__contentId");
           const hudmo = urlObj.searchParams.get("c__hudmo") || urlObj.searchParams.get("c__objectApiName");
-          
+          const chunkObjectApiName = urlObj.searchParams.get("c__chunkObjectApiName");
+          const chunkRecordIds = urlObj.searchParams.get("c__chunkRecordIds");
+          const prefetchChunkParams =
+            chunkObjectApiName && chunkRecordIds
+              ? { chunkObjectApiName, chunkRecordIds }
+              : undefined;
           if (dccid && hudmo) {
-            // Pre-fetch in background
-            fetchHarmonizationData(dccid, hudmo, botMessage.id, true);
+            if (prefetchChunkParams && chunkObjectApiName && chunkRecordIds) {
+              chunkParamsByMessageIdRef.current[botMessage.id] = {
+                chunkObjectApiName,
+                chunkRecordIds,
+              };
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === botMessage.id
+                    ? { ...m, chunkObjectApiName: chunkObjectApiName ?? undefined, chunkRecordIds: chunkRecordIds ?? undefined }
+                    : m
+                )
+              );
+            }
+            // Pre-fetch in background (chunk rows are fetched when user opens article, not during prefetch)
+            fetchHarmonizationData(dccid, hudmo, botMessage.id, true, prefetchChunkParams);
           }
         } catch (error) {
           // URL parsing failed, skip pre-fetch
@@ -323,159 +372,251 @@ function App() {
     }
   };
 
-  const fetchHarmonizationData = useCallback(async (dccid: string, hudmo: string, messageId?: string, prefetch = false) => {
-    const cacheKey = `${dccid}-${hudmo}`;
-    const cache = prefetchedHudmoDataRef.current;
+  const fetchHarmonizationData = useCallback(
+    async (
+      dccid: string,
+      hudmo: string,
+      messageId?: string,
+      prefetch = false,
+      chunkParams?: { chunkObjectApiName: string; chunkRecordIds: string }
+    ) => {
+      console.log("[chunk] fetchHarmonizationData called: dccid=" + dccid + " prefetch=" + prefetch + " chunkParams=" + (chunkParams ? JSON.stringify({ chunkObjectApiName: chunkParams.chunkObjectApiName, chunkRecordIdsLen: chunkParams.chunkRecordIds?.length }) : "none"));
+      const cacheKey = `${dccid}-${hudmo}`;
+      const cache = prefetchedHudmoDataRef.current;
 
-    // If prefetching and already cached, skip
-    if (prefetch && cache.has(cacheKey)) {
-      return;
-    }
-
-    // If prefetching and already fetching, skip
-    if (prefetch && fetchingHudmoFor.has(cacheKey)) {
-      return;
-    }
-
-    // If not prefetching, check cache first (use ref so we always have latest)
-    if (!prefetch && cache.has(cacheKey)) {
-      const cached = cache.get(cacheKey);
-      if (cached && (cached.attributes?.content != null || cached.attributes?.title != null)) {
-        setHudmoData(cached);
-        setCurrentContentId(dccid);
+      // If prefetching and already cached, skip
+      if (prefetch && cache.has(cacheKey)) {
         return;
       }
-    }
 
-    // Mark as fetching
-    if (prefetch && messageId) {
-      setFetchingHudmoFor((prev) => new Set(prev).add(cacheKey));
-    }
-
-    try {
-      const { timestamp, signature } = await generateSignature("POST", "/api/v1/get-hudmo");
-
-      const response = await fetch(`${API_URL}/api/v1/get-hudmo`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Timestamp": timestamp,
-          "X-Signature": signature,
-        },
-        body: JSON.stringify({
-          hudmoName: hudmo,
-          dccid: dccid,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch harmonization data: ${response.statusText}`);
+      // If prefetching and already fetching, skip
+      if (prefetch && fetchingHudmoFor.has(cacheKey)) {
+        return;
       }
 
-      const result = await response.json();
-      
-      // Log the full content API response
-      console.log("📄 Content API Response (get-hudmo):", JSON.stringify(result, null, 2));
-      console.log("📄 Content API Response (data):", result.data);
-      console.log("📄 Content API Response (attributes):", result.data?.attributes);
-      
-      // Check for URL_Redacted in content API response
-      const contentStr = JSON.stringify(result);
-      if (contentStr.includes("URL_Redacted") || contentStr.includes("(URL_Redacted)")) {
-        console.log("⚠️ Found URL_Redacted in content API response");
-        console.log("⚠️ Content with URL_Redacted:", result.data?.attributes?.content);
-      }
-      
-      // Extract Q&A, summary, and title from content API response
-      const qa = result.data?.attributes?.qa;
-      const summary = result.data?.attributes?.summary;
-      const articleTitle = result.data?.attributes?.title;
-
-      console.log("📋 Extracted Q&A:", qa);
-      console.log("📝 Extracted Summary:", summary);
-      console.log("📌 Extracted Title:", articleTitle);
-
-      // Update message with Q&A, summary, and title when we have the get-hudmo response (only set safe values)
-      if (messageId) {
-        const safeQa = Array.isArray(qa) ? qa : undefined;
-        const safeSummary = typeof summary === "string" ? summary : undefined;
-        const safeArticleTitle = typeof articleTitle === "string" ? articleTitle : undefined;
-        if (safeQa || safeSummary || safeArticleTitle) {
-          setMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === messageId
-                ? { ...msg, ...(safeQa && { qa: safeQa }), ...(safeSummary && { summary: safeSummary }), ...(safeArticleTitle && { articleTitle: safeArticleTitle }) }
-                : msg
-            )
-          );
-        }
-      }
-      
-      if (prefetch) {
-        // Store in cache for later use
-        setPrefetchedHudmoData((prev) => {
-          const newMap = new Map(prev);
-          newMap.set(cacheKey, result.data);
-          return newMap;
-        });
-        setFetchingHudmoFor((prev) => {
-          const newSet = new Set(prev);
-          newSet.delete(cacheKey);
-          return newSet;
-        });
-        console.log("Pre-fetched harmonization data for:", cacheKey);
-        if (qa || summary) {
-          console.log("Extracted Q&A and Summary from content API:", { qa, summary });
-        }
-      } else {
-        // Open article only if we have valid data
-        const data = result?.data;
-        if (data && (data.attributes?.content != null || data.attributes?.title != null)) {
-          setHudmoData(data);
+      // If not prefetching, check cache first (use ref so we always have latest)
+      if (!prefetch && cache.has(cacheKey)) {
+        const cached = cache.get(cacheKey);
+        if (cached && (cached.attributes?.content != null || cached.attributes?.title != null)) {
+          setHudmoData(cached);
           setCurrentContentId(dccid);
-          console.log("Harmonization data:", data);
-        } else {
-          console.warn("get-hudmo returned no usable content:", result);
+          if (!chunkParams) {
+            setChunkRows([]);
+            return;
+          }
+          // With chunk params, still fetch chunk rows then return
+          try {
+            console.log("[chunk] Cache hit with chunk params; fetching get-chunks:", chunkParams.chunkObjectApiName, chunkParams.chunkRecordIds?.slice(0, 50));
+            const { timestamp: ts2, signature: sig2 } = await generateSignature("POST", "/api/v1/get-chunks");
+            const chunksRes = await fetch(`${API_URL}/api/v1/get-chunks`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Timestamp": ts2,
+                "X-Signature": sig2,
+              },
+              body: JSON.stringify({
+                chunkObjectApiName: chunkParams.chunkObjectApiName,
+                chunkRecordIds: chunkParams.chunkRecordIds,
+              }),
+            });
+            if (chunksRes.ok) {
+              const chunksResult = await chunksRes.json();
+              const rows = Array.isArray(chunksResult.chunkRows) ? chunksResult.chunkRows : [];
+              setChunkRows(rows);
+              console.log("[chunk] get-chunks (cache path) returned", rows.length, "chunk(s)");
+            } else {
+              setChunkRows([]);
+              console.warn("[chunk] get-chunks (cache path) failed:", chunksRes.status);
+            }
+          } catch (e) {
+            setChunkRows([]);
+            console.warn("[chunk] get-chunks (cache path) error:", e);
+          }
+          return;
         }
       }
-    } catch (error) {
-      console.error("Error fetching harmonization data:", error);
+
+      // Mark as fetching
       if (prefetch && messageId) {
-        setFetchingHudmoFor((prev) => {
-          const newSet = new Set(prev);
-          newSet.delete(cacheKey);
-          return newSet;
-        });
+        setFetchingHudmoFor((prev) => new Set(prev).add(cacheKey));
       }
-    }
-  }, [prefetchedHudmoData, fetchingHudmoFor]);
+
+      try {
+        const { timestamp, signature } = await generateSignature("POST", "/api/v1/get-hudmo");
+
+        const response = await fetch(`${API_URL}/api/v1/get-hudmo`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Timestamp": timestamp,
+            "X-Signature": signature,
+          },
+          body: JSON.stringify({
+            hudmoName: hudmo,
+            dccid: dccid,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch harmonization data: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+
+        // Log the full content API response
+        console.log("📄 Content API Response (get-hudmo):", JSON.stringify(result, null, 2));
+        console.log("📄 Content API Response (data):", result.data);
+        console.log("📄 Content API Response (attributes):", result.data?.attributes);
+
+        // Check for URL_Redacted in content API response
+        const contentStr = JSON.stringify(result);
+        if (contentStr.includes("URL_Redacted") || contentStr.includes("(URL_Redacted)")) {
+          console.log("⚠️ Found URL_Redacted in content API response");
+          console.log("⚠️ Content with URL_Redacted:", result.data?.attributes?.content);
+        }
+
+        // Extract Q&A, summary, and title from content API response
+        const qa = result.data?.attributes?.qa;
+        const summary = result.data?.attributes?.summary;
+        const articleTitle = result.data?.attributes?.title;
+
+        console.log("📋 Extracted Q&A:", qa);
+        console.log("📝 Extracted Summary:", summary);
+        console.log("📌 Extracted Title:", articleTitle);
+
+        // Update message with Q&A, summary, and title when we have the get-hudmo response (only set safe values)
+        if (messageId) {
+          const safeQa = Array.isArray(qa) ? qa : undefined;
+          const safeSummary = typeof summary === "string" ? summary : undefined;
+          const safeArticleTitle = typeof articleTitle === "string" ? articleTitle : undefined;
+          if (safeQa || safeSummary || safeArticleTitle) {
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === messageId
+                  ? { ...msg, ...(safeQa && { qa: safeQa }), ...(safeSummary && { summary: safeSummary }), ...(safeArticleTitle && { articleTitle: safeArticleTitle }) }
+                  : msg
+              )
+            );
+          }
+        }
+
+        let rows: ChunkRow[] = [];
+        if (chunkParams?.chunkObjectApiName && chunkParams?.chunkRecordIds && !prefetch) {
+          try {
+            console.log("[chunk] Fetching get-chunks:", chunkParams.chunkObjectApiName, "ids:", chunkParams.chunkRecordIds?.slice(0, 80));
+            const { timestamp: ts2, signature: sig2 } = await generateSignature("POST", "/api/v1/get-chunks");
+            const chunksRes = await fetch(`${API_URL}/api/v1/get-chunks`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Timestamp": ts2,
+                "X-Signature": sig2,
+              },
+              body: JSON.stringify({
+                chunkObjectApiName: chunkParams.chunkObjectApiName,
+                chunkRecordIds: chunkParams.chunkRecordIds,
+              }),
+            });
+            if (chunksRes.ok) {
+              const chunksResult = await chunksRes.json();
+              rows = Array.isArray(chunksResult.chunkRows) ? chunksResult.chunkRows : [];
+              console.log("[chunk] get-chunks returned", rows.length, "chunk(s); sample Chunk__c length:", rows[0]?.Chunk__c?.length ?? 0);
+            } else {
+              console.warn("[chunk] get-chunks failed:", chunksRes.status, await chunksRes.text().catch(() => ""));
+            }
+          } catch (chunkErr) {
+            console.warn("[chunk] get-chunks error:", chunkErr);
+          }
+        }
+
+        if (prefetch) {
+          // Store in cache for later use
+          setPrefetchedHudmoData((prev) => {
+            const newMap = new Map(prev);
+            newMap.set(cacheKey, result.data);
+            return newMap;
+          });
+          setFetchingHudmoFor((prev) => {
+            const newSet = new Set(prev);
+            newSet.delete(cacheKey);
+            return newSet;
+          });
+          console.log("Pre-fetched harmonization data for:", cacheKey);
+          if (qa || summary) {
+            console.log("Extracted Q&A and Summary from content API:", { qa, summary });
+          }
+        } else {
+          // Open article only if we have valid data
+          const data = result?.data;
+          if (data && (data.attributes?.content != null || data.attributes?.title != null)) {
+            setHudmoData(data);
+            setCurrentContentId(dccid);
+            setChunkRows(chunkParams ? rows : []);
+            if (chunkParams) {
+              console.log("[chunk] Article opened with chunkRows:", rows.length, "(will highlight in ArticleView)");
+            }
+            console.log("Harmonization data:", data);
+          } else {
+            console.warn("get-hudmo returned no usable content:", result);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching harmonization data:", error);
+        if (prefetch && messageId) {
+          setFetchingHudmoFor((prev) => {
+            const newSet = new Set(prev);
+            newSet.delete(cacheKey);
+            return newSet;
+          });
+        }
+      }
+    },
+    [prefetchedHudmoData, fetchingHudmoFor]
+  );
 
   const handleMessageClick = (message: Message) => {
     if (message.sender === "bot") {
-      // Extract citation data if not already present
+      // Extract citation data: dccid/hudmo from message or first URL; chunk params from message, URL, or ref (from prefetch)
       let dccid: string | null = message.dccid || null;
       let hudmo: string | null = message.hudmo || null;
+      let chunkObjectApiName: string | null = message.chunkObjectApiName ?? null;
+      let chunkRecordIds: string | null = message.chunkRecordIds ?? null;
 
-      if (!dccid || !hudmo) {
-        const urls = message.content.match(/(https?:\/\/[^\s)]+)/g) || [];
-        if (urls.length > 0 && urls[0]) {
-          try {
-            const cleanUrl = urls[0].replace(/[).,;!?]+$/, "");
-            const urlObj = new URL(cleanUrl);
-            dccid = urlObj.searchParams.get("c__dccid") || urlObj.searchParams.get("c__contentId");
-            hudmo = urlObj.searchParams.get("c__hudmo") || urlObj.searchParams.get("c__objectApiName");
-          } catch (error) {
-            console.error("Error extracting citation data:", error);
-          }
+      const urls = message.content.match(/(https?:\/\/[^\s)]+)/g) || [];
+      if (urls.length > 0 && urls[0]) {
+        try {
+          const cleanUrl = urls[0].replace(/[).,;!?]+$/, "");
+          const urlObj = new URL(cleanUrl);
+          if (!dccid) dccid = urlObj.searchParams.get("c__dccid") || urlObj.searchParams.get("c__contentId");
+          if (!hudmo) hudmo = urlObj.searchParams.get("c__hudmo") || urlObj.searchParams.get("c__objectApiName");
+          if (!chunkObjectApiName) chunkObjectApiName = urlObj.searchParams.get("c__chunkObjectApiName");
+          if (!chunkRecordIds) chunkRecordIds = urlObj.searchParams.get("c__chunkRecordIds");
+        } catch (error) {
+          console.error("Error extracting citation data:", error);
         }
       }
+      const fromRef = chunkParamsByMessageIdRef.current[message.id];
+      if (!chunkObjectApiName && fromRef) chunkObjectApiName = fromRef.chunkObjectApiName;
+      if (!chunkRecordIds && fromRef) chunkRecordIds = fromRef.chunkRecordIds;
 
       // If message has citation data, navigate to article URL (same URL supports direct links)
       if (dccid && hudmo) {
-        const hudmoQuery =
-          hudmo !== OBJECT_API_NAME ? `?hudmo=${encodeURIComponent(hudmo)}` : "";
-        navigate(`/article/${encodeURIComponent(dccid)}${hudmoQuery}`);
-        fetchHarmonizationData(dccid, hudmo, message.id, false);
+        const query = buildArticleQuery({
+          hudmo,
+          objectApiName: OBJECT_API_NAME,
+          chunkObjectApiName: chunkObjectApiName ?? undefined,
+          chunkRecordIds: chunkRecordIds ?? undefined,
+        });
+        if (chunkObjectApiName && chunkRecordIds) {
+          console.log("[chunk] Message click: chunk params from URL ->", chunkObjectApiName, chunkRecordIds?.slice(0, 50));
+        }
+        navigate(`/article/${encodeURIComponent(dccid)}${query}`);
+        const chunkParams =
+          chunkObjectApiName && chunkRecordIds
+            ? { chunkObjectApiName, chunkRecordIds }
+            : undefined;
+        fetchHarmonizationData(dccid, hudmo, message.id, false, chunkParams);
       }
     }
   };
@@ -483,6 +624,7 @@ function App() {
   const handleCloseArticle = () => {
     navigate("/", { replace: true });
     setHudmoData(null);
+    setChunkRows([]);
     setCurrentContentId(null);
   };
 
@@ -657,14 +799,24 @@ function App() {
 
   // Sync URL -> article state: load article when URL is /article/:contentId, clear when on /
   useEffect(() => {
+    const search = typeof window !== "undefined" ? window.location.search : "";
+    console.log("[chunk] Article sync effect: contentId=" + contentIdFromUrl + " search=" + search + " chunkObjectApiName=" + chunkObjectApiNameFromUrl + " chunkRecordIds=" + (chunkRecordIdsFromUrl ? chunkRecordIdsFromUrl.slice(0, 40) + "..." : "null"));
     if (contentIdFromUrl) {
       setCurrentContentId(contentIdFromUrl);
-      fetchHarmonizationData(contentIdFromUrl, hudmoFromUrl);
+      const chunkParams =
+        chunkObjectApiNameFromUrl && chunkRecordIdsFromUrl
+          ? { chunkObjectApiName: chunkObjectApiNameFromUrl, chunkRecordIds: chunkRecordIdsFromUrl }
+          : undefined;
+      if (chunkParams) {
+        console.log("[chunk] URL has chunk params -> will fetch get-chunks:", chunkObjectApiNameFromUrl, chunkRecordIdsFromUrl?.slice(0, 50));
+      }
+      fetchHarmonizationData(contentIdFromUrl, hudmoFromUrl, undefined, false, chunkParams);
     } else {
       setHudmoData(null);
+      setChunkRows([]);
       setCurrentContentId(null);
     }
-  }, [contentIdFromUrl, hudmoFromUrl, fetchHarmonizationData]);
+  }, [contentIdFromUrl, hudmoFromUrl, chunkObjectApiNameFromUrl, chunkRecordIdsFromUrl, fetchHarmonizationData]);
 
   const handleChatToggle = async () => {
     const newIsOpen = !isChatOpen;
@@ -700,7 +852,7 @@ function App() {
                 {/* Article View - Main Content */}
                 <div className="flex-1 min-w-0 overflow-hidden order-2 md:order-1">
                   <ArticleErrorBoundary onClose={handleCloseArticle}>
-                    <ArticleView data={hudmoData} onClose={handleCloseArticle} />
+                    <ArticleView data={hudmoData} chunkRows={chunkRows} onClose={handleCloseArticle} />
                   </ArticleErrorBoundary>
                 </div>
                 {/* Minimized Chat Widget - Right Side (hidden on mobile, shown on desktop) */}
