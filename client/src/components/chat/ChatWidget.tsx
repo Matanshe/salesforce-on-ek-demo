@@ -15,23 +15,33 @@ export const ChatWidget = ({
   minimized = false,
   fetchingHudmoFor = new Set(),
   prefetchedHudmoData = new Map(),
+  citationBehavior,
+  chunkPreviewByMessageId,
+  onHoverCitation,
 }: ChatWidgetProps) => {
+  const chatWindowProps = {
+    messages,
+    onMessageClick,
+    onSendMessage,
+    onDeleteSession,
+    onStartNewSession,
+    sessionInitialized,
+    isLoading,
+    fetchingHudmoFor,
+    prefetchedHudmoData,
+    citationBehavior,
+    chunkPreviewByMessageId,
+    onHoverCitation,
+  };
+
   if (minimized) {
     return (
       <div className="h-full flex flex-col">
         <ChatWindow
-          messages={messages}
-          onMessageClick={onMessageClick}
-          onSendMessage={onSendMessage}
-          onDeleteSession={onDeleteSession}
-          onStartNewSession={onStartNewSession}
-          sessionInitialized={sessionInitialized}
-          isLoading={isLoading}
+          {...chatWindowProps}
           onClose={() => {}}
           embedded={false}
           minimized={true}
-          fetchingHudmoFor={fetchingHudmoFor}
-          prefetchedHudmoData={prefetchedHudmoData}
         />
       </div>
     );
@@ -42,18 +52,10 @@ export const ChatWidget = ({
       {isOpen ? (
         <div className="pointer-events-auto">
           <ChatWindow
-            messages={messages}
-            onMessageClick={onMessageClick}
-            onSendMessage={onSendMessage}
-            onDeleteSession={onDeleteSession}
-            onStartNewSession={onStartNewSession}
-            sessionInitialized={sessionInitialized}
-            isLoading={isLoading}
+            {...chatWindowProps}
             onClose={onToggle}
             embedded={false}
             minimized={false}
-            fetchingHudmoFor={fetchingHudmoFor}
-            prefetchedHudmoData={prefetchedHudmoData}
           />
         </div>
       ) : (
