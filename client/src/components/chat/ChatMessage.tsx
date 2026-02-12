@@ -1,7 +1,9 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import type { Message } from "../../types/message";
 import { Card } from "@/components/ui/card";
 import agentforceLogo from "../../assets/agentforce_logo.webp";
+
+export type CitationBehaviorType = "fullPage" | "modal";
 
 interface ChatMessageProps {
   message: Message;
@@ -10,6 +12,12 @@ interface ChatMessageProps {
   isFetched?: boolean;
   /** Article title from get-hudmo (attributes.title), shown as "View Source: Title" when available */
   articleTitle?: string | null;
+  /** When "modal", citations open in modal; hover can show chunk preview */
+  citationBehavior?: CitationBehaviorType;
+  /** Chunk text preview for tooltip when citationBehavior === "modal" */
+  chunkPreviewForMessage?: string | null;
+  /** Called when user hovers citation (modal mode) so parent can fetch chunk preview */
+  onHoverCitation?: (message: Message) => void;
 }
 
 const extractUrlParams = (
@@ -98,7 +106,19 @@ const parseMessageContent = (content: string | null | undefined): ReactNode => {
 
 
 
-export const ChatMessage = ({ message, onClick, isFetching = false, isFetched: _isFetched = false, articleTitle }: ChatMessageProps) => {
+const CHUNK_TOOLTIP_MAX_LEN = 280;
+const CHUNK_TOOLTIP_MAX_WIDTH = 360;
+
+export const ChatMessage = ({
+  message,
+  onClick,
+  isFetching = false,
+  isFetched: _isFetched = false,
+  articleTitle,
+  citationBehavior = "fullPage",
+  chunkPreviewForMessage,
+  onHoverCitation,
+}: ChatMessageProps) => {
   // Defensive: ensure message has required shape so rendering never throws
   const safeContent = message?.content != null && typeof message.content === "string" ? message.content : "";
   const safeMessage: Message = {
@@ -115,11 +135,22 @@ export const ChatMessage = ({ message, onClick, isFetching = false, isFetched: _
   const isUser = safeMessage.sender === "user";
   const isBot = safeMessage.sender === "bot";
 
+  const getCitationUrl = (): string | null => {
+    const urls = extractUrlsFromContent(safeMessage.content);
+    if (urls.length > 0) return urls[0];
+    const refs = safeMessage.citedReferences;
+    if (Array.isArray(refs) && refs.length > 0 && refs[0]?.url) {
+      const u = refs[0].url;
+      return typeof u === "string" ? u : null;
+    }
+    return null;
+  };
+
   const hasCitationData = () => {
     if (safeMessage.dccid && safeMessage.hudmo) return true;
-    const urls = extractUrlsFromContent(safeMessage.content);
-    if (urls.length > 0) {
-      const { dccid, hudmo } = extractUrlParams(urls[0]);
+    const url = getCitationUrl();
+    if (url) {
+      const { dccid, hudmo } = extractUrlParams(url);
       return !!(dccid && hudmo);
     }
     return false;
@@ -127,12 +158,23 @@ export const ChatMessage = ({ message, onClick, isFetching = false, isFetched: _
 
   const canViewArticle = hasCitationData();
 
+  const [citationHover, setCitationHover] = useState(false);
+  const showHoverTooltip = citationBehavior === "modal" && citationHover;
+  const tooltipText =
+    chunkPreviewForMessage != null && chunkPreviewForMessage.trim() !== ""
+      ? chunkPreviewForMessage.length > CHUNK_TOOLTIP_MAX_LEN
+        ? `${chunkPreviewForMessage.slice(0, CHUNK_TOOLTIP_MAX_LEN)}…`
+        : chunkPreviewForMessage
+      : isFetching
+        ? "Loading…"
+        : "Click to view source";
+
   const handleMessageClick = () => {
     if (!canViewArticle) return;
-    const urls = extractUrlsFromContent(safeMessage.content);
+    const url = getCitationUrl();
     let updatedMessage = safeMessage;
-    if (urls.length > 0) {
-      const { dccid, hudmo, chunkObjectApiName, chunkRecordIds } = extractUrlParams(urls[0]);
+    if (url) {
+      const { dccid, hudmo, chunkObjectApiName, chunkRecordIds } = extractUrlParams(url);
       if (dccid && hudmo) {
         updatedMessage = {
           ...safeMessage,
@@ -181,20 +223,41 @@ export const ChatMessage = ({ message, onClick, isFetching = false, isFetched: _
           </span>
           {isBot && canViewArticle && (
             <div
-              role="button"
-              tabIndex={0}
-              onClick={handleMessageClick}
-              onKeyDown={(e) => e.key === "Enter" && handleMessageClick()}
-              className="mt-2 pt-2 border-t border-gray-300 border-opacity-30 cursor-pointer"
+              className="relative mt-2 pt-2 border-t border-gray-300 border-opacity-30"
+              onMouseEnter={() => {
+                if (citationBehavior === "modal") {
+                  setCitationHover(true);
+                  onHoverCitation?.(safeMessage);
+                }
+              }}
+              onMouseLeave={() => setCitationHover(false)}
             >
-              <div className="flex items-center text-[#0176D3]">
-                {isFetching ? (
-                  <span className="text-[10px] sm:text-xs font-semibold">Preparing article...</span>
-                ) : (
-                  <span className="text-[10px] sm:text-xs font-semibold">
-                    View Source{articleTitle ? `: ${articleTitle}` : ""}
-                  </span>
-                )}
+              {showHoverTooltip && (
+                <div
+                  className="absolute bottom-full left-0 mb-1.5 z-[100] px-3 py-2.5 rounded-lg shadow-lg border border-[#0176D3]/20 bg-white text-gray-800 text-sm leading-relaxed max-w-[min(100vw-2rem,360px)] animate-in fade-in-0 zoom-in-95 duration-150"
+                  style={{ maxWidth: CHUNK_TOOLTIP_MAX_WIDTH }}
+                  role="tooltip"
+                >
+                  <div className="text-xs font-medium text-[#0176D3] mb-1.5">Source excerpt</div>
+                  <p className="whitespace-pre-wrap break-words">{tooltipText}</p>
+                </div>
+              )}
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={handleMessageClick}
+                onKeyDown={(e) => e.key === "Enter" && handleMessageClick()}
+                className="cursor-pointer"
+              >
+                <div className="flex items-center text-[#0176D3]">
+                  {isFetching ? (
+                    <span className="text-[10px] sm:text-xs font-semibold">Preparing article...</span>
+                  ) : (
+                    <span className="text-[10px] sm:text-xs font-semibold">
+                      View Source{articleTitle ? `: ${articleTitle}` : ""}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           )}

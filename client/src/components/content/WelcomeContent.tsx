@@ -14,6 +14,9 @@ export const WelcomeContent = ({
   isLoading,
   fetchingHudmoFor = new Set(),
   prefetchedHudmoData = new Map(),
+  citationBehavior,
+  chunkPreviewByMessageId,
+  onHoverCitation,
 }: WelcomeContentProps) => {
   return (
     <div className="w-full bg-gray-50 min-h-[calc(100vh-200px)]">
@@ -52,6 +55,9 @@ export const WelcomeContent = ({
               embedded={true}
               fetchingHudmoFor={fetchingHudmoFor}
               prefetchedHudmoData={prefetchedHudmoData}
+              citationBehavior={citationBehavior}
+              chunkPreviewByMessageId={chunkPreviewByMessageId}
+              onHoverCitation={onHoverCitation}
             />
           </div>
         </div>

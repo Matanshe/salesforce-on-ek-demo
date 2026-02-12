@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Products - Salesforce Help</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Salesforce Sans', Arial, sans-serif; color: #181818; background: #f3f3f3; }
+    header {
+      background: #fff; border-bottom: 1px solid #e5e5e5; padding: 0.75rem 1.5rem;
+      display: flex; align-items: center; gap: 1rem;
+    }
+    header a { color: #0176d3; text-decoration: none; font-weight: 600; }
+    header a:hover { text-decoration: underline; }
+    .container { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem; }
+    h1 { color: #0176d3; font-size: 1.75rem; margin-top: 0; }
+    p { line-height: 1.6; }
+    .breadcrumb { font-size: 0.875rem; color: #706e6b; margin-bottom: 1rem; }
+    .breadcrumb a { color: #0176d3; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="/">Salesforce Help</a>
+    <span aria-hidden="true">|</span>
+    <a href="getting-started.html">Getting Started</a>
+    <a href="products.html">Products</a>
+    <a href="support.html">Support</a>
+  </header>
+  <main class="container">
+    <div class="breadcrumb"><a href="/">Help</a> &gt; Products</div>
+    <h1>Salesforce Products</h1>
+    <p>Explore documentation for Sales Cloud, Service Cloud, Marketing Cloud, and other Salesforce products. The embedded agent can answer product-specific questions and cite relevant help articles. Hover over a citation link to see a preview; click to open the full source in a modal.</p>
+  </main>
+  <button
+    type="button"
+    id="agent-open-btn"
+    aria-label="Open Agentforce chat"
+    style="display: none; position: fixed; bottom: 24px; right: 24px; z-index: 9999; width: 56px; height: 56px; border-radius: 50%; background: #0176d3; color: white; border: none; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.15); align-items: center; justify-content: center;"
+  >
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="margin: auto;">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+    </svg>
+  </button>
+  <iframe
+    id="agent-embed"
+    title="Agentforce chat"
+    src="/?embed=1"
+    style="position: fixed; bottom: 24px; right: 24px; border: none; box-shadow: 0 4px 20px rgba(0,0,0,0.15); border-radius: 8px; transition: width 0.2s, height 0.2s;"
+  ></iframe>
+  <script>
+    (function() {
+      var iframe = document.getElementById('agent-embed');
+      var btn = document.getElementById('agent-open-btn');
+      function setIframeSize(w, h) {
+        iframe.style.width = w + 'px';
+        iframe.style.height = h + 'px';
+        iframe.style.display = w && h ? 'block' : 'none';
+      }
+      function setButtonVisible(show) {
+        btn.style.display = show ? 'flex' : 'none';
+      }
+      window.addEventListener('message', function(e) {
+        if (e.data && e.data.type === 'agent-embed-resize') {
+          var open = e.data.open, w = e.data.width, h = e.data.height;
+          if (!open || (w === 0 && h === 0)) {
+            setIframeSize(0, 0);
+            setButtonVisible(true);
+          } else {
+            setIframeSize(w, h);
+            setButtonVisible(false);
+          }
+        }
+      });
+      btn.addEventListener('click', function() {
+        setIframeSize(420, 700);
+        setButtonVisible(false);
+        try { iframe.contentWindow.postMessage({ type: 'agent-embed-open' }, '*'); } catch (e) {}
+      });
+      setIframeSize(80, 80);
+    })();
+  </script>
+</body>
+</html>

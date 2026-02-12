@@ -54,4 +54,10 @@ export interface ChatWidgetProps {
   minimized?: boolean;
   fetchingHudmoFor?: Set<string>;
   prefetchedHudmoData?: Map<string, unknown>;
+  /** When "modal", citations open in modal; used for hover tooltip and behavior */
+  citationBehavior?: "fullPage" | "modal";
+  /** Chunk preview text per message id (for tooltip in modal mode) */
+  chunkPreviewByMessageId?: Record<string, string>;
+  /** Called when user hovers citation in modal mode so parent can fetch chunk preview */
+  onHoverCitation?: (message: Message) => void;
 }

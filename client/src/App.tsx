@@ -15,9 +15,12 @@ import { Button } from "./components/ui/button";
 import { WelcomeContent } from "./components/content/WelcomeContent";
 import { SearchResultsPage } from "./components/content/SearchResultsPage";
 import { ChatWidget } from "./components/chat/ChatWidget";
+import { EmbedChatToggle } from "./components/chat/EmbedChatToggle";
 import { ArticleView } from "./components/content/ArticleView";
+import { CitationModal } from "./components/content/CitationModal";
 import { generateSignature } from "./utils/requestSigner";
 import TOC from "./components/TOC";
+import { citationBehavior, embedLayout } from "./config/appConfig";
 import "./App.css";
 
 class ArticleErrorBoundary extends Component<
@@ -187,7 +190,7 @@ function App() {
   const [searchParams] = useSearchParams();
 
   const [messages, setMessages] = useState<Message[]>([]);
-  const [isChatOpen, setIsChatOpen] = useState(true);
+  const [isChatOpen, setIsChatOpen] = useState(() => !embedLayout);
   const [messageSequence, setMessageSequence] = useState(1);
   const [sessionInitialized, setSessionInitialized] = useState(false);
   const [agentforceSessionId, setAgentforceSessionId] = useState<string | null>(null);
@@ -200,6 +203,14 @@ function App() {
   const prefetchedHudmoDataRef = useRef(prefetchedHudmoData);
   prefetchedHudmoDataRef.current = prefetchedHudmoData;
   const chunkParamsByMessageIdRef = useRef<Record<string, { chunkObjectApiName: string; chunkRecordIds: string }>>({});
+
+  const [citationModalData, setCitationModalData] = useState<{
+    hudmoData: HudmoData;
+    chunkRows: ChunkRow[];
+    articleTitle: string | null;
+    contentId: string;
+  } | null>(null);
+  const [chunkPreviewByMessageId, setChunkPreviewByMessageId] = useState<Record<string, string>>({});
 
   const OBJECT_API_NAME = "SFDCHelp7_DMO_harmonized__dlm";
 
@@ -320,12 +331,18 @@ function App() {
 
       setMessages((prev) => [...prev, botMessage]);
 
-      // Pre-fetch citation data if available (include chunk params from c__chunkObjectApiName / c__chunkRecordIds)
-      const urls = botMessage.content.match(/(https?:\/\/[^\s)]+)/g) || [];
-      if (urls.length > 0 && urls[0]) {
+      // Pre-fetch citation data: get URL from message content or from citedReferences
+      let citationUrl: string | null = null;
+      const contentUrls = botMessage.content.match(/(https?:\/\/[^\s)]+)/g) || [];
+      if (contentUrls.length > 0 && contentUrls[0]) {
+        citationUrl = contentUrls[0].replace(/[).,;!?]+$/, "");
+      } else if (Array.isArray(botMessage.citedReferences) && botMessage.citedReferences.length > 0) {
+        const refUrl = botMessage.citedReferences[0]?.url;
+        if (typeof refUrl === "string") citationUrl = refUrl;
+      }
+      if (citationUrl) {
         try {
-          const cleanUrl = urls[0].replace(/[).,;!?]+$/, "");
-          const urlObj = new URL(cleanUrl);
+          const urlObj = new URL(citationUrl);
           const dccid = urlObj.searchParams.get("c__dccid") || urlObj.searchParams.get("c__contentId");
           const hudmo = urlObj.searchParams.get("c__hudmo") || urlObj.searchParams.get("c__objectApiName");
           const chunkObjectApiName = urlObj.searchParams.get("c__chunkObjectApiName");
@@ -343,16 +360,18 @@ function App() {
               setMessages((prev) =>
                 prev.map((m) =>
                   m.id === botMessage.id
-                    ? { ...m, chunkObjectApiName: chunkObjectApiName ?? undefined, chunkRecordIds: chunkRecordIds ?? undefined }
+                    ? { ...m, dccid, hudmo, chunkObjectApiName: chunkObjectApiName ?? undefined, chunkRecordIds: chunkRecordIds ?? undefined }
                     : m
                 )
               );
+            } else {
+              setMessages((prev) =>
+                prev.map((m) => (m.id === botMessage.id ? { ...m, dccid, hudmo } : m))
+              );
             }
-            // Pre-fetch in background (chunk rows are fetched when user opens article, not during prefetch)
             fetchHarmonizationData(dccid, hudmo, botMessage.id, true, prefetchChunkParams);
           }
         } catch (error) {
-          // URL parsing failed, skip pre-fetch
           console.log("Could not extract citation data for pre-fetch:", error);
         }
       }
@@ -422,9 +441,25 @@ function App() {
             });
             if (chunksRes.ok) {
               const chunksResult = await chunksRes.json();
-              const rows = Array.isArray(chunksResult.chunkRows) ? chunksResult.chunkRows : [];
+              const rawRows = chunksResult?.chunkRows ?? chunksResult?.data?.chunkRows;
+              const rows: ChunkRow[] = Array.isArray(rawRows)
+                ? rawRows.map((r: ChunkRow & Record<string, unknown> | unknown[]) => {
+                    const row = r as ChunkRow & Record<string, unknown>;
+                    let chunk = typeof row.Chunk__c === "string" ? row.Chunk__c : typeof row.chunk__c === "string" ? row.chunk__c : "";
+                    if (!chunk && Array.isArray(r) && (r as unknown[]).length >= 2) {
+                      const arr = r as unknown[];
+                      if (typeof arr[2] === "string") chunk = arr[2];
+                      else if (typeof arr[1] === "string") chunk = arr[1];
+                    }
+                    const cit = row.Citation__c ?? row.citation__c;
+                    return {
+                      Chunk__c: chunk,
+                      Citation__c: cit == null || typeof cit === "string" ? cit : null,
+                    };
+                  })
+                : [];
               setChunkRows(rows);
-              console.log("[chunk] get-chunks (cache path) returned", rows.length, "chunk(s)");
+              console.log("[chunk] get-chunks (cache path) returned", rows.length, "chunk(s); sample length:", rows[0]?.Chunk__c?.length ?? 0);
             } else {
               setChunkRows([]);
               console.warn("[chunk] get-chunks (cache path) failed:", chunksRes.status);
@@ -502,7 +537,8 @@ function App() {
         }
 
         let rows: ChunkRow[] = [];
-        if (chunkParams?.chunkObjectApiName && chunkParams?.chunkRecordIds && !prefetch) {
+        const shouldFetchChunks = chunkParams?.chunkObjectApiName && chunkParams?.chunkRecordIds;
+        if (shouldFetchChunks) {
           try {
             console.log("[chunk] Fetching get-chunks:", chunkParams.chunkObjectApiName, "ids:", chunkParams.chunkRecordIds?.slice(0, 80));
             const { timestamp: ts2, signature: sig2 } = await generateSignature("POST", "/api/v1/get-chunks");
@@ -520,7 +556,23 @@ function App() {
             });
             if (chunksRes.ok) {
               const chunksResult = await chunksRes.json();
-              rows = Array.isArray(chunksResult.chunkRows) ? chunksResult.chunkRows : [];
+              const rawRows = chunksResult?.chunkRows ?? chunksResult?.data?.chunkRows;
+              rows = Array.isArray(rawRows)
+                ? rawRows.map((r: ChunkRow & Record<string, unknown> | unknown[]) => {
+                    const row = r as ChunkRow & Record<string, unknown>;
+                    let chunk = typeof row.Chunk__c === "string" ? row.Chunk__c : typeof row.chunk__c === "string" ? row.chunk__c : "";
+                    if (!chunk && Array.isArray(r) && (r as unknown[]).length >= 2) {
+                      const arr = r as unknown[];
+                      if (typeof arr[2] === "string") chunk = arr[2];
+                      else if (typeof arr[1] === "string") chunk = arr[1];
+                    }
+                    const cit = row.Citation__c ?? row.citation__c;
+                    return {
+                      Chunk__c: chunk,
+                      Citation__c: cit == null || typeof cit === "string" ? cit : null,
+                    };
+                  })
+                : [];
               console.log("[chunk] get-chunks returned", rows.length, "chunk(s); sample Chunk__c length:", rows[0]?.Chunk__c?.length ?? 0);
             } else {
               console.warn("[chunk] get-chunks failed:", chunksRes.status, await chunksRes.text().catch(() => ""));
@@ -545,6 +597,19 @@ function App() {
           console.log("Pre-fetched harmonization data for:", cacheKey);
           if (qa || summary) {
             console.log("Extracted Q&A and Summary from content API:", { qa, summary });
+          }
+          // Pre-fetch chunk text for hover preview (modal mode)
+          if (messageId && shouldFetchChunks && rows.length > 0) {
+            const firstChunk = rows[0];
+            const chunkText: string =
+              typeof firstChunk?.Chunk__c === "string"
+                ? firstChunk.Chunk__c
+                : typeof (firstChunk as Record<string, unknown>)?.chunk__c === "string"
+                  ? String((firstChunk as Record<string, unknown>).chunk__c)
+                  : "";
+            if (chunkText.trim()) {
+              setChunkPreviewByMessageId((prev) => ({ ...prev, [messageId]: chunkText }));
+            }
           }
         } else {
           // Open article only if we have valid data
@@ -575,9 +640,66 @@ function App() {
     [prefetchedHudmoData, fetchingHudmoFor]
   );
 
+  const fetchForCitationModal = useCallback(
+    async (
+      dccid: string,
+      hudmo: string,
+      chunkParams?: { chunkObjectApiName: string; chunkRecordIds: string }
+    ): Promise<{ hudmoData: HudmoData; chunkRows: ChunkRow[]; articleTitle: string | null } | null> => {
+      try {
+        const { timestamp, signature } = await generateSignature("POST", "/api/v1/get-hudmo");
+        const response = await fetch(`${API_URL}/api/v1/get-hudmo`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Timestamp": timestamp,
+            "X-Signature": signature,
+          },
+          body: JSON.stringify({ hudmoName: hudmo, dccid }),
+        });
+        if (!response.ok) return null;
+        const result = await response.json();
+        const data = result?.data;
+        if (!data || (data.attributes?.content == null && data.attributes?.title == null)) return null;
+
+        let rows: ChunkRow[] = [];
+        if (chunkParams?.chunkObjectApiName && chunkParams?.chunkRecordIds) {
+          const { timestamp: ts2, signature: sig2 } = await generateSignature("POST", "/api/v1/get-chunks");
+          const chunksRes = await fetch(`${API_URL}/api/v1/get-chunks`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Timestamp": ts2, "X-Signature": sig2 },
+            body: JSON.stringify({
+              chunkObjectApiName: chunkParams.chunkObjectApiName,
+              chunkRecordIds: chunkParams.chunkRecordIds,
+            }),
+          });
+          if (chunksRes.ok) {
+            const chunksResult = await chunksRes.json();
+            const rawRows = chunksResult?.chunkRows ?? chunksResult?.data?.chunkRows;
+            rows = Array.isArray(rawRows)
+              ? rawRows.map((r: ChunkRow & Record<string, unknown>) => {
+                  const cit = r.Citation__c ?? r.citation__c;
+                  return {
+                    Chunk__c: typeof r.Chunk__c === "string" ? r.Chunk__c : typeof r.chunk__c === "string" ? r.chunk__c : "",
+                    Citation__c: cit == null || typeof cit === "string" ? cit : null,
+                  };
+                })
+              : [];
+          }
+        }
+
+        const articleTitle = data?.attributes?.title ?? null;
+        return { hudmoData: data, chunkRows: rows, articleTitle };
+      } catch (e) {
+        console.warn("[citation modal] fetch error:", e);
+        return null;
+      }
+    },
+    []
+  );
+
   const handleMessageClick = (message: Message) => {
     if (message.sender === "bot") {
-      // Extract citation data: dccid/hudmo from message or first URL; chunk params from message, URL, or ref (from prefetch)
       let dccid: string | null = message.dccid || null;
       let hudmo: string | null = message.hudmo || null;
       let chunkObjectApiName: string | null = message.chunkObjectApiName ?? null;
@@ -600,26 +722,95 @@ function App() {
       if (!chunkObjectApiName && fromRef) chunkObjectApiName = fromRef.chunkObjectApiName;
       if (!chunkRecordIds && fromRef) chunkRecordIds = fromRef.chunkRecordIds;
 
-      // If message has citation data, navigate to article URL (same URL supports direct links)
-      if (dccid && hudmo) {
-        const query = buildArticleQuery({
-          hudmo,
-          objectApiName: OBJECT_API_NAME,
-          chunkObjectApiName: chunkObjectApiName ?? undefined,
-          chunkRecordIds: chunkRecordIds ?? undefined,
+      if (!dccid || !hudmo) return;
+
+      const chunkParams =
+        chunkObjectApiName && chunkRecordIds
+          ? { chunkObjectApiName, chunkRecordIds }
+          : undefined;
+
+      if (citationBehavior === "modal") {
+        fetchForCitationModal(dccid, hudmo, chunkParams).then((result) => {
+          if (result) {
+            setCitationModalData({ ...result, contentId: dccid });
+            const firstChunk = result.chunkRows[0];
+            const chunkText: string =
+              typeof firstChunk?.Chunk__c === "string"
+                ? firstChunk.Chunk__c
+                : typeof (firstChunk as Record<string, unknown>)?.chunk__c === "string"
+                  ? String((firstChunk as Record<string, unknown>).chunk__c)
+                  : "";
+            if (message.id && chunkText.trim()) {
+              setChunkPreviewByMessageId((prev) => ({ ...prev, [message.id]: chunkText }));
+            }
+          }
         });
-        if (chunkObjectApiName && chunkRecordIds) {
-          console.log("[chunk] Message click: chunk params from URL ->", chunkObjectApiName, chunkRecordIds?.slice(0, 50));
-        }
-        navigate(`/article/${encodeURIComponent(dccid)}${query}`);
-        const chunkParams =
-          chunkObjectApiName && chunkRecordIds
-            ? { chunkObjectApiName, chunkRecordIds }
-            : undefined;
-        fetchHarmonizationData(dccid, hudmo, message.id, false, chunkParams);
+        return;
       }
+
+      const query = buildArticleQuery({
+        hudmo,
+        objectApiName: OBJECT_API_NAME,
+        chunkObjectApiName: chunkObjectApiName ?? undefined,
+        chunkRecordIds: chunkRecordIds ?? undefined,
+      });
+      if (chunkObjectApiName && chunkRecordIds) {
+        console.log("[chunk] Message click: chunk params from URL ->", chunkObjectApiName, chunkRecordIds?.slice(0, 50));
+      }
+      navigate(`/article/${encodeURIComponent(dccid)}${query}`);
+      fetchHarmonizationData(dccid, hudmo, message.id, false, chunkParams);
     }
   };
+
+  const handleHoverCitation = useCallback(
+    (message: Message) => {
+      if (citationBehavior !== "modal" || !message.id) return;
+      if (chunkPreviewByMessageId[message.id]) return;
+
+      let dccid: string | null = message.dccid || null;
+      let hudmo: string | null = message.hudmo || null;
+      let chunkObjectApiName: string | null = message.chunkObjectApiName ?? null;
+      let chunkRecordIds: string | null = message.chunkRecordIds ?? null;
+      const urls = message.content.match(/(https?:\/\/[^\s)]+)/g) || [];
+      if (urls.length > 0 && urls[0]) {
+        try {
+          const cleanUrl = urls[0].replace(/[).,;!?]+$/, "");
+          const urlObj = new URL(cleanUrl);
+          if (!dccid) dccid = urlObj.searchParams.get("c__dccid") || urlObj.searchParams.get("c__contentId");
+          if (!hudmo) hudmo = urlObj.searchParams.get("c__hudmo") || urlObj.searchParams.get("c__objectApiName");
+          if (!chunkObjectApiName) chunkObjectApiName = urlObj.searchParams.get("c__chunkObjectApiName");
+          if (!chunkRecordIds) chunkRecordIds = urlObj.searchParams.get("c__chunkRecordIds");
+        } catch {
+          // ignore
+        }
+      }
+      const fromRef = chunkParamsByMessageIdRef.current[message.id];
+      if (!chunkObjectApiName && fromRef) chunkObjectApiName = fromRef.chunkObjectApiName;
+      if (!chunkRecordIds && fromRef) chunkRecordIds = fromRef.chunkRecordIds;
+      if (!dccid || !hudmo) return;
+
+      const chunkParams =
+        chunkObjectApiName && chunkRecordIds
+          ? { chunkObjectApiName, chunkRecordIds }
+          : undefined;
+
+      fetchForCitationModal(dccid, hudmo, chunkParams).then((result) => {
+        if (result && message.id) {
+          const firstChunk = result.chunkRows[0];
+          const chunkText: string =
+            typeof firstChunk?.Chunk__c === "string"
+              ? firstChunk.Chunk__c
+              : typeof (firstChunk as Record<string, unknown>)?.chunk__c === "string"
+                ? String((firstChunk as Record<string, unknown>).chunk__c)
+                : "";
+          if (chunkText.trim()) {
+            setChunkPreviewByMessageId((prev) => ({ ...prev, [message.id]: chunkText }));
+          }
+        }
+      });
+    },
+    [citationBehavior, chunkPreviewByMessageId, fetchForCitationModal]
+  );
 
   const handleCloseArticle = () => {
     navigate("/", { replace: true });
@@ -633,6 +824,17 @@ function App() {
       navigate(`/article/${encodeURIComponent(contentId)}`);
     },
     [navigate]
+  );
+
+  const handleCitationTocContentClick = useCallback(
+    (contentId: string) => {
+      fetchForCitationModal(contentId, OBJECT_API_NAME, undefined).then((result) => {
+        if (result) {
+          setCitationModalData({ ...result, contentId });
+        }
+      });
+    },
+    [fetchForCitationModal]
   );
 
   const handleDeleteSession = async () => {
@@ -828,6 +1030,111 @@ function App() {
     setIsChatOpen(newIsOpen);
   };
 
+  // Tell parent frame to hide or resize iframe to match agent (embed mode only)
+  useEffect(() => {
+    if (!embedLayout || typeof window === "undefined" || window === window.parent) return;
+    const open = isChatOpen;
+    const width = open ? 420 : 0;
+    const height = open ? 700 : 0;
+    try {
+      window.parent.postMessage(
+        { type: "agent-embed-resize", open, width, height },
+        "*"
+      );
+    } catch {
+      // cross-origin or no parent
+    }
+  }, [embedLayout, isChatOpen]);
+
+  const handleChatToggleRef = useRef(handleChatToggle);
+  handleChatToggleRef.current = handleChatToggle;
+  const isChatOpenRef = useRef(isChatOpen);
+  isChatOpenRef.current = isChatOpen;
+
+  // Listen for parent asking to open the agent (one-click open from demo page button)
+  useEffect(() => {
+    if (!embedLayout || typeof window === "undefined") return;
+    const onMessage = (e: MessageEvent) => {
+      if (e.data?.type === "agent-embed-open" && !isChatOpenRef.current) {
+        handleChatToggleRef.current();
+      }
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [embedLayout]);
+
+  // Transparent background in embed so no white box around the agent
+  useEffect(() => {
+    if (!embedLayout) return;
+    const html = document.documentElement;
+    const body = document.body;
+    const root = document.getElementById("root");
+    const prevHtml = html.style.background;
+    const prevBody = body.style.background;
+    const prevRoot = root?.style.background ?? "";
+    html.style.background = "transparent";
+    body.style.background = "transparent";
+    if (root) root.style.background = "transparent";
+    return () => {
+      html.style.background = prevHtml;
+      body.style.background = prevBody;
+      if (root) root.style.background = prevRoot;
+    };
+  }, [embedLayout]);
+
+  if (embedLayout) {
+    return (
+      <AppErrorBoundary>
+        <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2 bg-transparent">
+            {isChatOpen ? (
+              <div className="w-[calc(100vw-2rem)] sm:w-[400px] lg:w-[420px] h-[85vh] max-h-[700px] rounded-lg border border-gray-200 bg-white shadow-xl overflow-hidden flex flex-col animate-in slide-in-from-right-5 duration-200">
+                <div className="shrink-0 flex justify-end p-1.5 border-b border-gray-100 bg-gray-50">
+                  <button
+                    type="button"
+                    onClick={handleChatToggle}
+                    className="p-1.5 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-200 transition-colors"
+                    aria-label="Close chat"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <ChatWidget
+                  messages={messages}
+                  onMessageClick={handleMessageClick}
+                  onSendMessage={handleSendMessage}
+                  onDeleteSession={handleDeleteSession}
+                  onStartNewSession={handleStartNewSession}
+                  sessionInitialized={sessionInitialized}
+                  isLoading={isLoading}
+                  isOpen={true}
+                  onToggle={handleChatToggle}
+                  minimized={true}
+                  fetchingHudmoFor={fetchingHudmoFor}
+                  prefetchedHudmoData={prefetchedHudmoData}
+                  citationBehavior="modal"
+                  chunkPreviewByMessageId={chunkPreviewByMessageId}
+                  onHoverCitation={handleHoverCitation}
+                />
+              </div>
+            ) : (
+              <EmbedChatToggle onClick={handleChatToggle} />
+            )}
+        </div>
+        <CitationModal
+          open={!!citationModalData}
+          onClose={() => setCitationModalData(null)}
+          hudmoData={citationModalData?.hudmoData ?? null}
+          chunkRows={citationModalData?.chunkRows ?? []}
+          articleTitle={citationModalData?.articleTitle ?? null}
+          currentContentId={citationModalData?.contentId ?? null}
+          onTocContentClick={handleCitationTocContentClick}
+        />
+      </AppErrorBoundary>
+    );
+  }
+
   return (
     <AppErrorBoundary>
     <div className="min-h-screen flex flex-col">
@@ -870,6 +1177,9 @@ function App() {
                     minimized={true}
                     fetchingHudmoFor={fetchingHudmoFor}
                     prefetchedHudmoData={prefetchedHudmoData}
+                    citationBehavior={citationBehavior}
+                    chunkPreviewByMessageId={chunkPreviewByMessageId}
+                    onHoverCitation={handleHoverCitation}
                   />
                 </div>
               </div>
@@ -891,6 +1201,9 @@ function App() {
             onToggle={handleChatToggle}
             fetchingHudmoFor={fetchingHudmoFor}
             prefetchedHudmoData={prefetchedHudmoData}
+            citationBehavior={citationBehavior}
+            chunkPreviewByMessageId={chunkPreviewByMessageId}
+            onHoverCitation={handleHoverCitation}
           />
           )}
         </div>
@@ -911,12 +1224,24 @@ function App() {
             onToggle={handleChatToggle}
             fetchingHudmoFor={fetchingHudmoFor}
             prefetchedHudmoData={prefetchedHudmoData}
+            citationBehavior={citationBehavior}
+            chunkPreviewByMessageId={chunkPreviewByMessageId}
+            onHoverCitation={handleHoverCitation}
           />
         </div>
       )}
 
       <Footer />
 
+      <CitationModal
+        open={!!citationModalData}
+        onClose={() => setCitationModalData(null)}
+        hudmoData={citationModalData?.hudmoData ?? null}
+        chunkRows={citationModalData?.chunkRows ?? []}
+        articleTitle={citationModalData?.articleTitle ?? null}
+        currentContentId={citationModalData?.contentId ?? null}
+        onTocContentClick={handleCitationTocContentClick}
+      />
     </div>
     </AppErrorBoundary>
   );

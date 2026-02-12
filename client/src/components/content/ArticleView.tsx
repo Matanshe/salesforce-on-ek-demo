@@ -245,7 +245,7 @@ export const ArticleView = ({ data, chunkRows = [], onClose }: ArticleViewProps)
       return;
     }
     const chunkTexts = chunkRows
-      .map((r) => (typeof r.Chunk__c === "string" ? r.Chunk__c : ""))
+      .map((r) => (typeof r.Chunk__c === "string" ? r.Chunk__c : typeof (r as Record<string, unknown>)?.chunk__c === "string" ? (r as Record<string, unknown>).chunk__c as string : ""))
       .filter((t) => t.trim().length > 0);
     if (chunkTexts.length === 0) {
       console.log("[chunk] ArticleView: chunkRows has no non-empty Chunk__c");
@@ -285,7 +285,7 @@ export const ArticleView = ({ data, chunkRows = [], onClose }: ArticleViewProps)
             {data.attributes?.title || "Article"}
           </h1>
         </div>
-        <Button onClick={onClose} variant="ghost" size="icon" className="shrink-0 h-8 w-8 sm:h-10 sm:w-10">
+        <Button onClick={onClose} variant="ghost" size="icon" className="shrink-0 h-8 w-8 sm:h-10 sm:w-10 hidden">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             className="h-4 w-4 sm:h-5 sm:w-5"

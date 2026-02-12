@@ -18,6 +18,9 @@ interface ChatWindowProps {
   minimized?: boolean;
   fetchingHudmoFor?: Set<string>;
   prefetchedHudmoData?: Map<string, unknown>;
+  citationBehavior?: "fullPage" | "modal";
+  chunkPreviewByMessageId?: Record<string, string>;
+  onHoverCitation?: (message: Message) => void;
 }
 
 const extractUrlParams = (url: string): { dccid: string | null; hudmo: string | null } => {
@@ -93,6 +96,9 @@ export const ChatWindow = ({
   minimized = false,
   fetchingHudmoFor = new Set(),
   prefetchedHudmoData = new Map(),
+  citationBehavior = "fullPage",
+  chunkPreviewByMessageId,
+  onHoverCitation,
 }: ChatWindowProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -195,6 +201,9 @@ export const ChatWindow = ({
                     isFetching={isFetching}
                     isFetched={isFetched}
                     articleTitle={articleTitle}
+                    citationBehavior={citationBehavior}
+                    chunkPreviewForMessage={message?.id ? chunkPreviewByMessageId?.[message.id] : undefined}
+                    onHoverCitation={onHoverCitation}
                   />
                 </MessageErrorBoundary>
               );
