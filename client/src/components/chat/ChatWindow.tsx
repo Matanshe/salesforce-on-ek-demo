@@ -2,6 +2,7 @@ import { type ErrorInfo, type ReactNode, Component, useRef, useEffect } from "re
 import type { Message } from "../../types/message";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
+import { CitationHoverCard } from "./CitationHoverCard";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
@@ -20,6 +21,11 @@ interface ChatWindowProps {
   prefetchedHudmoData?: Map<string, unknown>;
   citationBehavior?: "fullPage" | "modal";
   chunkPreviewByMessageId?: Record<string, string>;
+  hoverCardDataByMessageId?: Record<string, import("@/types/message").CitationHoverCardData | null>;
+  activeHoverCitationMessageId?: string | null;
+  onCitationHoverChange?: (messageId: string | null) => void;
+  onCitationHoverScheduleHide?: () => void;
+  onCitationHoverCancelHide?: () => void;
   onHoverCitation?: (message: Message) => void;
 }
 
@@ -98,10 +104,28 @@ export const ChatWindow = ({
   prefetchedHudmoData = new Map(),
   citationBehavior = "fullPage",
   chunkPreviewByMessageId,
+  hoverCardDataByMessageId,
+  activeHoverCitationMessageId,
+  onCitationHoverChange,
+  onCitationHoverScheduleHide,
+  onCitationHoverCancelHide,
   onHoverCitation,
 }: ChatWindowProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const activeMessage = activeHoverCitationMessageId
+    ? messages.find((m) => m.id === activeHoverCitationMessageId)
+    : null;
+  const activeCacheKey = activeMessage ? getCacheKey(activeMessage) : null;
+  const isFetchingActive = activeCacheKey ? fetchingHudmoFor?.has(activeCacheKey) : false;
+  const activeHoverData = activeHoverCitationMessageId
+    ? hoverCardDataByMessageId?.[activeHoverCitationMessageId]
+    : undefined;
+  const activeChunkPreview = activeHoverCitationMessageId
+    ? chunkPreviewByMessageId?.[activeHoverCitationMessageId]
+    : undefined;
+  const showHoverCardSlot =
+    citationBehavior === "modal" && !!activeHoverCitationMessageId;
 
   // Auto-scroll to the last message (bottom) when the agent adds a message or loading state changes
   useEffect(() => {
@@ -162,7 +186,7 @@ export const ChatWindow = ({
       </div>
 
       {/* Messages */}
-      <div ref={messagesContainerRef} className="flex-1 min-h-0 overflow-y-auto p-2 sm:p-3 md:p-4 bg-gray-50">
+      <div ref={messagesContainerRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-2 sm:p-3 md:p-4 bg-gray-50">
         {messages.length === 0 && !isLoading && !sessionInitialized ? (
           <div className="flex flex-col items-center justify-center h-full text-gray-500 gap-3 sm:gap-4 px-3 sm:px-4">
             <p className="text-center text-xs sm:text-sm md:text-base">
@@ -203,6 +227,9 @@ export const ChatWindow = ({
                     articleTitle={articleTitle}
                     citationBehavior={citationBehavior}
                     chunkPreviewForMessage={message?.id ? chunkPreviewByMessageId?.[message.id] : undefined}
+                    hoverCardData={message?.id ? hoverCardDataByMessageId?.[message.id] : undefined}
+                    onCitationHoverChange={onCitationHoverChange}
+                    onCitationHoverScheduleHide={onCitationHoverScheduleHide}
                     onHoverCitation={onHoverCitation}
                   />
                 </MessageErrorBoundary>
@@ -234,6 +261,32 @@ export const ChatWindow = ({
           </>
         )}
       </div>
+
+      {/* Citation hover card slot: above input, left-aligned so it doesn't hide the agent answer */}
+      {showHoverCardSlot && (
+        <div
+          className="shrink-0 px-2 sm:px-3 pb-2 pt-1 bg-gray-50 border-t border-gray-200/80 relative z-[9999] flex justify-start"
+          onMouseEnter={onCitationHoverCancelHide}
+          onMouseLeave={onCitationHoverScheduleHide}
+        >
+          <CitationHoverCard
+            position="slot"
+            data={
+              activeHoverData
+                ? activeHoverData
+                : activeChunkPreview?.trim()
+                  ? { chunkPreview: activeChunkPreview }
+                  : null
+            }
+            isLoading={isFetchingActive && !activeHoverData && !activeChunkPreview?.trim()}
+            onPreview={() => {
+              if (activeMessage) {
+                onMessageClick(activeMessage);
+              }
+            }}
+          />
+        </div>
+      )}
 
       {/* Input */}
       <div className="shrink-0">

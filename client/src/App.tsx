@@ -1,6 +1,6 @@
 import { type ErrorInfo, type ReactNode, Component, useState, useCallback, useEffect, useRef } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import type { Message, ChunkRow } from "./types/message";
+import type { Message, ChunkRow, CitationHoverCardData } from "./types/message";
 import { Header } from "./components/layout/Header";
 import { Footer } from "./components/layout/Footer";
 import {
@@ -154,9 +154,47 @@ interface HudmoData {
     title?: string;
     metadata?: {
       sourceUrl?: string;
+      updatedAt?: string;
+      "DC.Type"?: string;
+      originalFormat?: string;
+      source?: string;
+      [key: string]: unknown;
     };
     qa?: Array<{ question?: string; answer?: string }>;
     summary?: string;
+  };
+}
+
+/** Build hover card data from hudmo API response (and optional chunk text). */
+function buildHoverCardData(
+  hudmoData: HudmoData | undefined,
+  chunkText?: string
+): CitationHoverCardData {
+  const attrs = hudmoData?.attributes;
+  const meta = attrs?.metadata as Record<string, unknown> | undefined;
+  const updatedAt = meta?.updatedAt;
+  const lastUpdated =
+    typeof updatedAt === "string"
+      ? (() => {
+          const d = new Date(updatedAt);
+          return Number.isNaN(d.getTime()) ? updatedAt : d.toLocaleString();
+        })()
+      : null;
+  const dcType = meta?.["DC.Type"];
+  const sourceLabel =
+    typeof meta?.source === "string" ? `Document ${meta.source}` : "Document";
+  return {
+    title: attrs?.title ?? null,
+    sourceUrl: (meta?.sourceUrl as string) ?? null,
+    summary: attrs?.summary ?? null,
+    chunkPreview: (chunkText?.trim() || null) ?? null,
+    lastUpdated: lastUpdated ?? null,
+    originalFormat:
+      (typeof dcType === "string" ? dcType : null) ??
+      (typeof meta?.originalFormat === "string" ? meta.originalFormat : null) ??
+      null,
+    originalContentType: sourceLabel,
+    source: (meta?.source as string) ?? null,
   };
 }
 
@@ -211,6 +249,36 @@ function App() {
     contentId: string;
   } | null>(null);
   const [chunkPreviewByMessageId, setChunkPreviewByMessageId] = useState<Record<string, string>>({});
+  const [hoverCardDataByMessageId, setHoverCardDataByMessageId] = useState<Record<string, CitationHoverCardData | null>>({});
+  const [activeHoverCitationMessageId, setActiveHoverCitationMessageId] = useState<string | null>(null);
+  const citationCardHideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const CITATION_CARD_HIDE_DELAY_MS = 300;
+
+  const onCitationHoverChange = useCallback((messageId: string | null) => {
+    if (citationCardHideTimeoutRef.current) {
+      clearTimeout(citationCardHideTimeoutRef.current);
+      citationCardHideTimeoutRef.current = null;
+    }
+    setActiveHoverCitationMessageId(messageId);
+  }, []);
+
+  const onCitationHoverScheduleHide = useCallback(() => {
+    if (citationCardHideTimeoutRef.current) {
+      clearTimeout(citationCardHideTimeoutRef.current);
+      citationCardHideTimeoutRef.current = null;
+    }
+    citationCardHideTimeoutRef.current = setTimeout(() => {
+      citationCardHideTimeoutRef.current = null;
+      setActiveHoverCitationMessageId(null);
+    }, CITATION_CARD_HIDE_DELAY_MS);
+  }, []);
+
+  const onCitationHoverCancelHide = useCallback(() => {
+    if (citationCardHideTimeoutRef.current) {
+      clearTimeout(citationCardHideTimeoutRef.current);
+      citationCardHideTimeoutRef.current = null;
+    }
+  }, []);
 
   const OBJECT_API_NAME = "SFDCHelp7_DMO_harmonized__dlm";
 
@@ -733,6 +801,7 @@ function App() {
         fetchForCitationModal(dccid, hudmo, chunkParams).then((result) => {
           if (result) {
             setCitationModalData({ ...result, contentId: dccid });
+            setActiveHoverCitationMessageId(null);
             const firstChunk = result.chunkRows[0];
             const chunkText: string =
               typeof firstChunk?.Chunk__c === "string"
@@ -742,6 +811,10 @@ function App() {
                   : "";
             if (message.id && chunkText.trim()) {
               setChunkPreviewByMessageId((prev) => ({ ...prev, [message.id]: chunkText }));
+            }
+            if (message.id) {
+              const cardData = buildHoverCardData(result.hudmoData, chunkText);
+              setHoverCardDataByMessageId((prev) => ({ ...prev, [message.id]: cardData }));
             }
           }
         });
@@ -765,7 +838,7 @@ function App() {
   const handleHoverCitation = useCallback(
     (message: Message) => {
       if (citationBehavior !== "modal" || !message.id) return;
-      if (chunkPreviewByMessageId[message.id]) return;
+      if (hoverCardDataByMessageId[message.id]) return;
 
       let dccid: string | null = message.dccid || null;
       let hudmo: string | null = message.hudmo || null;
@@ -789,6 +862,18 @@ function App() {
       if (!chunkRecordIds && fromRef) chunkRecordIds = fromRef.chunkRecordIds;
       if (!dccid || !hudmo) return;
 
+      const cacheKey = `${dccid}-${hudmo}`;
+      const prefetched = prefetchedHudmoDataRef.current.get(cacheKey);
+      if (prefetched) {
+        const cardData = buildHoverCardData(prefetched);
+        setHoverCardDataByMessageId((prev) => ({ ...prev, [message.id]: cardData }));
+        const existingChunk = chunkPreviewByMessageId[message.id];
+        if (!existingChunk && cardData.chunkPreview) {
+          setChunkPreviewByMessageId((prev) => ({ ...prev, [message.id]: cardData.chunkPreview ?? "" }));
+        }
+        return;
+      }
+
       const chunkParams =
         chunkObjectApiName && chunkRecordIds
           ? { chunkObjectApiName, chunkRecordIds }
@@ -806,10 +891,12 @@ function App() {
           if (chunkText.trim()) {
             setChunkPreviewByMessageId((prev) => ({ ...prev, [message.id]: chunkText }));
           }
+          const cardData = buildHoverCardData(result.hudmoData, chunkText);
+          setHoverCardDataByMessageId((prev) => ({ ...prev, [message.id]: cardData }));
         }
       });
     },
-    [citationBehavior, chunkPreviewByMessageId, fetchForCitationModal]
+    [citationBehavior, hoverCardDataByMessageId, chunkPreviewByMessageId, fetchForCitationModal]
   );
 
   const handleCloseArticle = () => {
@@ -1115,6 +1202,11 @@ function App() {
                   prefetchedHudmoData={prefetchedHudmoData}
                   citationBehavior="modal"
                   chunkPreviewByMessageId={chunkPreviewByMessageId}
+                  hoverCardDataByMessageId={hoverCardDataByMessageId}
+                  activeHoverCitationMessageId={activeHoverCitationMessageId}
+                  onCitationHoverChange={onCitationHoverChange}
+                  onCitationHoverScheduleHide={onCitationHoverScheduleHide}
+                  onCitationHoverCancelHide={onCitationHoverCancelHide}
                   onHoverCitation={handleHoverCitation}
                 />
               </div>
@@ -1179,6 +1271,11 @@ function App() {
                     prefetchedHudmoData={prefetchedHudmoData}
                     citationBehavior={citationBehavior}
                     chunkPreviewByMessageId={chunkPreviewByMessageId}
+                    hoverCardDataByMessageId={hoverCardDataByMessageId}
+                    activeHoverCitationMessageId={activeHoverCitationMessageId}
+                    onCitationHoverChange={onCitationHoverChange}
+                  onCitationHoverScheduleHide={onCitationHoverScheduleHide}
+                  onCitationHoverCancelHide={onCitationHoverCancelHide}
                     onHoverCitation={handleHoverCitation}
                   />
                 </div>
@@ -1203,6 +1300,11 @@ function App() {
             prefetchedHudmoData={prefetchedHudmoData}
             citationBehavior={citationBehavior}
             chunkPreviewByMessageId={chunkPreviewByMessageId}
+            hoverCardDataByMessageId={hoverCardDataByMessageId}
+            activeHoverCitationMessageId={activeHoverCitationMessageId}
+            onCitationHoverChange={onCitationHoverChange}
+                  onCitationHoverScheduleHide={onCitationHoverScheduleHide}
+                  onCitationHoverCancelHide={onCitationHoverCancelHide}
             onHoverCitation={handleHoverCitation}
           />
           )}
@@ -1226,6 +1328,11 @@ function App() {
             prefetchedHudmoData={prefetchedHudmoData}
             citationBehavior={citationBehavior}
             chunkPreviewByMessageId={chunkPreviewByMessageId}
+            hoverCardDataByMessageId={hoverCardDataByMessageId}
+            activeHoverCitationMessageId={activeHoverCitationMessageId}
+            onCitationHoverChange={onCitationHoverChange}
+                  onCitationHoverScheduleHide={onCitationHoverScheduleHide}
+                  onCitationHoverCancelHide={onCitationHoverCancelHide}
             onHoverCitation={handleHoverCitation}
           />
         </div>
