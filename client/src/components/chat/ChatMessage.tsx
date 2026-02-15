@@ -1,5 +1,5 @@
-import { type ReactNode, useState } from "react";
-import type { Message } from "../../types/message";
+import { type ReactNode, useCallback } from "react";
+import type { Message, CitationHoverCardData } from "../../types/message";
 import { Card } from "@/components/ui/card";
 import agentforceLogo from "../../assets/agentforce_logo.webp";
 
@@ -16,6 +16,11 @@ interface ChatMessageProps {
   citationBehavior?: CitationBehaviorType;
   /** Chunk text preview for tooltip when citationBehavior === "modal" */
   chunkPreviewForMessage?: string | null;
+  /** Hover card data (metadata, title, source, summary) when citationBehavior === "modal" */
+  hoverCardData?: CitationHoverCardData | null;
+  /** Called when citation hover starts (messageId) or ends (null); card is shown in slot above input */
+  onCitationHoverChange?: (messageId: string | null) => void;
+  onCitationHoverScheduleHide?: () => void;
   /** Called when user hovers citation (modal mode) so parent can fetch chunk preview */
   onHoverCitation?: (message: Message) => void;
 }
@@ -106,9 +111,6 @@ const parseMessageContent = (content: string | null | undefined): ReactNode => {
 
 
 
-const CHUNK_TOOLTIP_MAX_LEN = 280;
-const CHUNK_TOOLTIP_MAX_WIDTH = 360;
-
 export const ChatMessage = ({
   message,
   onClick,
@@ -116,7 +118,10 @@ export const ChatMessage = ({
   isFetched: _isFetched = false,
   articleTitle,
   citationBehavior = "fullPage",
-  chunkPreviewForMessage,
+  chunkPreviewForMessage: _chunkPreviewForMessage,
+  hoverCardData: _hoverCardData,
+  onCitationHoverChange,
+  onCitationHoverScheduleHide,
   onHoverCitation,
 }: ChatMessageProps) => {
   // Defensive: ensure message has required shape so rendering never throws
@@ -158,16 +163,13 @@ export const ChatMessage = ({
 
   const canViewArticle = hasCitationData();
 
-  const [citationHover, setCitationHover] = useState(false);
-  const showHoverTooltip = citationBehavior === "modal" && citationHover;
-  const tooltipText =
-    chunkPreviewForMessage != null && chunkPreviewForMessage.trim() !== ""
-      ? chunkPreviewForMessage.length > CHUNK_TOOLTIP_MAX_LEN
-        ? `${chunkPreviewForMessage.slice(0, CHUNK_TOOLTIP_MAX_LEN)}…`
-        : chunkPreviewForMessage
-      : isFetching
-        ? "Loading…"
-        : "Click to view source";
+  const showCard = useCallback(() => {
+    onCitationHoverChange?.(safeMessage.id);
+  }, [safeMessage.id, onCitationHoverChange]);
+
+  const scheduleHideCard = useCallback(() => {
+    onCitationHoverScheduleHide?.();
+  }, [onCitationHoverScheduleHide]);
 
   const handleMessageClick = () => {
     if (!canViewArticle) return;
@@ -226,22 +228,12 @@ export const ChatMessage = ({
               className="relative mt-2 pt-2 border-t border-gray-300 border-opacity-30"
               onMouseEnter={() => {
                 if (citationBehavior === "modal") {
-                  setCitationHover(true);
+                  showCard();
                   onHoverCitation?.(safeMessage);
                 }
               }}
-              onMouseLeave={() => setCitationHover(false)}
+              onMouseLeave={scheduleHideCard}
             >
-              {showHoverTooltip && (
-                <div
-                  className="absolute bottom-full left-0 mb-1.5 z-[100] px-3 py-2.5 rounded-lg shadow-lg border border-[#0176D3]/20 bg-white text-gray-800 text-sm leading-relaxed max-w-[min(100vw-2rem,360px)] animate-in fade-in-0 zoom-in-95 duration-150"
-                  style={{ maxWidth: CHUNK_TOOLTIP_MAX_WIDTH }}
-                  role="tooltip"
-                >
-                  <div className="text-xs font-medium text-[#0176D3] mb-1.5">Source excerpt</div>
-                  <p className="whitespace-pre-wrap break-words">{tooltipText}</p>
-                </div>
-              )}
               <div
                 role="button"
                 tabIndex={0}

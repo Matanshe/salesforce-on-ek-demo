@@ -16,6 +16,11 @@ export const WelcomeContent = ({
   prefetchedHudmoData = new Map(),
   citationBehavior,
   chunkPreviewByMessageId,
+  hoverCardDataByMessageId,
+  activeHoverCitationMessageId,
+  onCitationHoverChange,
+  onCitationHoverScheduleHide,
+  onCitationHoverCancelHide,
   onHoverCitation,
 }: WelcomeContentProps) => {
   return (
@@ -57,6 +62,11 @@ export const WelcomeContent = ({
               prefetchedHudmoData={prefetchedHudmoData}
               citationBehavior={citationBehavior}
               chunkPreviewByMessageId={chunkPreviewByMessageId}
+              hoverCardDataByMessageId={hoverCardDataByMessageId}
+              activeHoverCitationMessageId={activeHoverCitationMessageId}
+              onCitationHoverChange={onCitationHoverChange}
+              onCitationHoverScheduleHide={onCitationHoverScheduleHide}
+              onCitationHoverCancelHide={onCitationHoverCancelHide}
               onHoverCitation={onHoverCitation}
             />
           </div>

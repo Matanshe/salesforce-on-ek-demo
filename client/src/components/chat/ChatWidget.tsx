@@ -17,6 +17,11 @@ export const ChatWidget = ({
   prefetchedHudmoData = new Map(),
   citationBehavior,
   chunkPreviewByMessageId,
+  hoverCardDataByMessageId,
+  activeHoverCitationMessageId,
+  onCitationHoverChange,
+  onCitationHoverScheduleHide,
+  onCitationHoverCancelHide,
   onHoverCitation,
 }: ChatWidgetProps) => {
   const chatWindowProps = {
@@ -31,6 +36,11 @@ export const ChatWidget = ({
     prefetchedHudmoData,
     citationBehavior,
     chunkPreviewByMessageId,
+    hoverCardDataByMessageId,
+    activeHoverCitationMessageId,
+    onCitationHoverChange,
+    onCitationHoverScheduleHide,
+    onCitationHoverCancelHide,
     onHoverCitation,
   };
 
