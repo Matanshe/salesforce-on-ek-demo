@@ -1,5 +1,6 @@
 import type { Message } from "../../types/message";
 import { useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { generateSignature } from "../../utils/requestSigner";
 import { HarmonizedDataModal } from "./HarmonizedDataModal";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -8,7 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+const API_URL = import.meta.env.VITE_API_URL ?? "";
 
 interface MessageDisplayProps {
   message: Message;
@@ -26,7 +27,20 @@ interface HudmoData {
 }
 
 export const MessageDisplay = ({ message, onBack }: MessageDisplayProps) => {
+  const navigate = useNavigate();
   const [isLoadingHudmo, setIsLoadingHudmo] = useState(false);
+
+  const handleContentClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const anchor = e.target instanceof HTMLElement ? e.target.closest("a[data-dccid]") : null;
+    if (anchor instanceof HTMLAnchorElement) {
+      const dccid = anchor.getAttribute("data-dccid");
+      if (dccid) {
+        e.preventDefault();
+        e.stopPropagation();
+        navigate(`/article/${encodeURIComponent(dccid)}`);
+      }
+    }
+  };
   const [hudmoData, setHudmoData] = useState<HudmoData | null>(null);
   const [hudmoError, setHudmoError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -427,7 +441,9 @@ export const MessageDisplay = ({ message, onBack }: MessageDisplayProps) => {
             <Separator />
             <CardContent>
               <div
-                className="prose max-w-none bg-linear-to-br from-gray-50 to-rose-50 rounded-lg p-6 border-2 border-rose-200 overflow-x-auto"
+                role="article"
+                onClick={handleContentClick}
+                className="content-prose bg-linear-to-br from-gray-50 to-rose-50 rounded-lg p-6 border-2 border-rose-200 overflow-x-auto"
                 dangerouslySetInnerHTML={{ __html: message.htmlContent }}
               />
             </CardContent>

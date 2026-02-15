@@ -11,10 +11,11 @@ A demonstration of Salesforce Help Portal powered by **Agentforce on Enterprise 
   - [Features](#features)
   - [API Specification](#api-specification)
   - [Technologies used](#technologies-used)
-- [Configuration](#configuration)
+  - [Configuration](#configuration)
   - [Requirements](#requirements)
   - [Setup](#setup)
     - [Local environment configuration](#local-environment-configuration)
+    - [Citation behavior and embed mode](#citation-behavior-and-embed-mode)
   - [Deployment](#deployment)
     - [Heroku Deployment](#heroku-deployment)
 - [License](#license)
@@ -64,6 +65,9 @@ The demo showcases how **Salesforce Data Cloud** and **Agentforce** work togethe
 - **Auto-initialized Chat**: Chat widget opens automatically when the page loads
 - **Pre-fetching**: Citation articles are fetched in the background for instant viewing
 - **Article View**: Click any citation to view the full article on the main page
+- **Citation Modal**: In embed mode (or when configured), citations open in a modal with optional hover preview instead of navigating to the full article
+- **Embed Mode**: Chat can run in an embed layout (widget only, no main app chrome) for iframes or static sites; use `?embed=1` or set `VITE_EMBED_LAYOUT=true`
+- **Demo Pages**: Sample pages (e.g. Getting Started, Products, Support) under `client/public/demo-pages/` and `server/public/demo-pages/` for testing full-page and embedded chat
 - **Responsive Design**: Mobile-friendly interface that works on all devices
 - **Salesforce Branding**: Design matches help.salesforce.com with Salesforce colors and styling
 - **Real-time Indicators**: Visual feedback for article loading and readiness status
@@ -74,7 +78,7 @@ The application exposes four RESTful endpoints, all protected by HMAC-SHA256 sig
 
 **GET /api/v1/start-session**
 
-- Initializes a new Agentforce session
+- Initializes a new Agentforce session. On Heroku, use `https://<your-app>.herokuapp.com/api/v1/start-session?...` (no `:3000` in the URL).
 - Query Parameters: `sessionId` (external session key)
 - Headers: `X-Timestamp`, `X-Signature`
 - Returns: `{ sessionId, messages }` (Agentforce internal session ID and welcome message)
@@ -99,6 +103,13 @@ The application exposes four RESTful endpoints, all protected by HMAC-SHA256 sig
 - Headers: `X-Timestamp`, `X-Signature`, `Content-Type: application/json`
 - Body: `{ hudmoName, dccid }` (HUDMO name and Data Cloud Content ID)
 - Returns: `{ data }` (Harmonized HTML content with metadata and source URL)
+
+**POST /api/v1/get-chunks**
+
+- Retrieves chunk text for citation preview (e.g. modal tooltip). Uses Data Cloud SQL when configured, otherwise falls back to local `server/public/data/chunks.json` (or `chunks_<objectApiName>.json`).
+- Headers: `X-Timestamp`, `X-Signature`, `Content-Type: application/json`
+- Body: `{ chunkRecordIds, chunkObjectApiName }` (`chunkRecordIds`: array of record IDs or comma-separated string; `chunkObjectApiName`: Data Cloud chunk object API name)
+- Returns: `{ chunkRows }` (array of `{ Chunk__c, Citation__c? }` in request order)
 
 **Authentication:**
 All requests require HMAC-SHA256 signature in headers:
@@ -183,14 +194,20 @@ To run this application locally, you will need the following:
    cp .env.example .env
    ```
 
-   Edit `client/.env` with the **same** API secret and local API URL:
+   Edit `client/.env` with the **same** API secret and local API URL, and optionally citation/embed behavior:
 
    ```bash
    VITE_API_URL=http://localhost:3000
    VITE_API_SECRET=your_generated_secret_key
+   # Optional: citation behavior (fullPage = navigate to article; modal = open in modal)
+   VITE_CITATION_BEHAVIOR=fullPage
+   # Optional: embed layout (only chat widget, no main app chrome; use with VITE_CITATION_BEHAVIOR=modal)
+   VITE_EMBED_LAYOUT=false
    ```
 
    ⚠️ **Important**: The `API_SECRET` on the server must match `VITE_API_SECRET` on the client.
+
+   **URL overrides** (no rebuild): `?embed=1` enables embed layout and modal citations; `?citation=modal` or `?citation=fullPage` overrides citation behavior for the current page.
 
 4. **Install Dependencies**
 
@@ -228,6 +245,11 @@ To run this application locally, you will need the following:
 
    The Salesforce Help Portal will open with the Agentforce chat interface ready for questions.
 
+### Citation behavior and embed mode
+
+- **Citation behavior**: `fullPage` (default) opens the cited article on the main page; `modal` opens a citation modal (useful when the app is embedded in an iframe). Set `VITE_CITATION_BEHAVIOR=modal` or use `?citation=modal` in the URL.
+- **Embed layout**: When enabled (`VITE_EMBED_LAYOUT=true` or `?embed=1`), only the chat widget is shown (no sidebar, TOC, or main content). Use this for embedding the chat in static pages; demo pages in `client/public/demo-pages/` and `server/public/demo-pages/` show examples.
+
 ## Deployment
 
 ### Heroku Deployment
@@ -241,6 +263,12 @@ Once you are happy with your application, you can deploy it to Heroku!
 
 **Deployment Steps:**
 
+0. **Validate environment (optional)**  
+   Ensure `server/.env` exists and has all required vars before using the scripts:
+   ```bash
+   npm run validate-env
+   ```
+
 1. **Create a Heroku App**
 
    ```bash
@@ -249,11 +277,13 @@ Once you are happy with your application, you can deploy it to Heroku!
 
 2. **Set Environment Variables**
 
-   Configure all required environment variables in Heroku. You can run the script that reads from `server/.env`:
+   Configure all required environment variables in Heroku. You can run the script that reads from `server/.env` (it also sets `VITE_API_SECRET` and `VITE_API_URL` so the client build during dyno start succeeds):
 
    ```bash
    node scripts/set-heroku-config.js
    ```
+
+   **If you already configured Heroku before:** run this script again so `VITE_API_SECRET` and `VITE_API_URL` are set; otherwise the app will crash on start with "VITE_API_SECRET is required for production builds".
 
    Or set them manually:
 
@@ -263,8 +293,9 @@ Once you are happy with your application, you can deploy it to Heroku!
    heroku config:set CLIENT_SECRET=your_salesforce_client_secret
    heroku config:set AGENTFORCE_AGENT_ID=your_agentforce_agent_id
    heroku config:set API_SECRET=your_generated_secret_key
-   heroku config:set PORT=3000
    ```
+
+   **Note:** Do not set `PORT` on Heroku — Heroku sets it automatically. When calling the API, use the app URL **without** a port (e.g. `https://your-app.herokuapp.com/api/v1/start-session?...`), not `https://your-app.herokuapp.com:3000/...`. The `VITE_API_URL` (and thus the client build) must use the **exact** Heroku app URL where the app is deployed (e.g. `https://ek-ht-poc-8a80d9816745.herokuapp.com`), otherwise the browser will treat API calls as cross-origin and CORS will block them.
 
 3. **Build and Deploy Client**
 
@@ -319,6 +350,19 @@ Once you are happy with your application, you can deploy it to Heroku!
    ```
 
 For more detailed deployment instructions, please follow the [official Heroku documentation](https://devcenter.heroku.com/articles/git).
+
+**Troubleshooting: "API_SECRET is not configured" in the browser**
+
+This error means the client bundle running in the browser was built without `VITE_API_SECRET` (Vite inlines env vars at build time). Fix it by rebuilding the client with the secret and redeploying:
+
+1. Ensure `server/.env` has `API_SECRET` and run `npm run validate-env`.
+2. Rebuild and push in one step (use your real Heroku app name):
+   ```bash
+   npm run push-heroku -- your-heroku-app-name
+   ```
+   The build script will verify the secret is inlined; if verification fails, the deploy is aborted.
+3. After pushing, do a **hard refresh** so the browser doesn’t use a cached bundle: **Ctrl+Shift+R** (Windows/Linux) or **Cmd+Shift+R** (Mac), or open the app in an incognito/private window.
+4. If it still fails: run `npm run build-client:heroku -- your-heroku-app-name` and confirm the log shows "Verified: API_SECRET is inlined in client/dist/assets/", then run `npm run move-build`, commit `server/public`, and `git push heroku main`.
 
 **Security Note:** When deploying publicly, be aware that the `API_SECRET` will be visible in the client bundle. For production use with external users, consider implementing additional security measures such as user authentication or IP whitelisting.
 

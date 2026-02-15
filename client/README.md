@@ -1,4 +1,10 @@
-# React + TypeScript + Vite
+# Help Portal Client (React + TypeScript + Vite)
+
+This is the client for the **Salesforce Help Portal - Agentforce on Enterprise Knowledge** demo. For setup, API docs, and deployment, see the [root README](../README.md).
+
+**Optional env (see root README):** `VITE_CITATION_BEHAVIOR` (fullPage | modal), `VITE_EMBED_LAYOUT` (true/false). URL overrides: `?embed=1`, `?citation=modal`.
+
+---
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
