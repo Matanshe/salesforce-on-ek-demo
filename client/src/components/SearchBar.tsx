@@ -8,12 +8,16 @@ import {
   getHelpSearchConfig,
   type FastSearchResult,
 } from "../api/fastSearch";
+import { useTheme } from "../contexts/ThemeContext";
+import { useCustomerRoute } from "../contexts/CustomerRouteContext";
 
 const DEBOUNCE_MS = 350;
 const MIN_QUERY_LENGTH = 2;
 
 export function SearchBar() {
   const navigate = useNavigate();
+  const theme = useTheme();
+  const { basePath } = useCustomerRoute();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<FastSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -70,7 +74,7 @@ export function SearchBar() {
   const onResultClick = (result: FastSearchResult) => {
     const contentId = getResultContentId(result);
     if (contentId) {
-      navigate(`/article/${encodeURIComponent(contentId)}`);
+      navigate(`${basePath}/article/${encodeURIComponent(contentId)}`);
       setOpen(false);
       setQuery("");
       setResults([]);
@@ -79,7 +83,7 @@ export function SearchBar() {
 
   const goToSearchPage = () => {
     if (query.trim().length < MIN_QUERY_LENGTH) return;
-    navigate(`/search?q=${encodeURIComponent(query.trim())}`);
+    navigate(`${basePath}/search?q=${encodeURIComponent(query.trim())}`);
     setOpen(false);
   };
 
@@ -107,7 +111,7 @@ export function SearchBar() {
               }
             }}
             onFocus={() => setOpen(true)}
-            className="pl-10 pr-4 h-10 rounded-lg border-gray-200 bg-gray-50/80 focus:bg-white focus:border-[#0176D3] focus:ring-2 focus:ring-[#0176D3]/20 transition-colors placeholder:text-gray-400"
+            className="pl-10 pr-4 h-10 rounded-lg border-gray-200 bg-gray-50/80 focus:bg-white focus:border-[var(--theme-primary)] focus:ring-2 focus:ring-[var(--theme-primary)]/20 transition-colors placeholder:text-gray-400"
             aria-label="Search"
             aria-expanded={showDropdown}
             aria-autocomplete="list"
@@ -122,7 +126,7 @@ export function SearchBar() {
         >
           {loading && (
             <div className="flex items-center justify-center gap-2 px-4 py-6 text-sm text-gray-500">
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#0176D3] border-t-transparent" />
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--theme-primary)] border-t-transparent" />
               Searching…
             </div>
           )}
@@ -146,11 +150,11 @@ export function SearchBar() {
                       <button
                         type="button"
                         onClick={() => onResultClick(result)}
-                        className={`w-full text-left px-4 py-2.5 text-sm rounded-lg mx-1 my-0.5 transition-colors focus:outline-none focus:ring-1 focus:ring-[#0176D3]/30 ${isArticle ? "hover:bg-[#0176D3]/10 cursor-pointer" : "cursor-default text-gray-600"}`}
+                        className={`w-full text-left px-4 py-2.5 text-sm rounded-lg mx-1 my-0.5 transition-colors focus:outline-none focus:ring-1 focus:ring-[var(--theme-primary)]/30 ${isArticle ? "hover:bg-[var(--theme-primary)]/10 cursor-pointer" : "cursor-default text-gray-600"}`}
                         role="option"
                       >
                         <span className={`font-medium block ${isArticle ? "text-gray-900" : "text-gray-700"}`}>{title}</span>
-                        {isArticle && <span className="text-xs text-[#0176D3] mt-0.5 block">Open in Help</span>}
+                        {isArticle && <span className="text-xs text-[var(--theme-primary)] mt-0.5 block">{theme.labels.openInHelp}</span>}
                       </button>
                     </li>
                   );
@@ -160,7 +164,7 @@ export function SearchBar() {
                 <button
                   type="button"
                   onClick={goToSearchPage}
-                  className="text-sm font-medium text-[#0176D3] hover:text-[#014486] w-full text-left px-2 py-1.5 rounded-md hover:bg-[#0176D3]/10 transition-colors"
+                  className="text-sm font-medium text-[var(--theme-primary)] hover:text-[var(--theme-primary-hover)] w-full text-left px-2 py-1.5 rounded-md hover:bg-[var(--theme-primary)]/10 transition-colors"
                 >
                   See all results →
                 </button>
@@ -172,7 +176,7 @@ export function SearchBar() {
               <button
                 type="button"
                 onClick={goToSearchPage}
-                className="text-sm font-medium text-[#0176D3] hover:text-[#014486] w-full text-left px-2 py-1.5 rounded-md hover:bg-[#0176D3]/10 transition-colors"
+                className="text-sm font-medium text-[var(--theme-primary)] hover:text-[var(--theme-primary-hover)] w-full text-left px-2 py-1.5 rounded-md hover:bg-[var(--theme-primary)]/10 transition-colors"
               >
                 Open search results page →
               </button>

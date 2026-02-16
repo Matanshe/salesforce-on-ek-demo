@@ -10,11 +10,7 @@
       "objectApiName": "SFDCHelp7_DMO_harmonized__dlm",
       "tocUrl": "/data/toc_enhanced.xml",
       "ui": {
-        "colors": {
-          "primary": "#0176D3",
-          "primaryHover": "#014486",
-          "accent": "#2E844A"
-        },
+        "colors": { "primary": "#0176D3", "primaryHover": "#014486", "accent": "#2E844A" },
         "labels": {
           "siteName": "Salesforce",
           "helpLabel": "Help",
@@ -26,28 +22,16 @@
           "backToHelp": "← Back to Help",
           "openInHelp": "Open in Help",
           "footerCopyright": "© {year} salesforce.com, inc. All rights reserved. Various trademarks held by their respective owners."
-        },
-        "homeUrl": "https://www.salesforce.com",
-        "logoUrl": null,
-        "footerLinks": [
-          {
-            "label": "Salesforce.com",
-            "href": "https://www.salesforce.com"
-          },
-          {
-            "label": "Help & Training",
-            "href": "https://help.salesforce.com"
-          },
-          {
-            "label": "Trailhead",
-            "href": "https://trailhead.salesforce.com"
-          },
-          {
-            "label": "Developer Center",
-            "href": "https://developer.salesforce.com"
-          }
-        ]
-      }
+        }
+      },
+      "homeUrl": "https://www.salesforce.com",
+      "logoUrl": null,
+      "footerLinks": [
+        { "label": "Salesforce.com", "href": "https://www.salesforce.com" },
+        { "label": "Help & Training", "href": "https://help.salesforce.com" },
+        { "label": "Trailhead", "href": "https://trailhead.salesforce.com" },
+        { "label": "Developer Center", "href": "https://developer.salesforce.com" }
+      ]
     },
     {
       "id": "stryker",
@@ -58,11 +42,7 @@
       "agentforceAgentId": "0XxHr000000W6OUKA0",
       "objectApiName": "harmonized_Stryker_DITA_UDMO_8__dlm",
       "ui": {
-        "colors": {
-          "primary": "#E5B318",
-          "primaryHover": "#C99A0F",
-          "accent": "#1a1a1a"
-        },
+        "colors": { "primary": "#E5B318", "primaryHover": "#C99A0F", "accent": "#1a1a1a" },
         "labels": {
           "siteName": "Stryker",
           "helpLabel": "Documentation",
@@ -74,24 +54,15 @@
           "backToHelp": "← Back to Documentation",
           "openInHelp": "Open in Documentation",
           "footerCopyright": "© {year} Stryker Corporation. All rights reserved."
-        },
-        "homeUrl": "https://voceradocs.stryker.com/",
-        "logoUrl": null,
-        "footerLinks": [
-          {
-            "label": "Stryker.com",
-            "href": "https://www.stryker.com"
-          },
-          {
-            "label": "Vocera Documentation",
-            "href": "https://voceradocs.stryker.com/"
-          },
-          {
-            "label": "Support",
-            "href": "https://www.stryker.com/us/en/support.html"
-          }
-        ]
-      }
+        }
+      },
+      "homeUrl": "https://voceradocs.stryker.com/",
+      "logoUrl": null,
+      "footerLinks": [
+        { "label": "Stryker.com", "href": "https://www.stryker.com" },
+        { "label": "Vocera Documentation", "href": "https://voceradocs.stryker.com/" },
+        { "label": "Support", "href": "https://www.stryker.com/us/en/support.html" }
+      ]
     }
   ]
 }

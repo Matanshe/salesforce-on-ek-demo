@@ -1,9 +1,11 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useCustomerRoute } from "@/contexts/CustomerRouteContext";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { ChunkRow } from "@/types/message";
 import { highlightChunksInElement } from "@/utils/chunkHighlight";
+import { fetchRelatedDmoData, type RelatedDmoData } from "@/api/fetchRelatedDmoData";
 
 export interface ParsedMetaTag {
   name?: string;
@@ -159,13 +161,16 @@ interface ArticleViewProps {
   /** Optional chunk rows for highlighting; when present, matching text is highlighted and scrolled into view */
   chunkRows?: ChunkRow[];
   onClose: () => void;
+  customerId?: string | null;
 }
 
-export const ArticleView = ({ data, chunkRows = [], onClose }: ArticleViewProps) => {
+export const ArticleView = ({ data, chunkRows = [], onClose, customerId }: ArticleViewProps) => {
   const navigate = useNavigate();
+  const { basePath } = useCustomerRoute();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const contentProseRef = useRef<HTMLDivElement>(null);
   const [qaExpanded, setQaExpanded] = useState(false);
+  const [relatedDmoData, setRelatedDmoData] = useState<RelatedDmoData | null>(null);
 
   if (data) {
     console.log("[chunk] ArticleView render: title=" + (data.attributes?.title ?? "")?.slice(0, 40) + " chunkRows.length=" + (chunkRows?.length ?? 0));
@@ -183,7 +188,7 @@ export const ArticleView = ({ data, chunkRows = [], onClose }: ArticleViewProps)
       if (dccid) {
         e.preventDefault();
         e.stopPropagation();
-        navigate(`/article/${encodeURIComponent(dccid)}`);
+        navigate(`${basePath}/article/${encodeURIComponent(dccid)}`);
       }
     }
   };
@@ -200,11 +205,34 @@ export const ArticleView = ({ data, chunkRows = [], onClose }: ArticleViewProps)
     [data?.attributes?.metadata, metaTags]
   );
 
-  const metaFields = metadataEntries.filter((e) => !e.isLongText);
+  // Fetch related DMO data when article title is available
+  // Match by title internally
+  useEffect(() => {
+    const title = data?.attributes?.title;
+    if (title) {
+      fetchRelatedDmoData(title, customerId)
+        .then((relatedData) => {
+          setRelatedDmoData(relatedData);
+        })
+        .catch((error) => {
+          console.error("Error loading related DMO data:", error);
+          setRelatedDmoData(null);
+        });
+    } else {
+      setRelatedDmoData(null);
+    }
+  }, [data?.attributes?.title, customerId]);
+
+  // Filter to show only: Last updated
+  const allowedFields = ["Last updated"];
+  const filteredMetaFields = metadataEntries.filter((e) => 
+    !e.isLongText && allowedFields.includes(e.title)
+  );
+  
   const abstractEntry = metadataEntries.find((e) => e.title === "Abstract");
   const descriptionEntry = metadataEntries.find((e) => e.title === "Description");
 
-  const hasMeta = metadataEntries.length > 0;
+  const hasMeta = filteredMetaFields.length > 0 || relatedDmoData || abstractEntry || descriptionEntry;
 
   useEffect(() => {
     if (data?.attributes) {
@@ -240,24 +268,18 @@ export const ArticleView = ({ data, chunkRows = [], onClose }: ArticleViewProps)
     const hasContent = !!(data?.attributes?.content);
     const hasRef = !!contentProseRef.current;
     const rowCount = chunkRows?.length ?? 0;
-    console.log("[chunk] ArticleView chunk effect run: hasContent=" + hasContent + " hasRef=" + hasRef + " chunkRows.length=" + rowCount);
     if (!hasContent || !hasRef || rowCount === 0) {
       return;
     }
     const chunkTexts = chunkRows
       .map((r) => (typeof r.Chunk__c === "string" ? r.Chunk__c : typeof (r as Record<string, unknown>)?.chunk__c === "string" ? (r as Record<string, unknown>).chunk__c as string : ""))
       .filter((t) => t.trim().length > 0);
-    if (chunkTexts.length === 0) {
-      console.log("[chunk] ArticleView: chunkRows has no non-empty Chunk__c");
-      return;
-    }
-    console.log("[chunk] ArticleView: running highlight for", chunkTexts.length, "chunk text(s), content length:", data?.attributes?.content?.length);
+    if (chunkTexts.length === 0) return;
     const container = contentProseRef.current;
     const runHighlight = () => {
       if (!container) return;
       const firstHighlight = highlightChunksInElement(container, chunkTexts);
       if (firstHighlight) {
-        console.log("[chunk] ArticleView: highlight applied, scrolling to first match");
         const scrollArea = scrollContainerRef.current?.closest('[data-slot="scroll-area"]');
         const viewport = scrollArea?.querySelector('[data-slot="scroll-area-viewport"]') as HTMLElement | undefined;
         if (viewport) {
@@ -265,8 +287,6 @@ export const ArticleView = ({ data, chunkRows = [], onClose }: ArticleViewProps)
         } else {
           firstHighlight.scrollIntoView({ behavior: "smooth", block: "start" });
         }
-      } else {
-        console.log("[chunk] ArticleView: no match found in content for chunk text(s)");
       }
     };
     requestAnimationFrame(() => {
@@ -274,7 +294,26 @@ export const ArticleView = ({ data, chunkRows = [], onClose }: ArticleViewProps)
     });
   }, [data?.attributes?.content, chunkRows]);
 
-  if (!data) return null;
+  if (!data) {
+    return (
+      <div className="flex items-center justify-center h-full p-8 bg-white">
+        <div className="text-center">
+          <p className="text-gray-600">No article data available</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!data.attributes) {
+    return (
+      <div className="flex items-center justify-center h-full p-8 bg-white">
+        <div className="text-center">
+          <p className="text-gray-600">Invalid article data structure</p>
+          <p className="text-sm text-gray-500 mt-2">Missing attributes</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full h-full flex flex-col bg-white overflow-hidden">
@@ -314,19 +353,39 @@ export const ArticleView = ({ data, chunkRows = [], onClose }: ArticleViewProps)
           {hasMeta && (
             <div className="mb-4 space-y-4">
               {/* Detail fields: small chips in one row, blue styling */}
-              {metaFields.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {metaFields.map(({ title, value }) => (
-                    <span
-                      key={title}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-[#0176D3]/10 text-[#0176D3] border border-[#0176D3]/30"
-                    >
-                      <span className="text-[#0176D3]/80">{title}:</span>
-                      <span className="text-gray-800">{value}</span>
-                    </span>
-                  ))}
-                </div>
-              )}
+              {/* Show in order: Last updated, Product, Major Version, Minor Version, Patch Version */}
+              <div className="flex flex-wrap gap-2">
+                {filteredMetaFields.find((e) => e.title === "Last updated") && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-[var(--theme-primary)]/10 text-[var(--theme-primary)] border border-[var(--theme-primary)]/30">
+                    <span className="text-[var(--theme-primary)]/80">Last updated:</span>
+                    <span className="text-gray-800">{filteredMetaFields.find((e) => e.title === "Last updated")?.value}</span>
+                  </span>
+                )}
+                {relatedDmoData?.product_name__c && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-[var(--theme-primary)]/10 text-[var(--theme-primary)] border border-[var(--theme-primary)]/30">
+                    <span className="text-[var(--theme-primary)]/80">Product:</span>
+                    <span className="text-gray-800">{relatedDmoData.product_name__c}</span>
+                  </span>
+                )}
+                {relatedDmoData && relatedDmoData.major_version__c !== null && relatedDmoData.major_version__c !== undefined && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-[var(--theme-primary)]/10 text-[var(--theme-primary)] border border-[var(--theme-primary)]/30">
+                    <span className="text-[var(--theme-primary)]/80">Major Version:</span>
+                    <span className="text-gray-800">{relatedDmoData.major_version__c}</span>
+                  </span>
+                )}
+                {relatedDmoData && relatedDmoData.minor_version__c !== null && relatedDmoData.minor_version__c !== undefined && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-[var(--theme-primary)]/10 text-[var(--theme-primary)] border border-[var(--theme-primary)]/30">
+                    <span className="text-[var(--theme-primary)]/80">Minor Version:</span>
+                    <span className="text-gray-800">{relatedDmoData.minor_version__c}</span>
+                  </span>
+                )}
+                {relatedDmoData && relatedDmoData.patch_version__c !== null && relatedDmoData.patch_version__c !== undefined && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-[var(--theme-primary)]/10 text-[var(--theme-primary)] border border-[var(--theme-primary)]/30">
+                    <span className="text-[var(--theme-primary)]/80">Patch Version:</span>
+                    <span className="text-gray-800">{relatedDmoData.patch_version__c}</span>
+                  </span>
+                )}
+              </div>
               {/* Abstract: only when there is no description */}
               {abstractEntry && !descriptionEntry && (
                 <div className="p-3 rounded-lg bg-gray-50 border border-gray-200">
@@ -401,7 +460,7 @@ export const ArticleView = ({ data, chunkRows = [], onClose }: ArticleViewProps)
               ref={contentProseRef}
               role="article"
               onClick={handleContentClick}
-              className="content-prose pb-6 sm:pb-8 chunk-highlight-container"
+              className="content-prose pb-6 sm:pb-8 chunk-highlight-container prose prose-sm sm:prose-base md:prose-lg max-w-none text-left prose-headings:font-bold prose-headings:text-gray-900 prose-a:text-[var(--theme-primary)] prose-a:no-underline hover:prose-a:underline"
             />
           ) : (
             <div className="bg-gray-900 rounded-lg p-4 overflow-auto border border-gray-700">

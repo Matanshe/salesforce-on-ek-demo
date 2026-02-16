@@ -32,11 +32,15 @@ const extractUrlParams = (
     const cleanUrl = url.replace(/[).,;!?]+$/, "");
     const urlObj = new URL(cleanUrl);
 
+    // Try primary parameter names first
     let dccid = urlObj.searchParams.get("c__dccid");
     let hudmo = urlObj.searchParams.get("c__hudmo");
 
-    if (!dccid && !hudmo) {
+    // If either is missing, try fallback parameter names
+    if (!dccid) {
       dccid = urlObj.searchParams.get("c__contentId");
+    }
+    if (!hudmo) {
       hudmo = urlObj.searchParams.get("c__objectApiName");
     }
 
@@ -200,7 +204,7 @@ export const ChatMessage = ({
           <img 
             src={agentforceLogo} 
             alt="Agentforce" 
-            className="w-6 h-6 sm:w-7 sm:h-7 rounded-full object-cover border-2 border-[#0176D3]"
+            className="w-6 h-6 sm:w-7 sm:h-7 rounded-full object-cover border-2 border-[var(--theme-primary)]"
           />
         </div>
       )}
@@ -209,7 +213,7 @@ export const ChatMessage = ({
           max-w-[85%] sm:max-w-[80%] p-0 transition-all text-left
           ${
             isUser
-              ? "bg-[#0176D3] text-white hover:bg-[#014486] border-[#0176D3]"
+              ? "bg-[var(--theme-primary)] text-white hover:bg-[var(--theme-primary-hover)] border-[var(--theme-primary)]"
               : "bg-white text-gray-900 hover:bg-gray-50 hover:shadow-md border-gray-200"
           }
           ${isBot ? "cursor-default" : ""}
@@ -217,6 +221,51 @@ export const ChatMessage = ({
       >
         <div className="px-3 sm:px-4 py-2">
           <p className="text-xs sm:text-sm text-left wrap-break-word break-words whitespace-pre-wrap">{parseMessageContent(safeMessage.content)}</p>
+
+          {/* Summary Section */}
+          {isBot && safeMessage.summary && (
+            <div className="mt-3 pt-3 border-t border-gray-200 border-opacity-30">
+              <div className="flex items-start gap-2">
+                <svg className="w-4 h-4 sm:w-4 sm:h-4 shrink-0 mt-0.5 text-[var(--theme-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <div className="flex-1">
+                  <p className="text-[10px] sm:text-xs font-semibold text-gray-700 mb-1">Summary</p>
+                  <p className="text-xs sm:text-sm text-gray-600 wrap-break-word break-words whitespace-pre-wrap">{safeMessage.summary}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Q&A Section */}
+          {isBot && Array.isArray(safeMessage.qa) && safeMessage.qa.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-gray-200 border-opacity-30">
+              <div className="flex items-start gap-2 mb-2">
+                <svg className="w-4 h-4 sm:w-4 sm:h-4 shrink-0 mt-0.5 text-[var(--theme-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-[10px] sm:text-xs font-semibold text-gray-700">Q&A</p>
+              </div>
+              <div className="space-y-3">
+                {safeMessage.qa.map((qaItem, index) => (
+                  <div key={index} className="bg-gray-50 rounded-lg p-2 sm:p-3 border border-gray-200">
+                    {qaItem && typeof qaItem === "object" && qaItem.question != null && (
+                      <div className="mb-2">
+                        <p className="text-[10px] sm:text-xs font-semibold text-gray-700 mb-1">Q:</p>
+                        <p className="text-xs sm:text-sm text-gray-800 wrap-break-word break-words whitespace-pre-wrap">{String(qaItem.question)}</p>
+                      </div>
+                    )}
+                    {qaItem && typeof qaItem === "object" && qaItem.answer != null && (
+                      <div>
+                        <p className="text-[10px] sm:text-xs font-semibold text-gray-700 mb-1">A:</p>
+                        <p className="text-xs sm:text-sm text-gray-600 wrap-break-word break-words whitespace-pre-wrap">{String(qaItem.answer)}</p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <span className="text-[10px] sm:text-xs opacity-70 mt-1 block text-left">
             {safeMessage.timestamp instanceof Date
@@ -238,18 +287,16 @@ export const ChatMessage = ({
                 role="button"
                 tabIndex={0}
                 onClick={handleMessageClick}
-                onKeyDown={(e) => e.key === "Enter" && handleMessageClick()}
-                className="cursor-pointer"
+                onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), handleMessageClick())}
+                className="cursor-pointer flex items-center text-[var(--theme-primary)] hover:text-[var(--theme-primary-hover)] hover:underline"
               >
-                <div className="flex items-center text-[#0176D3]">
-                  {isFetching ? (
-                    <span className="text-[10px] sm:text-xs font-semibold">Preparing article...</span>
-                  ) : (
-                    <span className="text-[10px] sm:text-xs font-semibold">
-                      View Source{articleTitle ? `: ${articleTitle}` : ""}
-                    </span>
-                  )}
-                </div>
+                <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                <span className="text-[10px] sm:text-xs font-semibold">
+                  {isFetching ? "Preparing article..." : articleTitle ? `View Source: ${articleTitle}` : "View Source"}
+                </span>
               </div>
             </div>
           )}

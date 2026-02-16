@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Input } from './ui/input';
-// @ts-ignore: Vite's import.meta.glob ESM asset import workaround, import as URL string
-const tocXmlUrl = '/data/toc_enhanced.xml';
+import { useCustomerRoute } from '../contexts/CustomerRouteContext';
+
+const DEFAULT_TOC_URL = '/data/toc_enhanced.xml';
 
 interface NavNode {
   title: string | null;
@@ -12,6 +13,7 @@ interface NavNode {
 }
 
 interface TableOfContentsProps {
+  tocUrl?: string | null;
   onContentClick?: (contentId: string) => void;
   currentContentId?: string | null;
   isVisible?: boolean;
@@ -19,16 +21,19 @@ interface TableOfContentsProps {
   embedded?: boolean;
 }
 
-const TableOfContents = ({ onContentClick, currentContentId, isVisible = true, embedded = false }: TableOfContentsProps) => {
+
+const TableOfContents = ({ tocUrl: tocUrlProp, onContentClick, currentContentId, isVisible = true, embedded = false }: TableOfContentsProps) => {
+  const { basePath } = useCustomerRoute();
   const [tree, setTree] = useState<NavNode | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
- // const OBJECT_API_NAME = "SFDCHelp7_DMO_harmonized__dlm";
+  const tocXmlUrl = tocUrlProp ?? DEFAULT_TOC_URL;
 
   useEffect(() => {
     const loadXml = async () => {
       try {
+        setError(null);
         const response = await fetch(tocXmlUrl);
         if (!response.ok) throw new Error(`Failed to load TOC data`);
         const text = await response.text();
@@ -36,12 +41,14 @@ const TableOfContents = ({ onContentClick, currentContentId, isVisible = true, e
         const xmlDoc = parser.parseFromString(text, "text/xml");
         const root = xmlDoc.getElementsByTagName('nav')[0];
         if (root) setTree(parseNode(root));
+        else setTree(null);
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : String(err));
+        setTree(null);
       }
     };
     loadXml();
-  }, []);
+  }, [tocXmlUrl]);
 
   const parseNode = (node: Element): NavNode => ({
     title: node.getAttribute('title'),
@@ -107,7 +114,11 @@ const TableOfContents = ({ onContentClick, currentContentId, isVisible = true, e
     }, [searchQuery, hasChildren]);
 
     const handleRowClick = (e: React.MouseEvent) => {
-      if (!hasContentId && hasChildren) {
+      if (hasContentId && onContentClick) {
+        e.preventDefault();
+        e.stopPropagation();
+        onContentClick(item.contentId!);
+      } else if (hasChildren) {
         e.preventDefault();
         setIsOpen(!isOpen);
       }
@@ -123,7 +134,7 @@ const TableOfContents = ({ onContentClick, currentContentId, isVisible = true, e
       }
     };
 
-    const titleHref = hasContentId ? `/article/${encodeURIComponent(item.contentId!)}` : undefined;
+    const titleHref = hasContentId ? `${basePath}/article/${encodeURIComponent(item.contentId!)}` : undefined;
     const useCallback = !!onContentClick && hasContentId;
 
     return (
@@ -138,7 +149,7 @@ const TableOfContents = ({ onContentClick, currentContentId, isVisible = true, e
             backgroundColor: isCurrentPage ? '#e3f2fd' : '#f3f2f2',
             cursor: hasContentId ? 'pointer' : (hasChildren ? 'pointer' : 'not-allowed'),
             transition: 'background-color 0.2s',
-            borderLeft: isCurrentPage ? '3px solid #0176D3' : 'none',
+            borderLeft: isCurrentPage ? '3px solid var(--theme-primary)' : 'none',
           }}
           onMouseEnter={(e) => {
             if (hasContentId || hasChildren) {
@@ -172,7 +183,7 @@ const TableOfContents = ({ onContentClick, currentContentId, isVisible = true, e
               to={titleHref}
               style={{ 
                 textDecoration: 'none', 
-                color: isCurrentPage ? '#0176D3' : '#0070d2', 
+                color: isCurrentPage ? 'var(--theme-primary)' : 'var(--theme-primary)', 
                 fontSize: '13px',
                 fontWeight: (hasChildren || isCurrentPage) ? 'bold' : 'normal',
                 fontFamily: 'Salesforce Sans, Arial, sans-serif',
@@ -182,7 +193,7 @@ const TableOfContents = ({ onContentClick, currentContentId, isVisible = true, e
             >
               {item.title}
               {isCurrentPage && (
-                <span style={{ marginLeft: '8px', fontSize: '10px', color: '#0176D3', fontWeight: 'bold' }}>●</span>
+                <span style={{ marginLeft: '8px', fontSize: '10px', color: 'var(--theme-primary)', fontWeight: 'bold' }}>●</span>
               )}
             </Link>
           ) : useCallback ? (
