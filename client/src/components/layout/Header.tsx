@@ -1,6 +1,9 @@
-import salesforceLogo from "../../assets/Salesforce Logo.jpeg";
 import { CustomerSelector } from "../CustomerSelector";
+import { SearchBar } from "../SearchBar";
+import { ConfigDropdown } from "./ConfigDropdown";
 import { useTheme } from "../../contexts/ThemeContext";
+
+const isDev = import.meta.env.DEV;
 
 interface HeaderProps {
   onCustomerChange: (customerId: string | null) => void;
@@ -43,8 +46,19 @@ export const Header = ({ onCustomerChange }: HeaderProps) => {
                 {theme.labels.helpLabel}
               </h1>
             </div>
+            {isDev && (
+              <>
+                <div className="border-l border-gray-300 h-6 hidden sm:block" aria-hidden />
+                <ConfigDropdown />
+              </>
+            )}
           </div>
           <CustomerSelector onCustomerChange={onCustomerChange} />
+        </div>
+        <div className="w-full pb-4">
+          <div className="w-full max-w-2xl mx-auto min-w-0">
+            <SearchBar />
+          </div>
         </div>
       </div>
     </header>

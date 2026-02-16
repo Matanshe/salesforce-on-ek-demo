@@ -1,7 +1,9 @@
-import type { ReactNode } from "react";
-import type { Message } from "../../types/message";
+import { type ReactNode, useCallback } from "react";
+import type { Message, CitationHoverCardData } from "../../types/message";
 import { Card } from "@/components/ui/card";
 import agentforceLogo from "../../assets/agentforce_logo.webp";
+
+export type CitationBehaviorType = "fullPage" | "modal";
 
 interface ChatMessageProps {
   message: Message;
@@ -10,9 +12,22 @@ interface ChatMessageProps {
   isFetched?: boolean;
   /** Article title from get-hudmo (attributes.title), shown as "View Source: Title" when available */
   articleTitle?: string | null;
+  /** When "modal", citations open in modal; hover can show chunk preview */
+  citationBehavior?: CitationBehaviorType;
+  /** Chunk text preview for tooltip when citationBehavior === "modal" */
+  chunkPreviewForMessage?: string | null;
+  /** Hover card data (metadata, title, source, summary) when citationBehavior === "modal" */
+  hoverCardData?: CitationHoverCardData | null;
+  /** Called when citation hover starts (messageId) or ends (null); card is shown in slot above input */
+  onCitationHoverChange?: (messageId: string | null) => void;
+  onCitationHoverScheduleHide?: () => void;
+  /** Called when user hovers citation (modal mode) so parent can fetch chunk preview */
+  onHoverCitation?: (message: Message) => void;
 }
 
-const extractUrlParams = (url: string): { dccid: string | null; hudmo: string | null } => {
+const extractUrlParams = (
+  url: string
+): { dccid: string | null; hudmo: string | null; chunkObjectApiName: string | null; chunkRecordIds: string | null } => {
   try {
     const cleanUrl = url.replace(/[).,;!?]+$/, "");
     const urlObj = new URL(cleanUrl);
@@ -29,11 +44,12 @@ const extractUrlParams = (url: string): { dccid: string | null; hudmo: string | 
       hudmo = urlObj.searchParams.get("c__objectApiName");
     }
 
-    console.log("extractUrlParams: Extracted from URL:", { url: cleanUrl, dccid, hudmo, allParams: Object.fromEntries(urlObj.searchParams) });
-    return { dccid, hudmo };
-  } catch (error) {
-    console.error("extractUrlParams: Error parsing URL:", url, error);
-    return { dccid: null, hudmo: null };
+    const chunkObjectApiName = urlObj.searchParams.get("c__chunkObjectApiName");
+    const chunkRecordIds = urlObj.searchParams.get("c__chunkRecordIds");
+
+    return { dccid, hudmo, chunkObjectApiName, chunkRecordIds };
+  } catch {
+    return { dccid: null, hudmo: null, chunkObjectApiName: null, chunkRecordIds: null };
   }
 };
 
@@ -57,34 +73,7 @@ const handleUrlClick = (url: string, e: React.MouseEvent) => {
 const parseMessageContent = (content: string | null | undefined): ReactNode => {
   const raw = content != null && typeof content === "string" ? content : "";
   try {
-    let cleanedContent = raw;
-    const removedPieces: string[] = [];
-
-    // Remove the "For more details" section with official documentation link
-    const officialDocPattern = /For more details, you can check the official documentation\s*["']here["']\s*\([^)]*runtime_cdp__dataHarmonizedModelObjRefRecordHome[^)]*\)\.?\s*Let me know if you need further assistance!?/gi;
-    const matches1 = cleanedContent.match(officialDocPattern);
-    if (matches1) {
-      removedPieces.push(...matches1);
-      cleanedContent = cleanedContent.replace(officialDocPattern, "").trim();
-    }
-
-    const pattern2 = /For more details[^.!?]*official documentation[^.!?]*here[^.!?]*\([^)]*runtime_cdp__dataHarmonizedModelObjRefRecordHome[^)]*\)[^.!?]*\.?/gi;
-    const matches2 = cleanedContent.match(pattern2);
-    if (matches2) {
-      removedPieces.push(...matches2);
-      cleanedContent = cleanedContent.replace(pattern2, "").trim();
-    }
-
-    const pattern3 = /Let me know if you need further assistance!?/gi;
-    const matches3 = cleanedContent.match(pattern3);
-    if (matches3) {
-      removedPieces.push(...matches3);
-      cleanedContent = cleanedContent.replace(pattern3, "").trim();
-    }
-
-    if (removedPieces.length > 0) {
-      console.log('🗑️ Removed "For more details" sections:', removedPieces);
-    }
+    const cleanedContent = raw;
 
     // Use one regex for split (needs capture group); use a separate regex for "is URL?" check
     // so we don't reuse a /g regex in a loop (lastIndex would cause wrong results).
@@ -101,12 +90,13 @@ const parseMessageContent = (content: string | null | undefined): ReactNode => {
           <span key={index}>
             <a
               href={cleanUrl}
-              className="text-blue-500 hover:text-blue-700 underline break-words"
+              title={cleanUrl}
+              className="text-blue-500 hover:text-blue-700 underline break-words cursor-pointer"
               onClick={(e) => handleUrlClick(cleanUrl, e)}
               target="_blank"
               rel="noopener noreferrer"
             >
-              {cleanUrl}
+              link
             </a>
             {trailingPunct}
           </span>
@@ -125,7 +115,19 @@ const parseMessageContent = (content: string | null | undefined): ReactNode => {
 
 
 
-export const ChatMessage = ({ message, onClick, isFetching = false, isFetched: _isFetched = false, articleTitle }: ChatMessageProps) => {
+export const ChatMessage = ({
+  message,
+  onClick,
+  isFetching = false,
+  isFetched: _isFetched = false,
+  articleTitle,
+  citationBehavior = "fullPage",
+  chunkPreviewForMessage: _chunkPreviewForMessage,
+  hoverCardData: _hoverCardData,
+  onCitationHoverChange,
+  onCitationHoverScheduleHide,
+  onHoverCitation,
+}: ChatMessageProps) => {
   // Defensive: ensure message has required shape so rendering never throws
   const safeContent = message?.content != null && typeof message.content === "string" ? message.content : "";
   const safeMessage: Message = {
@@ -142,18 +144,22 @@ export const ChatMessage = ({ message, onClick, isFetching = false, isFetched: _
   const isUser = safeMessage.sender === "user";
   const isBot = safeMessage.sender === "bot";
 
-  const hasCitationData = (): boolean => {
-    if (safeMessage.dccid && safeMessage.hudmo) return true;
-    if (message?.citedReferences && Array.isArray(message.citedReferences) && message.citedReferences.length > 0) {
-      const firstCitation = message.citedReferences[0];
-      if (firstCitation?.url) {
-        const { dccid, hudmo } = extractUrlParams(firstCitation.url);
-        if (dccid && hudmo) return true;
-      }
-    }
+  const getCitationUrl = (): string | null => {
     const urls = extractUrlsFromContent(safeMessage.content);
-    if (urls.length > 0) {
-      const { dccid, hudmo } = extractUrlParams(urls[0]);
+    if (urls.length > 0) return urls[0];
+    const refs = safeMessage.citedReferences;
+    if (Array.isArray(refs) && refs.length > 0 && refs[0]?.url) {
+      const u = refs[0].url;
+      return typeof u === "string" ? u : null;
+    }
+    return null;
+  };
+
+  const hasCitationData = () => {
+    if (safeMessage.dccid && safeMessage.hudmo) return true;
+    const url = getCitationUrl();
+    if (url) {
+      const { dccid, hudmo } = extractUrlParams(url);
       return !!(dccid && hudmo);
     }
     return false;
@@ -161,24 +167,29 @@ export const ChatMessage = ({ message, onClick, isFetching = false, isFetched: _
 
   const canViewArticle = hasCitationData();
 
+  const showCard = useCallback(() => {
+    onCitationHoverChange?.(safeMessage.id);
+  }, [safeMessage.id, onCitationHoverChange]);
+
+  const scheduleHideCard = useCallback(() => {
+    onCitationHoverScheduleHide?.();
+  }, [onCitationHoverScheduleHide]);
+
   const handleMessageClick = () => {
     if (!canViewArticle) return;
-    if (message?.citedReferences && Array.isArray(message.citedReferences) && message.citedReferences.length > 0) {
-      const firstCitation = message.citedReferences[0];
-      if (firstCitation?.url) {
-        const { dccid, hudmo } = extractUrlParams(firstCitation.url);
-        if (dccid && hudmo) {
-          onClick({ ...safeMessage, dccid, hudmo });
-          return;
-        }
-      }
-    }
-    const urls = extractUrlsFromContent(safeMessage.content);
+    const url = getCitationUrl();
     let updatedMessage = safeMessage;
-    if (urls.length > 0) {
-      const { dccid, hudmo } = extractUrlParams(urls[0]);
+    if (url) {
+      const { dccid, hudmo, chunkObjectApiName, chunkRecordIds } = extractUrlParams(url);
       if (dccid && hudmo) {
-        updatedMessage = { ...safeMessage, dccid, hudmo };
+        updatedMessage = {
+          ...safeMessage,
+          dccid,
+          hudmo,
+          ...(chunkObjectApiName && chunkRecordIds
+            ? { chunkObjectApiName, chunkRecordIds }
+            : {}),
+        };
         onClick(updatedMessage);
         return;
       }
@@ -198,7 +209,6 @@ export const ChatMessage = ({ message, onClick, isFetching = false, isFetched: _
         </div>
       )}
       <Card
-        onClick={handleMessageClick}
         className={`
           max-w-[85%] sm:max-w-[80%] p-0 transition-all text-left
           ${
@@ -206,7 +216,7 @@ export const ChatMessage = ({ message, onClick, isFetching = false, isFetched: _
               ? "bg-[var(--theme-primary)] text-white hover:bg-[var(--theme-primary-hover)] border-[var(--theme-primary)]"
               : "bg-white text-gray-900 hover:bg-gray-50 hover:shadow-md border-gray-200"
           }
-          ${isBot && canViewArticle ? "cursor-pointer" : ""}
+          ${isBot ? "cursor-default" : ""}
         `}
       >
         <div className="px-3 sm:px-4 py-2">
@@ -263,25 +273,29 @@ export const ChatMessage = ({ message, onClick, isFetching = false, isFetched: _
               : new Date(safeMessage.timestamp as string | number).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
           </span>
           {isBot && canViewArticle && (
-            <div className="mt-2 pt-2 border-t border-gray-300 border-opacity-30">
+            <div
+              className="relative mt-2 pt-2 border-t border-gray-300 border-opacity-30"
+              onMouseEnter={() => {
+                if (citationBehavior === "modal") {
+                  showCard();
+                  onHoverCitation?.(safeMessage);
+                }
+              }}
+              onMouseLeave={scheduleHideCard}
+            >
               <div
-                className="flex items-center text-[var(--theme-primary)] hover:text-[var(--theme-primary-hover)] cursor-pointer hover:underline"
-                onClick={handleMessageClick}
                 role="button"
                 tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    handleMessageClick();
-                  }
-                }}
+                onClick={handleMessageClick}
+                onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), handleMessageClick())}
+                className="cursor-pointer flex items-center text-[var(--theme-primary)] hover:text-[var(--theme-primary-hover)] hover:underline"
               >
                 <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                 </svg>
                 <span className="text-[10px] sm:text-xs font-semibold">
-                  {isFetching ? "Preparing article..." : articleTitle ? `View Source: ${articleTitle}` : "View Article"}
+                  {isFetching ? "Preparing article..." : articleTitle ? `View Source: ${articleTitle}` : "View Source"}
                 </span>
               </div>
             </div>

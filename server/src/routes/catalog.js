@@ -6,6 +6,7 @@ import getHudmo from "../controllers/get-hudmo.js";
 import queryDmoRelationship from "../controllers/query-dmo-relationship.js";
 import getCustomers from "../controllers/get-customers.js";
 import getCustomer from "../controllers/get-customer.js";
+import getChunks from "../controllers/get-chunks.js";
 import { validateSignature } from "../middleware/validateSignature.js";
 
 const catalogRoutes = Router();
@@ -17,6 +18,7 @@ catalogRoutes.post("/api/v1/send-message", validateSignature, sendMessage);
 catalogRoutes.delete("/api/v1/delete-session", validateSignature, deleteSession);
 catalogRoutes.post("/api/v1/get-hudmo", validateSignature, getHudmo);
 catalogRoutes.get("/api/v1/query-dmo-relationship", validateSignature, queryDmoRelationship);
+catalogRoutes.post("/api/v1/get-chunks", validateSignature, getChunks);
 // fast-search is registered on app in index.js so it always matches
 
 export default catalogRoutes;

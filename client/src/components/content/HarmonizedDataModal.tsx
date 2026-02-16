@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
@@ -24,6 +25,21 @@ interface HarmonizedDataModalProps {
 }
 
 export const HarmonizedDataModal = ({ isOpen, onClose, data }: HarmonizedDataModalProps) => {
+  const navigate = useNavigate();
+
+  const handleContentClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const anchor = e.target instanceof HTMLElement ? e.target.closest("a[data-dccid]") : null;
+    if (anchor instanceof HTMLAnchorElement) {
+      const dccid = anchor.getAttribute("data-dccid");
+      if (dccid) {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+        navigate(`/article/${encodeURIComponent(dccid)}`);
+      }
+    }
+  };
+
   if (!data) return null;
 
   return (
@@ -72,7 +88,9 @@ export const HarmonizedDataModal = ({ isOpen, onClose, data }: HarmonizedDataMod
           <div className="px-6 py-6 min-h-full">
             {data.attributes?.content ? (
               <div
-                className="prose prose-lg max-w-none text-left prose-headings:font-bold prose-headings:text-gray-900 prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl prose-h4:text-lg prose-p:text-gray-700 prose-p:leading-relaxed prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline prose-strong:text-gray-900 prose-strong:font-semibold prose-ul:my-4 prose-ul:list-disc prose-ul:pl-6 prose-ol:my-4 prose-ol:list-decimal prose-ol:pl-6 prose-li:text-gray-700 prose-li:my-2 prose-li:marker:text-gray-500 [&_ul]:my-4 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:my-4 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:text-gray-700 [&_li]:my-2 [&_li]:ml-0 pb-6"
+                role="article"
+                onClick={handleContentClick}
+                className="content-prose pb-6"
                 dangerouslySetInnerHTML={{ __html: data.attributes.content }}
               />
             ) : (

@@ -15,6 +15,14 @@ export const WelcomeContent = ({
   isLoading,
   fetchingHudmoFor = new Set(),
   prefetchedHudmoData = new Map(),
+  citationBehavior,
+  chunkPreviewByMessageId,
+  hoverCardDataByMessageId,
+  activeHoverCitationMessageId,
+  onCitationHoverChange,
+  onCitationHoverScheduleHide,
+  onCitationHoverCancelHide,
+  onHoverCitation,
 }: WelcomeContentProps) => {
   const theme = useTheme();
   return (
@@ -53,6 +61,14 @@ export const WelcomeContent = ({
               embedded={true}
               fetchingHudmoFor={fetchingHudmoFor}
               prefetchedHudmoData={prefetchedHudmoData}
+              citationBehavior={citationBehavior}
+              chunkPreviewByMessageId={chunkPreviewByMessageId}
+              hoverCardDataByMessageId={hoverCardDataByMessageId}
+              activeHoverCitationMessageId={activeHoverCitationMessageId}
+              onCitationHoverChange={onCitationHoverChange}
+              onCitationHoverScheduleHide={onCitationHoverScheduleHide}
+              onCitationHoverCancelHide={onCitationHoverCancelHide}
+              onHoverCitation={onHoverCitation}
             />
           </div>
         </div>

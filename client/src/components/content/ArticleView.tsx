@@ -1,6 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import type { ChunkRow } from "@/types/message";
+import { highlightChunksInElement } from "@/utils/chunkHighlight";
 import { fetchRelatedDmoData, type RelatedDmoData } from "@/api/fetchRelatedDmoData";
 
 export interface ParsedMetaTag {
@@ -139,31 +142,54 @@ function buildDisplayEntries(
   return entries;
 }
 
+interface QaItem {
+  question?: string;
+  answer?: string;
+}
+
 interface ArticleViewProps {
   data: {
     attributes?: {
       content?: string;
       title?: string;
       metadata?: Record<string, unknown>;
+      summary?: string;
+      qa?: QaItem[];
     };
   } | null;
+  /** Optional chunk rows for highlighting; when present, matching text is highlighted and scrolled into view */
+  chunkRows?: ChunkRow[];
   onClose: () => void;
   customerId?: string | null;
 }
 
-export const ArticleView = ({ data, onClose, customerId }: ArticleViewProps) => {
+export const ArticleView = ({ data, chunkRows = [], onClose, customerId }: ArticleViewProps) => {
+  const navigate = useNavigate();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const contentProseRef = useRef<HTMLDivElement>(null);
+  const [qaExpanded, setQaExpanded] = useState(false);
   const [relatedDmoData, setRelatedDmoData] = useState<RelatedDmoData | null>(null);
 
-  // Debug logging
-  console.log("🔍 ArticleView render:", {
-    hasData: !!data,
-    hasAttributes: !!data?.attributes,
-    hasContent: !!data?.attributes?.content,
-    hasTitle: !!data?.attributes?.title,
-    contentType: typeof data?.attributes?.content,
-    contentLength: data?.attributes?.content?.length || 0,
-  });
+  if (data) {
+    console.log("[chunk] ArticleView render: title=" + (data.attributes?.title ?? "")?.slice(0, 40) + " chunkRows.length=" + (chunkRows?.length ?? 0));
+  }
+
+  const summary = data?.attributes?.summary;
+  const qa = data?.attributes?.qa;
+  const hasSummary = typeof summary === "string" && summary.trim() !== "";
+  const hasQa = Array.isArray(qa) && qa.length > 0;
+
+  const handleContentClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const anchor = e.target instanceof HTMLElement ? e.target.closest("a[data-dccid]") : null;
+    if (anchor instanceof HTMLAnchorElement) {
+      const dccid = anchor.getAttribute("data-dccid");
+      if (dccid) {
+        e.preventDefault();
+        e.stopPropagation();
+        navigate(`/article/${encodeURIComponent(dccid)}`);
+      }
+    }
+  };
 
   // Meta tags parsed from the get-hudmo response HTML (data.attributes.content)
   const metaTags = useMemo(() => {
@@ -215,19 +241,58 @@ export const ArticleView = ({ data, onClose, customerId }: ArticleViewProps) => 
     if (metadataEntries.length > 0) console.log("Metadata (merged):", metadataEntries);
   }, [data?.attributes?.metadata, metaTags, metadataEntries]);
 
+  // Set article content in DOM via ref so highlight spans persist (React won't overwrite innerHTML on re-render)
+  useLayoutEffect(() => {
+    const content = data?.attributes?.content;
+    const container = contentProseRef.current;
+    if (container && typeof content === "string") {
+      container.innerHTML = content;
+    }
+  }, [data?.attributes?.content]);
+
   // Scroll to top when content changes
   useEffect(() => {
     if (data && scrollContainerRef.current) {
       const scrollArea = scrollContainerRef.current.closest('[data-slot="scroll-area"]');
       const viewport = scrollArea?.querySelector('[data-slot="scroll-area-viewport"]') as HTMLElement;
       if (viewport) {
-        viewport.scrollTo({ top: 0, behavior: 'smooth' });
+        viewport.scrollTo({ top: 0, behavior: "smooth" });
       }
     }
   }, [data?.attributes?.content, data?.attributes?.title]);
 
+  // Chunk highlighting: after content is in DOM, find chunk text, wrap in highlights, scroll to first
+  useEffect(() => {
+    const hasContent = !!(data?.attributes?.content);
+    const hasRef = !!contentProseRef.current;
+    const rowCount = chunkRows?.length ?? 0;
+    if (!hasContent || !hasRef || rowCount === 0) {
+      return;
+    }
+    const chunkTexts = chunkRows
+      .map((r) => (typeof r.Chunk__c === "string" ? r.Chunk__c : typeof (r as Record<string, unknown>)?.chunk__c === "string" ? (r as Record<string, unknown>).chunk__c as string : ""))
+      .filter((t) => t.trim().length > 0);
+    if (chunkTexts.length === 0) return;
+    const container = contentProseRef.current;
+    const runHighlight = () => {
+      if (!container) return;
+      const firstHighlight = highlightChunksInElement(container, chunkTexts);
+      if (firstHighlight) {
+        const scrollArea = scrollContainerRef.current?.closest('[data-slot="scroll-area"]');
+        const viewport = scrollArea?.querySelector('[data-slot="scroll-area-viewport"]') as HTMLElement | undefined;
+        if (viewport) {
+          firstHighlight.scrollIntoView({ behavior: "smooth", block: "start" });
+        } else {
+          firstHighlight.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }
+    };
+    requestAnimationFrame(() => {
+      requestAnimationFrame(runHighlight);
+    });
+  }, [data?.attributes?.content, chunkRows]);
+
   if (!data) {
-    console.warn("⚠️ ArticleView: No data provided, returning null");
     return (
       <div className="flex items-center justify-center h-full p-8 bg-white">
         <div className="text-center">
@@ -238,7 +303,6 @@ export const ArticleView = ({ data, onClose, customerId }: ArticleViewProps) => 
   }
 
   if (!data.attributes) {
-    console.warn("⚠️ ArticleView: No attributes in data, data structure:", data);
     return (
       <div className="flex items-center justify-center h-full p-8 bg-white">
         <div className="text-center">
@@ -258,7 +322,7 @@ export const ArticleView = ({ data, onClose, customerId }: ArticleViewProps) => 
             {data.attributes?.title || "Article"}
           </h1>
         </div>
-        <Button onClick={onClose} variant="ghost" size="icon" className="shrink-0 h-8 w-8 sm:h-10 sm:w-10">
+        <Button onClick={onClose} variant="ghost" size="icon" className="shrink-0 h-8 w-8 sm:h-10 sm:w-10 hidden">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             className="h-4 w-4 sm:h-5 sm:w-5"
@@ -274,6 +338,16 @@ export const ArticleView = ({ data, onClose, customerId }: ArticleViewProps) => 
       {/* Content */}
       <ScrollArea className="flex-1 min-h-0">
         <div ref={scrollContainerRef} className="px-3 sm:px-4 md:px-6 py-4 sm:py-6">
+          {/* AI-generated document summary (above description), Salesforce blue highlight */}
+          {hasSummary && (
+            <div className="mb-4 p-3 sm:p-4 rounded-lg bg-[#0176D3]/10 border border-[#0176D3]/30">
+              <h2 className="text-sm font-semibold text-[#0176D3] mb-2">AI-generated document summary</h2>
+              <p className="text-sm text-[#014486] leading-relaxed whitespace-pre-wrap break-words">
+                {summary}
+              </p>
+            </div>
+          )}
+
           {hasMeta && (
             <div className="mb-4 space-y-4">
               {/* Detail fields: small chips in one row, blue styling */}
@@ -330,10 +404,61 @@ export const ArticleView = ({ data, onClose, customerId }: ArticleViewProps) => 
               )}
             </div>
           )}
+
+          {/* Q&A expand/collapse */}
+          {hasQa && (
+            <div className="mb-4 rounded-lg border border-gray-200 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setQaExpanded((prev) => !prev)}
+                className="w-full flex items-center justify-between gap-2 px-3 py-3 sm:px-4 sm:py-3 bg-gray-50 hover:bg-gray-100 text-left transition-colors"
+                aria-expanded={qaExpanded}
+              >
+                <span className="text-sm font-semibold text-gray-700">Q&A</span>
+                <svg
+                  className={`w-4 h-4 text-gray-500 shrink-0 transition-transform ${qaExpanded ? "rotate-180" : ""}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {qaExpanded && (
+                <div className="border-t border-gray-200 bg-white">
+                  <div className="p-3 sm:p-4 space-y-4">
+                    {qa!.map((qaItem, index) => (
+                      <div key={index} className="rounded-lg p-3 bg-gray-50 border border-gray-200">
+                        {qaItem?.question != null && String(qaItem.question).trim() !== "" && (
+                          <div className="mb-2">
+                            <p className="text-xs font-semibold text-gray-700 mb-1">Q:</p>
+                            <p className="text-sm text-gray-800 wrap-break-word break-words whitespace-pre-wrap">
+                              {String(qaItem.question)}
+                            </p>
+                          </div>
+                        )}
+                        {qaItem?.answer != null && String(qaItem.answer).trim() !== "" && (
+                          <div>
+                            <p className="text-xs font-semibold text-gray-700 mb-1">A:</p>
+                            <p className="text-sm text-gray-600 wrap-break-word break-words whitespace-pre-wrap">
+                              {String(qaItem.answer)}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {data.attributes?.content ? (
             <div
-              className="prose prose-sm sm:prose-base md:prose-lg max-w-none text-left prose-headings:font-bold prose-headings:text-gray-900 prose-h1:text-xl sm:prose-h1:text-2xl md:prose-h1:text-3xl prose-h2:text-lg sm:prose-h2:text-xl md:prose-h2:text-2xl prose-h3:text-base sm:prose-h3:text-lg md:prose-h3:text-xl prose-h4:text-sm sm:prose-h4:text-base md:prose-h4:text-lg prose-p:text-gray-700 prose-p:leading-relaxed prose-p:text-sm sm:prose-p:text-base prose-a:text-[var(--theme-primary)] prose-a:no-underline hover:prose-a:underline prose-strong:text-gray-900 prose-strong:font-semibold prose-ul:my-3 sm:prose-ul:my-4 prose-ul:list-disc prose-ul:pl-4 sm:prose-ul:pl-6 prose-ol:my-3 sm:prose-ol:my-4 prose-ol:list-decimal prose-ol:pl-4 sm:prose-ol:pl-6 prose-li:text-gray-700 prose-li:my-1 sm:prose-li:my-2 prose-li:marker:text-gray-500 prose-li:text-sm sm:prose-li:text-base [&_ul]:my-3 sm:[&_ul]:my-4 [&_ul]:list-disc [&_ul]:pl-4 sm:[&_ul]:pl-6 [&_ol]:my-3 sm:[&_ol]:my-4 [&_ol]:list-decimal [&_ol]:pl-4 sm:[&_ol]:pl-6 [&_li]:text-gray-700 [&_li]:my-1 sm:[&_li]:my-2 [&_li]:ml-0 [&_li]:text-sm sm:[&_li]:text-base pb-4 sm:pb-6"
-              dangerouslySetInnerHTML={{ __html: data.attributes.content }}
+              ref={contentProseRef}
+              role="article"
+              onClick={handleContentClick}
+              className="content-prose pb-6 sm:pb-8 chunk-highlight-container prose prose-sm sm:prose-base md:prose-lg max-w-none text-left prose-headings:font-bold prose-headings:text-gray-900 prose-a:text-[var(--theme-primary)] prose-a:no-underline hover:prose-a:underline"
             />
           ) : (
             <div className="bg-gray-900 rounded-lg p-4 overflow-auto border border-gray-700">

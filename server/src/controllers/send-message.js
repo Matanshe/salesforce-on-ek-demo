@@ -63,25 +63,19 @@ const sendMessage = async (req, res) => {
     // #endregion
 
     console.log(`${getCurrentTimestamp()} ✅ - sendMessage - Message sent!`);
-    
-    // Log full message structure to help debug
-    console.log(`${getCurrentTimestamp()} 📋 - sendMessage - Full message structure:`, JSON.stringify(data.messages?.[0], null, 2));
-    
-    // Log citedReferences to help debug URL redaction
-    if (data.messages?.[0]?.citedReferences) {
-      console.log(`${getCurrentTimestamp()} 📚 - sendMessage - Cited References (${data.messages[0].citedReferences.length}):`, JSON.stringify(data.messages[0].citedReferences, null, 2));
-    } else {
-      console.log(`${getCurrentTimestamp()} ⚠️ - sendMessage - No citedReferences found in response`);
-    }
-    
-    // Check if message contains URL_Redacted
-    if (data.messages?.[0]?.message?.includes("URL_Redacted")) {
-      console.log(`${getCurrentTimestamp()} ⚠️ - sendMessage - Message contains URL_Redacted`);
-      console.log(`${getCurrentTimestamp()} 📝 - sendMessage - Message text:`, data.messages[0].message);
-      if (data.messages[0].citedReferences && data.messages[0].citedReferences.length > 0) {
-        console.log(`${getCurrentTimestamp()} ✅ - sendMessage - But citedReferences has ${data.messages[0].citedReferences.length} citation(s) with actual URLs`);
-      } else {
-        console.log(`${getCurrentTimestamp()} ❌ - sendMessage - And no citedReferences available - URLs are fully redacted`);
+    console.log(`${getCurrentTimestamp()} 📤 - sendMessage - Agent response:`, JSON.stringify(data.messages, null, 2));
+
+    // Inspect first message shape for chunks table, chunk record id, citation metadata
+    const first = data.messages?.[0];
+    if (first) {
+      console.log(`${getCurrentTimestamp()} 🔍 - sendMessage - [Shape] Top-level keys:`, Object.keys(first));
+      if (Array.isArray(first.citedReferences) && first.citedReferences.length > 0) {
+        console.log(`${getCurrentTimestamp()} 🔍 - sendMessage - [Shape] citedReferences count:`, first.citedReferences.length);
+        console.log(`${getCurrentTimestamp()} 🔍 - sendMessage - [Shape] First ref keys:`, Object.keys(first.citedReferences[0]));
+        console.log(`${getCurrentTimestamp()} 🔍 - sendMessage - [Shape] First citedReference:`, JSON.stringify(first.citedReferences[0], null, 2));
+      }
+      if (first.result != null) {
+        console.log(`${getCurrentTimestamp()} 🔍 - sendMessage - [Shape] result (first 500 chars):`, JSON.stringify(first.result).slice(0, 500));
       }
     }
 

@@ -1,0 +1,6 @@
+{
+  "_comment": "Map chunk record Id -> { Chunk__c: string } for demo. Replace with real chunk text that appears in the harmonized article content for highlighting to work.",
+  "e4a08213-fc12-4fc0-9fad-bac1edddf85e": {
+    "Chunk__c": ""
+  }
+}

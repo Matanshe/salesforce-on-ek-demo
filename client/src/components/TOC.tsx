@@ -16,9 +16,12 @@ interface TableOfContentsProps {
   onContentClick?: (contentId: string) => void;
   currentContentId?: string | null;
   isVisible?: boolean;
+  /** When true, TOC fits parent height (e.g. inside a modal) instead of 100vh */
+  embedded?: boolean;
 }
 
-const TableOfContents = ({ tocUrl: tocUrlProp, onContentClick: _onContentClick, currentContentId, isVisible = true }: TableOfContentsProps) => {
+
+const TableOfContents = ({ tocUrl: tocUrlProp, onContentClick, currentContentId, isVisible = true, embedded = false }: TableOfContentsProps) => {
   const [tree, setTree] = useState<NavNode | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -109,17 +112,28 @@ const TableOfContents = ({ tocUrl: tocUrlProp, onContentClick: _onContentClick, 
     }, [searchQuery, hasChildren]);
 
     const handleRowClick = (e: React.MouseEvent) => {
-      if (hasContentId && _onContentClick) {
+      if (hasContentId && onContentClick) {
         e.preventDefault();
         e.stopPropagation();
-        _onContentClick(item.contentId!);
+        onContentClick(item.contentId!);
       } else if (hasChildren) {
         e.preventDefault();
         setIsOpen(!isOpen);
       }
     };
 
+    const handleContentClick = (e: React.MouseEvent) => {
+      if (hasContentId && item.contentId) {
+        if (onContentClick) {
+          e.preventDefault();
+          e.stopPropagation();
+          onContentClick(item.contentId);
+        }
+      }
+    };
+
     const titleHref = hasContentId ? `/article/${encodeURIComponent(item.contentId!)}` : undefined;
+    const useCallback = !!onContentClick && hasContentId;
 
     return (
       <li style={{ listStyleType: 'none', margin: 0 }}>
@@ -162,7 +176,7 @@ const TableOfContents = ({ tocUrl: tocUrlProp, onContentClick: _onContentClick, 
             </span>
           )}
 
-          {titleHref ? (
+          {titleHref && !useCallback ? (
             <Link
               to={titleHref}
               style={{ 
@@ -180,6 +194,29 @@ const TableOfContents = ({ tocUrl: tocUrlProp, onContentClick: _onContentClick, 
                 <span style={{ marginLeft: '8px', fontSize: '10px', color: 'var(--theme-primary)', fontWeight: 'bold' }}>●</span>
               )}
             </Link>
+          ) : useCallback ? (
+            <button
+              type="button"
+              onClick={handleContentClick}
+              style={{ 
+                textDecoration: 'none', 
+                color: isCurrentPage ? '#0176D3' : '#0070d2', 
+                fontSize: '13px',
+                fontWeight: (hasChildren || isCurrentPage) ? 'bold' : 'normal',
+                fontFamily: 'Salesforce Sans, Arial, sans-serif',
+                cursor: 'pointer',
+                flex: 1,
+                textAlign: 'left',
+                background: 'none',
+                border: 'none',
+                padding: 0,
+              }}
+            >
+              {item.title}
+              {isCurrentPage && (
+                <span style={{ marginLeft: '8px', fontSize: '10px', color: '#0176D3', fontWeight: 'bold' }}>●</span>
+              )}
+            </button>
           ) : (
             <span
               style={{ 
@@ -217,16 +254,14 @@ const TableOfContents = ({ tocUrl: tocUrlProp, onContentClick: _onContentClick, 
   return (
     <div style={{ 
       backgroundColor: '#f3f2f2', 
-      height: '100vh',
-      maxHeight: '100vh',
+      height: embedded ? '100%' : '100vh',
+      maxHeight: embedded ? '100%' : '100vh',
       borderRight: '1px solid #d8dde6',
       width: '100%',
-      maxWidth: '400px',
+      maxWidth: embedded ? '260px' : '400px',
       display: 'flex',
-
       flexDirection: 'column',
-      overflow: 'hidden'
-
+      overflow: 'hidden',
     }}>
       <h2 style={{ 
         fontSize: '14px', 
