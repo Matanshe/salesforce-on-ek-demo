@@ -9,6 +9,7 @@ import {
   type FastSearchResult,
 } from "../api/fastSearch";
 import { useTheme } from "../contexts/ThemeContext";
+import { useCustomerRoute } from "../contexts/CustomerRouteContext";
 
 const DEBOUNCE_MS = 350;
 const MIN_QUERY_LENGTH = 2;
@@ -16,6 +17,7 @@ const MIN_QUERY_LENGTH = 2;
 export function SearchBar() {
   const navigate = useNavigate();
   const theme = useTheme();
+  const { basePath } = useCustomerRoute();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<FastSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -72,7 +74,7 @@ export function SearchBar() {
   const onResultClick = (result: FastSearchResult) => {
     const contentId = getResultContentId(result);
     if (contentId) {
-      navigate(`/article/${encodeURIComponent(contentId)}`);
+      navigate(`${basePath}/article/${encodeURIComponent(contentId)}`);
       setOpen(false);
       setQuery("");
       setResults([]);
@@ -81,7 +83,7 @@ export function SearchBar() {
 
   const goToSearchPage = () => {
     if (query.trim().length < MIN_QUERY_LENGTH) return;
-    navigate(`/search?q=${encodeURIComponent(query.trim())}`);
+    navigate(`${basePath}/search?q=${encodeURIComponent(query.trim())}`);
     setOpen(false);
   };
 

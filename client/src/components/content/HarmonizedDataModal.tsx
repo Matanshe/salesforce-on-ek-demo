@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useCustomerRoute } from "@/contexts/CustomerRouteContext";
 
 interface HarmonizedDataModalProps {
   isOpen: boolean;
@@ -26,6 +27,7 @@ interface HarmonizedDataModalProps {
 
 export const HarmonizedDataModal = ({ isOpen, onClose, data }: HarmonizedDataModalProps) => {
   const navigate = useNavigate();
+  const { basePath } = useCustomerRoute();
 
   const handleContentClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const anchor = e.target instanceof HTMLElement ? e.target.closest("a[data-dccid]") : null;
@@ -35,7 +37,7 @@ export const HarmonizedDataModal = ({ isOpen, onClose, data }: HarmonizedDataMod
         e.preventDefault();
         e.stopPropagation();
         onClose();
-        navigate(`/article/${encodeURIComponent(dccid)}`);
+        navigate(`${basePath}/article/${encodeURIComponent(dccid)}`);
       }
     }
   };

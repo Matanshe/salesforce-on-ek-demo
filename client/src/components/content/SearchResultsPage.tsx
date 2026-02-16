@@ -5,6 +5,7 @@ import { fetchHarmonizationData } from "../../api/fetchHarmonizationData";
 import { getDescriptionFromHtmlContent } from "../../utils/metaFromHtml";
 import { Button } from "../ui/button";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useCustomerRoute } from "../../contexts/CustomerRouteContext";
 
 const CONCURRENT_HUDMO = 3;
 
@@ -12,6 +13,7 @@ export function SearchResultsPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const theme = useTheme();
+  const { basePath } = useCustomerRoute();
   const q = searchParams.get("q") ?? "";
 
   const [results, setResults] = useState<FastSearchResult[]>([]);
@@ -75,7 +77,7 @@ export function SearchResultsPage() {
   const onResultClick = (result: FastSearchResult) => {
     const contentId = getResultContentId(result);
     if (contentId) {
-      navigate(`/article/${encodeURIComponent(contentId)}`);
+      navigate(`${basePath}/article/${encodeURIComponent(contentId)}`);
     }
   };
 
@@ -89,7 +91,7 @@ export function SearchResultsPage() {
             variant="ghost"
             size="sm"
             className="mb-4 -ml-1.5 text-[var(--theme-primary)] hover:bg-[var(--theme-primary)]/10 hover:text-[var(--theme-primary-hover)]"
-            onClick={() => navigate("/")}
+            onClick={() => navigate(basePath)}
           >
             {theme.labels.backToHelp}
           </Button>

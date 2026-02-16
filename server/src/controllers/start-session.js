@@ -12,7 +12,15 @@ const startSession = async (req, res) => {
     console.log(`${getCurrentTimestamp()} 🔑 - startSession - Using session ID: ${sessionId}, Customer ID: ${customerId || "default"}`);
 
     const { accessToken, instanceUrl } = await sfAuthToken(customerId);
-    
+
+    if (!accessToken || !instanceUrl) {
+      console.error(`${getCurrentTimestamp()} ❌ - startSession - Missing Salesforce token or instance URL. Check clientId/clientSecret for customer "${customerId || "default"}" in server config or .env.`);
+      res.status(503).json({
+        message: "Salesforce authentication failed or is not configured. Check server config (customers.json or .env) for CLIENT_ID, CLIENT_SECRET, and SALESFORCE_LOGIN_URL.",
+      });
+      return;
+    }
+
     // Get agent ID from customer config or fallback to env var
     let agentId;
     if (customerId) {

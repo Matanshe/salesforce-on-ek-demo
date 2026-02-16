@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useCustomerRoute } from "@/contexts/CustomerRouteContext";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { ChunkRow } from "@/types/message";
@@ -165,6 +166,7 @@ interface ArticleViewProps {
 
 export const ArticleView = ({ data, chunkRows = [], onClose, customerId }: ArticleViewProps) => {
   const navigate = useNavigate();
+  const { basePath } = useCustomerRoute();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const contentProseRef = useRef<HTMLDivElement>(null);
   const [qaExpanded, setQaExpanded] = useState(false);
@@ -186,7 +188,7 @@ export const ArticleView = ({ data, chunkRows = [], onClose, customerId }: Artic
       if (dccid) {
         e.preventDefault();
         e.stopPropagation();
-        navigate(`/article/${encodeURIComponent(dccid)}`);
+        navigate(`${basePath}/article/${encodeURIComponent(dccid)}`);
       }
     }
   };

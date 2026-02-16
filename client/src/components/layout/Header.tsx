@@ -1,15 +1,21 @@
-import { CustomerSelector } from "../CustomerSelector";
+import { Link } from "react-router-dom";
+import salesforceLogo from "../../assets/Salesforce Logo.jpeg";
 import { SearchBar } from "../SearchBar";
 import { ConfigDropdown } from "./ConfigDropdown";
 import { useTheme } from "../../contexts/ThemeContext";
 
 const isDev = import.meta.env.DEV;
 
-interface HeaderProps {
-  onCustomerChange: (customerId: string | null) => void;
+interface CustomerItem {
+  id: string;
+  name: string;
 }
 
-export const Header = ({ onCustomerChange }: HeaderProps) => {
+interface HeaderProps {
+  customers: CustomerItem[];
+}
+
+export const Header = ({ customers }: HeaderProps) => {
   const theme = useTheme();
   const logoSrc = theme.logoUrl || (theme.labels.siteName === "Salesforce" ? salesforceLogo : undefined);
   return (
@@ -53,13 +59,25 @@ export const Header = ({ onCustomerChange }: HeaderProps) => {
               </>
             )}
           </div>
-          <CustomerSelector onCustomerChange={onCustomerChange} />
+          <nav className="flex items-center gap-2" aria-label="Customer">
+            {customers.map((c) => (
+              <Link
+                key={c.id}
+                to={`/${encodeURIComponent(c.id)}`}
+                className="text-sm font-medium text-gray-600 hover:text-[var(--theme-primary)]"
+              >
+                {c.name}
+              </Link>
+            ))}
+          </nav>
         </div>
-        <div className="w-full pb-4">
-          <div className="w-full max-w-2xl mx-auto min-w-0">
-            <SearchBar />
+        {customers.length > 0 && (
+          <div className="w-full pb-4">
+            <div className="w-full max-w-2xl mx-auto min-w-0">
+              <SearchBar />
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </header>
   );

@@ -1,5 +1,5 @@
 import { type ErrorInfo, type ReactNode, Component, useState, useCallback, useEffect, useRef } from "react";
-import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams, useParams } from "react-router-dom";
 import type { Message, ChunkRow, CitationHoverCardData } from "./types/message";
 import { Header } from "./components/layout/Header";
 import { Footer } from "./components/layout/Footer";
@@ -21,6 +21,7 @@ import { CitationModal } from "./components/content/CitationModal";
 import { generateSignature } from "./utils/requestSigner";
 import TOC from "./components/TOC";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { CustomerRouteProvider } from "./contexts/CustomerRouteContext";
 import { citationBehavior, embedLayout } from "./config/appConfig";
 import "./App.css";
 
@@ -96,7 +97,7 @@ class AppErrorBoundary extends Component<
       return (
         <>
           <div className="min-h-screen flex flex-col bg-gray-50">
-            <Header onCustomerChange={() => {}} />
+            <Header customers={[]} />
             <main className="flex-1 flex items-center justify-center px-4 py-8">
               <p className="text-gray-500 text-sm text-center max-w-md">
                 Something went wrong. Use the button below to try again or refresh the page.
@@ -220,13 +221,24 @@ function buildArticleQuery(params: {
   return qs ? `?${qs}` : "";
 }
 
-/** Path pattern for article URLs: /article/:contentId */
-const ARTICLE_PATH_REGEX = /^\/article\/([^/?#]+)/;
+/** Path pattern for article URLs: /:customerId/article/:contentId */
+const ARTICLE_PATH_REGEX = /^\/[^/]+\/article\/([^/?#]+)/;
+
+interface CustomerItem {
+  id: string;
+  name: string;
+}
 
 function App() {
+  const { customerId: customerIdParam } = useParams<{ customerId: string }>();
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+
+  const [customers, setCustomers] = useState<CustomerItem[]>([]);
+  const [customerNotFound, setCustomerNotFound] = useState(false);
+  const selectedCustomerId = customerIdParam && !customerNotFound ? customerIdParam : null;
+  const basePath = selectedCustomerId ? `/${encodeURIComponent(selectedCustomerId)}` : "";
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [isChatOpen, setIsChatOpen] = useState(() => !embedLayout);
@@ -239,7 +251,6 @@ function App() {
   const [currentContentId, setCurrentContentId] = useState<string | null>(null);
   const [prefetchedHudmoData, setPrefetchedHudmoData] = useState<Map<string, HudmoData>>(new Map());
   const [fetchingHudmoFor, setFetchingHudmoFor] = useState<Set<string>>(new Set());
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [objectApiName, setObjectApiName] = useState<string>("SFDCHelp7_DMO_harmonized__dlm");
   const [tocUrl, setTocUrl] = useState<string | null>(null);
   const prefetchedHudmoDataRef = useRef(prefetchedHudmoData);
@@ -284,36 +295,25 @@ function App() {
     }
   }, []);
 
-  const isInitialLoadRef = useRef(true);
-  const previousCustomerIdRef = useRef<string | null>(null);
+  // Fetch customers list for header links and validation
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${API_URL}/api/v1/customers`)
+      .then((res) => res.ok ? res.json() : null)
+      .then((data: { customers?: CustomerItem[] } | null) => {
+        if (!cancelled && data?.customers) setCustomers(data.customers);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
-  const handleCustomerChange = useCallback(async (customerId: string | null) => {
-    const previousCustomerId = previousCustomerIdRef.current;
-    const customerChanged = previousCustomerId !== customerId && !isInitialLoadRef.current;
-
-    setSelectedCustomerId(customerId);
-    previousCustomerIdRef.current = customerId;
-
-    if (customerId) {
-      try {
-        const response = await fetch(`${API_URL}/api/v1/customers/${customerId}`);
-        if (response.ok) {
-          const data = await response.json();
-          if (data.customer?.objectApiName) {
-            setObjectApiName(data.customer.objectApiName);
-          }
-          if (data.customer?.tocUrl != null) {
-            setTocUrl(data.customer.tocUrl);
-          } else {
-            setTocUrl(null);
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching customer details:", error);
-      }
-    }
-
-    if (customerChanged) {
+  // Validate customerId from URL; reset session when switching customer
+  useEffect(() => {
+    if (!customerIdParam) return;
+    if (customers.length === 0) return; // wait until customers loaded
+    const valid = customers.some((c) => c.id === customerIdParam);
+    setCustomerNotFound(!valid);
+    if (valid) {
       setSessionInitialized(false);
       setAgentforceSessionId(null);
       setMessages([]);
@@ -322,11 +322,8 @@ function App() {
       setFetchingHudmoFor(new Set());
       setHudmoData(null);
       setCurrentContentId(null);
-      navigate("/", { replace: true });
-    } else {
-      isInitialLoadRef.current = false;
     }
-  }, [navigate]);
+  }, [customerIdParam, customers]);
 
   // Derive article state from URL (support /article/:id and Lightning-style ?c__contentId=...)
   const articleMatch = location.pathname.match(ARTICLE_PATH_REGEX);
@@ -343,7 +340,7 @@ function App() {
     ? searchParams.get("chunkRecordIds") ?? searchParams.get("c__chunkRecordIds") ?? null
     : null;
   const isArticleOpen = !!contentIdFromUrl;
-  const isSearchPage = location.pathname === "/search";
+  const isSearchPage = location.pathname.endsWith("/search");
 
   const [externalSessionKey] = useState<string>(() => {
     const existingSession = sessionStorage.getItem("agentforce-session-key");
@@ -906,7 +903,7 @@ function App() {
       if (chunkObjectApiName && chunkRecordIds) {
         console.log("[chunk] Message click: chunk params from URL ->", chunkObjectApiName, chunkRecordIds?.slice(0, 50));
       }
-      navigate(`/article/${encodeURIComponent(dccid)}${query}`);
+      navigate(`${basePath}/article/${encodeURIComponent(dccid)}${query}`);
       fetchHarmonizationData(dccid, hudmo, message.id, false, chunkParams);
     }
   };
@@ -976,7 +973,7 @@ function App() {
   );
 
   const handleCloseArticle = () => {
-    navigate("/", { replace: true });
+    navigate(basePath, { replace: true });
     setHudmoData(null);
     setChunkRows([]);
     setCurrentContentId(null);
@@ -985,9 +982,9 @@ function App() {
   const handleTocContentClick = useCallback(
     (contentId: string) => {
       const hudmoQuery = objectApiName ? `?hudmo=${encodeURIComponent(objectApiName)}` : "";
-      navigate(`/article/${encodeURIComponent(contentId)}${hudmoQuery}`);
+      navigate(`${basePath}/article/${encodeURIComponent(contentId)}${hudmoQuery}`);
     },
-    [navigate, objectApiName]
+    [navigate, objectApiName, basePath]
   );
 
   const handleCitationTocContentClick = useCallback(
@@ -1287,9 +1284,11 @@ function App() {
     };
   }, [embedLayout]);
 
-  if (embedLayout) {
+  if (embedLayout && selectedCustomerId) {
     return (
       <AppErrorBoundary>
+        <CustomerRouteProvider customerId={selectedCustomerId}>
+        <ThemeProvider customerId={selectedCustomerId}>
         <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2 bg-transparent">
             {isChatOpen ? (
               <div className="w-[calc(100vw-2rem)] sm:w-[400px] lg:w-[420px] h-[85vh] max-h-[700px] rounded-lg border border-gray-200 bg-white shadow-xl overflow-hidden flex flex-col animate-in slide-in-from-right-5 duration-200">
@@ -1341,15 +1340,39 @@ function App() {
           currentContentId={citationModalData?.contentId ?? null}
           onTocContentClick={handleCitationTocContentClick}
         />
+        </ThemeProvider>
+        </CustomerRouteProvider>
+      </AppErrorBoundary>
+    );
+  }
+
+  if (customerIdParam && customerNotFound) {
+    return (
+      <AppErrorBoundary>
+        <div className="min-h-screen flex flex-col bg-white items-center justify-center">
+          <p className="text-gray-600">Customer not found.</p>
+          <a href="/" className="mt-2 text-[var(--theme-primary)] hover:underline">Go home</a>
+        </div>
+      </AppErrorBoundary>
+    );
+  }
+
+  if (customerIdParam && customers.length === 0) {
+    return (
+      <AppErrorBoundary>
+        <div className="min-h-screen flex flex-col bg-white items-center justify-center">
+          <p className="text-gray-600">Loading…</p>
+        </div>
       </AppErrorBoundary>
     );
   }
 
   return (
     <AppErrorBoundary>
+    <CustomerRouteProvider customerId={selectedCustomerId!}>
     <ThemeProvider customerId={selectedCustomerId}>
     <div className="min-h-screen flex flex-col bg-white">
-      <Header onCustomerChange={handleCustomerChange} />
+      <Header customers={customers} />
       {!selectedCustomerId ? (
         <main className="flex-1 flex items-center justify-center">
           <p className="text-gray-600">Loading customer configuration...</p>
@@ -1476,6 +1499,7 @@ function App() {
       )}
     </div>
     </ThemeProvider>
+    </CustomerRouteProvider>
     </AppErrorBoundary>
   );
 }

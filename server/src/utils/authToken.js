@@ -11,11 +11,10 @@ const sfAuthToken = async (customerId = null) => {
     
     if (customerId) {
       const customer = getCustomerById(customerId);
-      clientId = customer.clientId;
-      clientSecret = customer.clientSecret;
-      salesforceLoginUrl = customer.salesforceLoginUrl;
+      clientId = (customer.clientId && String(customer.clientId).trim()) || process.env.CLIENT_ID || "";
+      clientSecret = (customer.clientSecret && String(customer.clientSecret).trim()) || process.env.CLIENT_SECRET || "";
+      salesforceLoginUrl = (customer.salesforceLoginUrl && String(customer.salesforceLoginUrl).trim()) || process.env.SALESFORCE_LOGIN_URL || "";
     } else {
-      // Fallback to environment variables for backward compatibility
       clientId = process.env.CLIENT_ID || "";
       clientSecret = process.env.CLIENT_SECRET || "";
       salesforceLoginUrl = process.env.SALESFORCE_LOGIN_URL || "";
@@ -85,7 +84,7 @@ const sfAuthToken = async (customerId = null) => {
     return { accessToken: data.access_token, instanceUrl: data.instance_url };
   } catch (error) {
     console.error(`${getCurrentTimestamp()} ❌ - sfAuthToken - Error occurred: ${error.message}`);
-    return error;
+    throw error;
   }
 };
 

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Input } from './ui/input';
+import { useCustomerRoute } from '../contexts/CustomerRouteContext';
 
 const DEFAULT_TOC_URL = '/data/toc_enhanced.xml';
 
@@ -22,6 +23,7 @@ interface TableOfContentsProps {
 
 
 const TableOfContents = ({ tocUrl: tocUrlProp, onContentClick, currentContentId, isVisible = true, embedded = false }: TableOfContentsProps) => {
+  const { basePath } = useCustomerRoute();
   const [tree, setTree] = useState<NavNode | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -132,7 +134,7 @@ const TableOfContents = ({ tocUrl: tocUrlProp, onContentClick, currentContentId,
       }
     };
 
-    const titleHref = hasContentId ? `/article/${encodeURIComponent(item.contentId!)}` : undefined;
+    const titleHref = hasContentId ? `${basePath}/article/${encodeURIComponent(item.contentId!)}` : undefined;
     const useCallback = !!onContentClick && hasContentId;
 
     return (
