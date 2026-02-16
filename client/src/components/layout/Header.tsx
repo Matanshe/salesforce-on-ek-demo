@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom";
 import salesforceLogo from "../../assets/Salesforce Logo.jpeg";
 import { SearchBar } from "../SearchBar";
 import { ConfigDropdown } from "./ConfigDropdown";
@@ -59,17 +58,6 @@ export const Header = ({ customers }: HeaderProps) => {
               </>
             )}
           </div>
-          <nav className="flex items-center gap-2" aria-label="Customer">
-            {customers.map((c) => (
-              <Link
-                key={c.id}
-                to={`/${encodeURIComponent(c.id)}`}
-                className="text-sm font-medium text-gray-600 hover:text-[var(--theme-primary)]"
-              >
-                {c.name}
-              </Link>
-            ))}
-          </nav>
         </div>
         {customers.length > 0 && (
           <div className="w-full pb-4">
