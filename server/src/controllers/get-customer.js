@@ -51,6 +51,7 @@ const getCustomer = async (req, res) => {
       name: customer.name,
       objectApiName: customer.objectApiName || null,
       tocUrl: customer.tocUrl || null,
+      proposedQuestion: customer.proposedQuestion ?? null,
       ui,
     };
 

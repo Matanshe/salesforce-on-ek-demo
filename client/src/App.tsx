@@ -253,6 +253,9 @@ function App() {
   const [fetchingHudmoFor, setFetchingHudmoFor] = useState<Set<string>>(new Set());
   const [objectApiName, setObjectApiName] = useState<string>("SFDCHelp7_DMO_harmonized__dlm");
   const [tocUrl, setTocUrl] = useState<string | null>(null);
+  const [proposedQuestionToSend, setProposedQuestionToSend] = useState<string | null>(null);
+  const proposedQuestionSentRef = useRef(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const prefetchedHudmoDataRef = useRef(prefetchedHudmoData);
   prefetchedHudmoDataRef.current = prefetchedHudmoData;
   const chunkParamsByMessageIdRef = useRef<Record<string, { chunkObjectApiName: string; chunkRecordIds: string }>>({});
@@ -322,6 +325,7 @@ function App() {
       setFetchingHudmoFor(new Set());
       setHudmoData(null);
       setCurrentContentId(null);
+      proposedQuestionSentRef.current = false;
     }
   }, [customerIdParam, customers]);
 
@@ -1179,6 +1183,7 @@ function App() {
             } else {
               setTocUrl(null);
             }
+            setProposedQuestionToSend((prev) => prev ?? data.customer?.proposedQuestion ?? null);
           } else {
             const errorText = await response.text();
             console.error(`Failed to fetch customer details: ${response.status} ${response.statusText}`, errorText);
@@ -1200,6 +1205,34 @@ function App() {
       });
     }
   }, [sessionInitialized, initializeSession, selectedCustomerId]);
+
+  // When arriving from landing with a proposed question (or from customer API), send it once session is ready
+  useEffect(() => {
+    const fromState = (location.state as { proposedQuestion?: string } | null)?.proposedQuestion;
+    if (fromState && selectedCustomerId) {
+      setProposedQuestionToSend((prev) => prev ?? fromState);
+    }
+  }, [selectedCustomerId, location.state]);
+
+  useEffect(() => {
+    if (!sessionInitialized || !proposedQuestionToSend || proposedQuestionSentRef.current) return;
+    proposedQuestionSentRef.current = true;
+    const question = proposedQuestionToSend;
+    if (basePath) {
+      navigate(basePath, { replace: true, state: {} });
+    }
+    setToastMessage("Proposing a question based on customer content…");
+    const sendDelayMs = 2000;
+    const t = setTimeout(() => {
+      setToastMessage(null);
+      setProposedQuestionToSend(null);
+      handleSendMessage(question).catch((err) => {
+        console.error("Error sending proposed question:", err);
+        proposedQuestionSentRef.current = false;
+      });
+    }, sendDelayMs);
+    return () => clearTimeout(t);
+  }, [sessionInitialized, proposedQuestionToSend, basePath, navigate]);
 
   // Sync URL -> article state: load article when URL is /article/:contentId, clear when on /
   useEffect(() => {
@@ -1372,6 +1405,15 @@ function App() {
     <CustomerRouteProvider customerId={selectedCustomerId!}>
     <ThemeProvider customerId={selectedCustomerId}>
     <div className="min-h-screen flex flex-col bg-white">
+      {toastMessage && (
+        <div
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] px-4 py-3 rounded-lg bg-slate-800 text-white text-sm font-medium shadow-lg"
+          role="status"
+          aria-live="polite"
+        >
+          {toastMessage}
+        </div>
+      )}
       <Header customers={customers} />
       {!selectedCustomerId ? (
         <main className="flex-1 flex items-center justify-center">

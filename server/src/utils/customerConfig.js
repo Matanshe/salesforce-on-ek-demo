@@ -44,5 +44,6 @@ export const getAllCustomers = () => {
     primaryColor: c.ui?.colors?.primary ?? "#0176D3",
     primaryHoverColor: c.ui?.colors?.primaryHover ?? "#014486",
     logoUrl: c.logoUrl ?? null,
+    proposedQuestion: c.proposedQuestion ?? null,
   }));
 };

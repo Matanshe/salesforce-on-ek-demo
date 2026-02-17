@@ -26,6 +26,7 @@
       },
       "homeUrl": "https://www.salesforce.com",
       "logoUrl": "/logos/salesforce.png",
+      "proposedQuestion": "How do I access Data Cloud analytics?",
       "footerLinks": [
         { "label": "Salesforce.com", "href": "https://www.salesforce.com" },
         { "label": "Help & Training", "href": "https://help.salesforce.com" },
@@ -58,6 +59,7 @@
       },
       "homeUrl": "https://voceradocs.stryker.com/",
       "logoUrl": "/logos/stryker.png",
+      "proposedQuestion": "How do I use Vocera documentation and devices?",
       "footerLinks": [
         { "label": "Stryker.com", "href": "https://www.stryker.com" },
         { "label": "Vocera Documentation", "href": "https://voceradocs.stryker.com/" },
@@ -89,6 +91,7 @@
       },
       "homeUrl": "https://www.hexagon.com",
       "logoUrl": "/logos/hexagon.png",
+      "proposedQuestion": "Wie kann ein Account-Administrator einen Alarm in den Schlummermodus versetzen, und was passiert in der Software, wenn ein Alarm geschlummert wird?",
       "footerLinks": [
         { "label": "Hexagon.com", "href": "https://www.hexagon.com" },
         { "label": "Support", "href": "https://www.hexagon.com/support" }

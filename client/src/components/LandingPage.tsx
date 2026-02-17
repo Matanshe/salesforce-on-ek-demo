@@ -9,6 +9,7 @@ interface Customer {
   primaryColor?: string;
   primaryHoverColor?: string;
   logoUrl?: string | null;
+  proposedQuestion?: string | null;
 }
 
 function TileIcon({ color }: { color: string }) {
@@ -56,8 +57,11 @@ export function LandingPage() {
     };
   }, []);
 
-  const handleTileClick = (customerId: string) => {
-    navigate(`/${encodeURIComponent(customerId)}`, { replace: false });
+  const handleTileClick = (customer: Customer) => {
+    navigate(`/${encodeURIComponent(customer.id)}`, {
+      replace: false,
+      state: customer.proposedQuestion ? { proposedQuestion: customer.proposedQuestion } : undefined,
+    });
   };
 
   if (loading) {
@@ -104,7 +108,7 @@ export function LandingPage() {
               <button
                 key={customer.id}
                 type="button"
-                onClick={() => handleTileClick(customer.id)}
+                onClick={() => handleTileClick(customer)}
                 className="group group/card relative flex flex-col items-start text-left rounded-2xl border border-slate-200/90 bg-white p-6 sm:p-7 shadow-sm hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 active:shadow-md transition-all duration-200 focus-visible:outline focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#f8fafc]"
                 style={{
                   borderLeftWidth: "4px",
