@@ -1,16 +1,36 @@
 import { getCurrentTimestamp } from "./loggingUtil.js";
+import { getCustomerById } from "./customerConfig.js";
 
-let tokenCache = {
-  accessToken: null,
-  instanceUrl: null,
-  expiresAt: null,
-};
+// Token cache per customer
+const tokenCacheMap = new Map();
 
-const sfAuthToken = async () => {
+const sfAuthToken = async (customerId = null) => {
   try {
+    // Get customer config if customerId is provided, otherwise use env vars (backward compatibility)
+    let clientId, clientSecret, salesforceLoginUrl;
+    
+    if (customerId) {
+      const customer = getCustomerById(customerId);
+      clientId = (customer.clientId && String(customer.clientId).trim()) || process.env.CLIENT_ID || "";
+      clientSecret = (customer.clientSecret && String(customer.clientSecret).trim()) || process.env.CLIENT_SECRET || "";
+      salesforceLoginUrl = (customer.salesforceLoginUrl && String(customer.salesforceLoginUrl).trim()) || process.env.SALESFORCE_LOGIN_URL || "";
+    } else {
+      clientId = process.env.CLIENT_ID || "";
+      clientSecret = process.env.CLIENT_SECRET || "";
+      salesforceLoginUrl = process.env.SALESFORCE_LOGIN_URL || "";
+    }
+
+    // Use customer-specific cache key
+    const cacheKey = customerId || "default";
+    const tokenCache = tokenCacheMap.get(cacheKey) || {
+      accessToken: null,
+      instanceUrl: null,
+      expiresAt: null,
+    };
+
     if (tokenCache.accessToken && tokenCache.expiresAt && Date.now() < tokenCache.expiresAt) {
       console.log(
-        `${getCurrentTimestamp()} ♻️ - sfAuthToken - Using cached access token (expires in ${Math.round(
+        `${getCurrentTimestamp()} ♻️ - sfAuthToken - Using cached access token for ${cacheKey} (expires in ${Math.round(
           (tokenCache.expiresAt - Date.now()) / 1000
         )}s)`
       );
@@ -20,10 +40,7 @@ const sfAuthToken = async () => {
       };
     }
 
-    console.log(`${getCurrentTimestamp()} 🧰 - sfAuthToken - Requesting new Salesforce access token...`);
-
-    const clientId = process.env.CLIENT_ID || "";
-    const clientSecret = process.env.CLIENT_SECRET || "";
+    console.log(`${getCurrentTimestamp()} 🧰 - sfAuthToken - Requesting new Salesforce access token for ${cacheKey}...`);
 
     const body = new URLSearchParams({
       grant_type: "client_credentials",
@@ -39,7 +56,7 @@ const sfAuthToken = async () => {
       body,
     };
 
-    const response = await fetch(`${process.env.SALESFORCE_LOGIN_URL}/services/oauth2/token`, config);
+    const response = await fetch(`${salesforceLoginUrl}/services/oauth2/token`, config);
     const data = await response.json();
 
     if (!response.ok) {
@@ -50,14 +67,16 @@ const sfAuthToken = async () => {
     const bufferTime = 300;
     const expiresAt = Date.now() + (expiresIn - bufferTime) * 1000;
 
-    tokenCache = {
+    const newTokenCache = {
       accessToken: data.access_token,
       instanceUrl: data.instance_url,
       expiresAt,
     };
 
+    tokenCacheMap.set(cacheKey, newTokenCache);
+
     console.log(
-      `${getCurrentTimestamp()} ✅ - sfAuthToken - Successfully provided! (valid for ${Math.round(
+      `${getCurrentTimestamp()} ✅ - sfAuthToken - Successfully provided for ${cacheKey}! (valid for ${Math.round(
         (expiresAt - Date.now()) / 1000
       )}s)`
     );
@@ -65,7 +84,7 @@ const sfAuthToken = async () => {
     return { accessToken: data.access_token, instanceUrl: data.instance_url };
   } catch (error) {
     console.error(`${getCurrentTimestamp()} ❌ - sfAuthToken - Error occurred: ${error.message}`);
-    return error;
+    throw error;
   }
 };
 

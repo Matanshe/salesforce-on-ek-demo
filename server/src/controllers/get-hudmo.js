@@ -1,5 +1,6 @@
 import sfAuthToken from "../utils/authToken.js";
 import { getCurrentTimestamp } from "../utils/loggingUtil.js";
+import { getCustomerById } from "../utils/customerConfig.js";
 
 const getHudmo = async (req, res) => {
   try {
@@ -7,6 +8,7 @@ const getHudmo = async (req, res) => {
 
     const hudmoName = req.body.hudmoName;
     const dccid = req.body.dccid;
+    const customerId = req.body.customerId;
 
     // Validate required parameters
     if (!hudmoName || !dccid) {
@@ -17,14 +19,23 @@ const getHudmo = async (req, res) => {
       });
     }
 
-    console.log(`${getCurrentTimestamp()} 🔑 - getHudmo - HUDMO: ${hudmoName}, DCCID: ${dccid}`);
+    console.log(`${getCurrentTimestamp()} 🔑 - getHudmo - HUDMO: ${hudmoName}, DCCID: ${dccid}, Customer ID: ${customerId || "default"}`);
 
-    const { accessToken } = await sfAuthToken();
+    const { accessToken, instanceUrl } = await sfAuthToken(customerId);
+
+    // Get Salesforce login URL from customer config or fallback to env var
+    let salesforceLoginUrl;
+    if (customerId) {
+      const customer = getCustomerById(customerId);
+      salesforceLoginUrl = customer.salesforceLoginUrl || instanceUrl;
+    } else {
+      salesforceLoginUrl = process.env.SALESFORCE_LOGIN_URL || instanceUrl;
+    }
 
     // URL encode the parameters to handle special characters
     const encodedHudmoName = encodeURIComponent(hudmoName);
     const encodedDccid = encodeURIComponent(dccid);
-    const apiUrl = `${process.env.SALESFORCE_LOGIN_URL}/services/data/v64.0/ssot/v1/ek/hudmo/${encodedHudmoName}/${encodedDccid}`;
+    const apiUrl = `${salesforceLoginUrl}/services/data/v64.0/ssot/v1/ek/hudmo/${encodedHudmoName}/${encodedDccid}`;
 
     console.log(`${getCurrentTimestamp()} 🌐 - getHudmo - API URL: ${apiUrl.replace(/\/services\/data\/v\d+\.\d+\/ssot\/v1\/ek\/hudmo\/[^/]+\/[^/]+/, '/services/data/v64.0/ssot/v1/ek/hudmo/{hudmoName}/{dccid}')}`);
 

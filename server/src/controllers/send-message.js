@@ -8,10 +8,15 @@ const sendMessage = async (req, res) => {
     const sessionId = req.body.sessionId;
     const message = req.body.message;
     const sequenceId = req.body.sequenceId;
+    const customerId = req.body.customerId || req.query.customerId;
 
-    console.log(`${getCurrentTimestamp()} 🔑 - sendMessage - Session: ${sessionId}, Sequence: ${sequenceId}`);
+    console.log(`${getCurrentTimestamp()} 🔑 - sendMessage - Session: ${sessionId}, Sequence: ${sequenceId}, Customer ID: ${customerId || "default"}`);
 
-    const { accessToken } = await sfAuthToken();
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/bebf9a71-04a2-4e86-a513-895cda001ee7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-message.js:request',message:'sendMessage request customerId',data:{customerId:customerId ?? null},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
+    // #endregion
+
+    const { accessToken } = await sfAuthToken(customerId);
 
     const body = {
       message: {
@@ -31,6 +36,9 @@ const sendMessage = async (req, res) => {
     };
 
     console.log(`${getCurrentTimestamp()} 🤖 - sendMessage - Sending Agentforce message...`);
+    console.log(`${getCurrentTimestamp()} 📋 - sendMessage - Request body:`, JSON.stringify(body, null, 2));
+    console.log(`${getCurrentTimestamp()} 📋 - sendMessage - Session ID: ${sessionId}`);
+    console.log(`${getCurrentTimestamp()} 📋 - sendMessage - Customer ID: ${customerId || "default"}`);
 
     const response = await fetch(
       `https://api.salesforce.com/einstein/ai-agent/v1/sessions/${sessionId}/messages`,
@@ -45,6 +53,14 @@ const sendMessage = async (req, res) => {
     }
 
     const data = await response.json();
+
+    // #region agent log
+    const _dataKeys = data ? Object.keys(data) : [];
+    const _msgArr = data?.messages;
+    const _msg0 = _msgArr?.[0];
+    fetch('http://127.0.0.1:7242/ingest/bebf9a71-04a2-4e86-a513-895cda001ee7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-message.js:API response',message:'sendMessage API response shape',data:{responseKeys:_dataKeys,hasMessages:Array.isArray(_msgArr),messagesLength:_msgArr?.length ?? null,firstMessageKeys:_msg0 ? Object.keys(_msg0) : null,hasMessageText:!!_msg0?.message,citedRefsCount:_msg0?.citedReferences?.length ?? null},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/bebf9a71-04a2-4e86-a513-895cda001ee7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-message.js:first message',message:'first message is agent reply?',data:{firstMessageType:_msg0?.type,firstMessageId:_msg0?.id,hasContent:!!_msg0?.message},timestamp:Date.now(),hypothesisId:'H5'})}).catch(()=>{});
+    // #endregion
 
     console.log(`${getCurrentTimestamp()} ✅ - sendMessage - Message sent!`);
     console.log(`${getCurrentTimestamp()} 📤 - sendMessage - Agent response:`, JSON.stringify(data.messages, null, 2));

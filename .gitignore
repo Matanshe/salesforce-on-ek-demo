@@ -79,3 +79,6 @@ server/build/
 
 # VS Code
 .vscode/
+
+# Configuration files with secrets
+server/config/customers.json

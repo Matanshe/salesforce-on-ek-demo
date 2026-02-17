@@ -5,6 +5,7 @@ import { ChatInput } from "./ChatInput";
 import { CitationHoverCard } from "./CitationHoverCard";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useTheme } from "../../contexts/ThemeContext";
 
 interface ChatWindowProps {
   messages: Message[];
@@ -113,6 +114,7 @@ export const ChatWindow = ({
 }: ChatWindowProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const theme = useTheme();
   const activeMessage = activeHoverCitationMessageId
     ? messages.find((m) => m.id === activeHoverCitationMessageId)
     : null;
@@ -135,10 +137,10 @@ export const ChatWindow = ({
   return (
     <div className={`w-full ${minimized ? 'h-full' : embedded ? 'h-[500px] sm:h-[600px] md:h-[700px]' : 'sm:w-96 h-dvh sm:h-[600px] sm:rounded-lg'} bg-white ${embedded || minimized ? '' : 'shadow-2xl'} flex flex-col overflow-hidden`}>
       {/* Header */}
-      <div className="bg-[#0176D3] text-white p-2.5 sm:p-3 md:p-4 flex items-center justify-between shrink-0">
+      <div className="bg-[var(--theme-primary)] text-white p-2.5 sm:p-3 md:p-4 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-          <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-[#2E844A] rounded-full shrink-0"></div>
-          <h3 className="font-semibold text-xs sm:text-sm md:text-base truncate">Agentforce on EK</h3>
+          <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-[var(--theme-accent)] rounded-full shrink-0"></div>
+          <h3 className="font-semibold text-xs sm:text-sm md:text-base truncate">{theme.labels.chatHeaderTitle}</h3>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -194,16 +196,16 @@ export const ChatWindow = ({
               <br />
               <span className="text-xs">Ready to start a new conversation?</span>
             </p>
-            <Button onClick={onStartNewSession} size="lg" className="shadow-md hover:shadow-lg bg-[#0176D3] hover:bg-[#014486] text-white text-sm sm:text-base px-4 sm:px-6">
+            <Button onClick={onStartNewSession} size="lg" className="shadow-md hover:shadow-lg bg-[var(--theme-primary)] hover:bg-[var(--theme-primary-hover)] text-white text-sm sm:text-base px-4 sm:px-6">
               Start New Session
             </Button>
           </div>
         ) : messages.length === 0 && !isLoading ? (
           <div className="flex items-center justify-center h-full text-gray-500 px-3 sm:px-4">
             <p className="text-center text-xs sm:text-sm md:text-base">
-              Welcome to Agentforce on EK!
+              Welcome to {theme.labels.chatHeaderTitle}!
               <br />
-              <span className="text-xs sm:text-sm">Ask any question about Salesforce products and features.</span>
+              <span className="text-xs sm:text-sm">{theme.labels.chatPlaceholder}</span>
             </p>
           </div>
         ) : (

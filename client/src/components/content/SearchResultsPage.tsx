@@ -4,12 +4,16 @@ import { fetchFastSearch, getResultTitle, getResultContentId, getHelpSearchConfi
 import { fetchHarmonizationData } from "../../api/fetchHarmonizationData";
 import { getDescriptionFromHtmlContent } from "../../utils/metaFromHtml";
 import { Button } from "../ui/button";
+import { useTheme } from "../../contexts/ThemeContext";
+import { useCustomerRoute } from "../../contexts/CustomerRouteContext";
 
 const CONCURRENT_HUDMO = 3;
 
 export function SearchResultsPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const theme = useTheme();
+  const { basePath } = useCustomerRoute();
   const q = searchParams.get("q") ?? "";
 
   const [results, setResults] = useState<FastSearchResult[]>([]);
@@ -73,7 +77,7 @@ export function SearchResultsPage() {
   const onResultClick = (result: FastSearchResult) => {
     const contentId = getResultContentId(result);
     if (contentId) {
-      navigate(`/article/${encodeURIComponent(contentId)}`);
+      navigate(`${basePath}/article/${encodeURIComponent(contentId)}`);
     }
   };
 
@@ -86,10 +90,10 @@ export function SearchResultsPage() {
           <Button
             variant="ghost"
             size="sm"
-            className="mb-4 -ml-1.5 text-[#0176D3] hover:bg-[#0176D3]/10 hover:text-[#014486]"
-            onClick={() => navigate("/")}
+            className="mb-4 -ml-1.5 text-[var(--theme-primary)] hover:bg-[var(--theme-primary)]/10 hover:text-[var(--theme-primary-hover)]"
+            onClick={() => navigate(basePath)}
           >
-            ← Back to Help
+            {theme.labels.backToHelp}
           </Button>
           <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 tracking-tight">
             {hasQuery ? `Results for “${q.trim()}”` : "Search"}
@@ -111,7 +115,7 @@ export function SearchResultsPage() {
           )}
           {hasQuery && loading && (
             <div className="flex flex-col items-center gap-3 py-12">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#0176D3] border-t-transparent" />
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--theme-primary)] border-t-transparent" />
               <p className="text-sm text-gray-500">Searching…</p>
             </div>
           )}
@@ -138,16 +142,16 @@ export function SearchResultsPage() {
                     <button
                       type="button"
                       onClick={() => onResultClick(result)}
-                      className={`group w-full text-left rounded-xl border bg-white px-5 py-4 shadow-sm transition-all duration-200 ${isArticle ? "hover:border-[#0176D3] hover:shadow-md hover:bg-[#0176D3]/[0.04] cursor-pointer active:scale-[0.998]" : "cursor-default border-gray-200/80"}`}
+                      className={`group w-full text-left rounded-xl border bg-white px-5 py-4 shadow-sm transition-all duration-200 ${isArticle ? "hover:border-[var(--theme-primary)] hover:shadow-md hover:bg-[color-mix(in_srgb,var(--theme-primary)_4%,transparent)] cursor-pointer active:scale-[0.998]" : "cursor-default border-gray-200/80"}`}
                     >
-                      <span className="font-medium text-gray-900 block group-hover:text-[#0176D3] transition-colors">{title}</span>
+                      <span className="font-medium text-gray-900 block group-hover:text-[var(--theme-primary)] transition-colors">{title}</span>
                       {description ? (
                         <p className="mt-2 text-sm text-gray-600 line-clamp-2 leading-snug">{description}</p>
                       ) : contentId ? (
                         <p className="mt-2 text-sm text-gray-400 italic">Loading description…</p>
                       ) : null}
                       <span className="mt-2 inline-block text-xs text-gray-400">
-                        {isArticle ? "Open in Help →" : result.apiName}
+                        {isArticle ? `${theme.labels.openInHelp} →` : result.apiName}
                       </span>
                     </button>
                   </li>

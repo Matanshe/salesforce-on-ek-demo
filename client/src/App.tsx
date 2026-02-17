@@ -1,5 +1,5 @@
 import { type ErrorInfo, type ReactNode, Component, useState, useCallback, useEffect, useRef } from "react";
-import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams, useParams } from "react-router-dom";
 import type { Message, ChunkRow, CitationHoverCardData } from "./types/message";
 import { Header } from "./components/layout/Header";
 import { Footer } from "./components/layout/Footer";
@@ -20,6 +20,8 @@ import { ArticleView } from "./components/content/ArticleView";
 import { CitationModal } from "./components/content/CitationModal";
 import { generateSignature } from "./utils/requestSigner";
 import TOC from "./components/TOC";
+import { ThemeProvider } from "./contexts/ThemeContext";
+import { CustomerRouteProvider } from "./contexts/CustomerRouteContext";
 import { citationBehavior, embedLayout } from "./config/appConfig";
 import "./App.css";
 
@@ -50,7 +52,7 @@ class ArticleErrorBoundary extends Component<
           <Dialog open={true} onOpenChange={(open) => { if (!open) this.handleCloseDialog(); }}>
             <DialogContent showCloseButton={true} className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle className="text-[#0176D3]">Document error</DialogTitle>
+                <DialogTitle className="text-[var(--theme-primary)]">Document error</DialogTitle>
                 <DialogDescription className="text-gray-600 pt-1">
                   {message}
                 </DialogDescription>
@@ -59,7 +61,7 @@ class ArticleErrorBoundary extends Component<
                 <Button onClick={this.handleCloseDialog} variant="outline">
                   Try again
                 </Button>
-                <Button onClick={this.props.onClose} className="bg-[#0176D3] hover:bg-[#014486]">
+                <Button onClick={this.props.onClose} className="bg-[var(--theme-primary)] hover:bg-[var(--theme-primary-hover)]">
                   Close
                 </Button>
               </DialogFooter>
@@ -95,7 +97,7 @@ class AppErrorBoundary extends Component<
       return (
         <>
           <div className="min-h-screen flex flex-col bg-gray-50">
-            <Header />
+            <Header customers={[]} />
             <main className="flex-1 flex items-center justify-center px-4 py-8">
               <p className="text-gray-500 text-sm text-center max-w-md">
                 Something went wrong. Use the button below to try again or refresh the page.
@@ -106,13 +108,13 @@ class AppErrorBoundary extends Component<
           <Dialog open={true} onOpenChange={(open) => { if (!open) this.handleClose(); }}>
             <DialogContent showCloseButton={true} className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle className="text-[#0176D3]">Something went wrong</DialogTitle>
+                <DialogTitle className="text-[var(--theme-primary)]">Something went wrong</DialogTitle>
                 <DialogDescription className="text-gray-600 pt-1">
                   {message}
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter className="pt-4">
-                <Button onClick={this.handleClose} className="bg-[#0176D3] hover:bg-[#014486]">
+                <Button onClick={this.handleClose} className="bg-[var(--theme-primary)] hover:bg-[var(--theme-primary-hover)]">
                   Try again
                 </Button>
               </DialogFooter>
@@ -125,7 +127,7 @@ class AppErrorBoundary extends Component<
   }
 }
 
-const API_URL = import.meta.env.VITE_API_URL ?? "";
+const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 
 /** Extract display text from Agentforce API message (supports .message string or .messageParts array). Never throws. */
 function getAgentMessageText(
@@ -219,13 +221,24 @@ function buildArticleQuery(params: {
   return qs ? `?${qs}` : "";
 }
 
-/** Path pattern for article URLs: /article/:contentId */
-const ARTICLE_PATH_REGEX = /^\/article\/([^/?#]+)/;
+/** Path pattern for article URLs: /:customerId/article/:contentId */
+const ARTICLE_PATH_REGEX = /^\/[^/]+\/article\/([^/?#]+)/;
+
+interface CustomerItem {
+  id: string;
+  name: string;
+}
 
 function App() {
+  const { customerId: customerIdParam } = useParams<{ customerId: string }>();
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+
+  const [customers, setCustomers] = useState<CustomerItem[]>([]);
+  const [customerNotFound, setCustomerNotFound] = useState(false);
+  const selectedCustomerId = customerIdParam && !customerNotFound ? customerIdParam : null;
+  const basePath = selectedCustomerId ? `/${encodeURIComponent(selectedCustomerId)}` : "";
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [isChatOpen, setIsChatOpen] = useState(() => !embedLayout);
@@ -238,6 +251,8 @@ function App() {
   const [currentContentId, setCurrentContentId] = useState<string | null>(null);
   const [prefetchedHudmoData, setPrefetchedHudmoData] = useState<Map<string, HudmoData>>(new Map());
   const [fetchingHudmoFor, setFetchingHudmoFor] = useState<Set<string>>(new Set());
+  const [objectApiName, setObjectApiName] = useState<string>("SFDCHelp7_DMO_harmonized__dlm");
+  const [tocUrl, setTocUrl] = useState<string | null>(null);
   const prefetchedHudmoDataRef = useRef(prefetchedHudmoData);
   prefetchedHudmoDataRef.current = prefetchedHudmoData;
   const chunkParamsByMessageIdRef = useRef<Record<string, { chunkObjectApiName: string; chunkRecordIds: string }>>({});
@@ -280,7 +295,35 @@ function App() {
     }
   }, []);
 
-  const OBJECT_API_NAME = "SFDCHelp7_DMO_harmonized__dlm";
+  // Fetch customers list for header links and validation
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${API_URL}/api/v1/customers`)
+      .then((res) => res.ok ? res.json() : null)
+      .then((data: { customers?: CustomerItem[] } | null) => {
+        if (!cancelled && data?.customers) setCustomers(data.customers);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  // Validate customerId from URL; reset session when switching customer
+  useEffect(() => {
+    if (!customerIdParam) return;
+    if (customers.length === 0) return; // wait until customers loaded
+    const valid = customers.some((c) => c.id === customerIdParam);
+    setCustomerNotFound(!valid);
+    if (valid) {
+      setSessionInitialized(false);
+      setAgentforceSessionId(null);
+      setMessages([]);
+      setMessageSequence(1);
+      setPrefetchedHudmoData(new Map());
+      setFetchingHudmoFor(new Set());
+      setHudmoData(null);
+      setCurrentContentId(null);
+    }
+  }, [customerIdParam, customers]);
 
   // Derive article state from URL (support /article/:id and Lightning-style ?c__contentId=...)
   const articleMatch = location.pathname.match(ARTICLE_PATH_REGEX);
@@ -288,8 +331,8 @@ function App() {
   const contentIdFromSearch = searchParams.get("c__contentId");
   const contentIdFromUrl = contentIdFromPath ?? contentIdFromSearch ?? null;
   const hudmoFromUrl = contentIdFromUrl
-    ? searchParams.get("hudmo") || searchParams.get("c__objectApiName") || OBJECT_API_NAME
-    : OBJECT_API_NAME;
+    ? searchParams.get("hudmo") || searchParams.get("c__objectApiName") || objectApiName
+    : objectApiName;
   const chunkObjectApiNameFromUrl = contentIdFromUrl
     ? searchParams.get("chunkObjectApiName") ?? searchParams.get("c__chunkObjectApiName") ?? null
     : null;
@@ -297,7 +340,7 @@ function App() {
     ? searchParams.get("chunkRecordIds") ?? searchParams.get("c__chunkRecordIds") ?? null
     : null;
   const isArticleOpen = !!contentIdFromUrl;
-  const isSearchPage = location.pathname === "/search";
+  const isSearchPage = location.pathname.endsWith("/search");
 
   const [externalSessionKey] = useState<string>(() => {
     const existingSession = sessionStorage.getItem("agentforce-session-key");
@@ -340,6 +383,7 @@ function App() {
           sessionId: agentforceSessionId,
           message: content,
           sequenceId: messageSequence,
+          customerId: selectedCustomerId,
         }),
       });
 
@@ -348,6 +392,14 @@ function App() {
       }
 
       const data = await response.json();
+
+      // #region agent log
+      const _keys = data ? Object.keys(data) : [];
+      const _msgs = data?.messages;
+      const _first = _msgs?.[0];
+      fetch('http://127.0.0.1:7242/ingest/bebf9a71-04a2-4e86-a513-895cda001ee7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:handleSendMessage',message:'client received sendMessage response',data:{responseKeys:_keys,messagesLength:Array.isArray(_msgs)?_msgs.length:null,firstMessageKeys:_first?Object.keys(_first):null,hasMessageText:!!_first?.message,citedRefsCount:_first?.citedReferences?.length??null},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/bebf9a71-04a2-4e86-a513-895cda001ee7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:first message',message:'first message content',data:{firstType:_first?.type,hasContent:!!_first?.message},timestamp:Date.now(),hypothesisId:'H5'})}).catch(()=>{});
+      // #endregion
 
       setMessageSequence((prev) => prev + 1);
 
@@ -398,6 +450,14 @@ function App() {
       if (Array.isArray(agentResponse.citedReferences)) botMessage.citedReferences = agentResponse.citedReferences;
 
       setMessages((prev) => [...prev, botMessage]);
+      console.log("✅ Bot message added to messages, current message count:", messages.length + 1);
+      console.log("✅ Bot message details:", {
+        id: botMessage.id,
+        sender: botMessage.sender,
+        hasContent: !!botMessage.content,
+        hasCitedReferences: !!botMessage.citedReferences && botMessage.citedReferences.length > 0,
+        customerId: selectedCustomerId,
+      });
 
       // Pre-fetch citation data: get URL from message content or from citedReferences
       let citationUrl: string | null = null;
@@ -411,8 +471,11 @@ function App() {
       if (citationUrl) {
         try {
           const urlObj = new URL(citationUrl);
-          const dccid = urlObj.searchParams.get("c__dccid") || urlObj.searchParams.get("c__contentId");
-          const hudmo = urlObj.searchParams.get("c__hudmo") || urlObj.searchParams.get("c__objectApiName");
+          let dccid = urlObj.searchParams.get("c__dccid") || urlObj.searchParams.get("c__contentId");
+          let hudmo = urlObj.searchParams.get("c__hudmo") || urlObj.searchParams.get("c__objectApiName");
+          if (dccid && hudmo && objectApiName && hudmo !== objectApiName) {
+            hudmo = objectApiName;
+          }
           const chunkObjectApiName = urlObj.searchParams.get("c__chunkObjectApiName");
           const chunkRecordIds = urlObj.searchParams.get("c__chunkRecordIds");
           const prefetchChunkParams =
@@ -443,8 +506,13 @@ function App() {
           console.log("Could not extract citation data for pre-fetch:", error);
         }
       }
+      console.log("✅ Pre-fetch logic completed");
     } catch (error) {
-      console.error("Error sending message:", error);
+      console.error("❌ Error sending message:", error);
+      console.error("❌ Error details:", {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
 
       const errorMessage: Message = {
         id: `msg-${Date.now()}-error`,
@@ -558,6 +626,7 @@ function App() {
           body: JSON.stringify({
             hudmoName: hudmo,
             dccid: dccid,
+            customerId: selectedCustomerId,
           }),
         });
 
@@ -705,7 +774,7 @@ function App() {
         }
       }
     },
-    [prefetchedHudmoData, fetchingHudmoFor]
+    [prefetchedHudmoData, fetchingHudmoFor, selectedCustomerId, navigate]
   );
 
   const fetchForCitationModal = useCallback(
@@ -790,6 +859,10 @@ function App() {
       if (!chunkObjectApiName && fromRef) chunkObjectApiName = fromRef.chunkObjectApiName;
       if (!chunkRecordIds && fromRef) chunkRecordIds = fromRef.chunkRecordIds;
 
+      if (dccid && hudmo && objectApiName && hudmo !== objectApiName) {
+        hudmo = objectApiName;
+      }
+
       if (!dccid || !hudmo) return;
 
       const chunkParams =
@@ -823,14 +896,14 @@ function App() {
 
       const query = buildArticleQuery({
         hudmo,
-        objectApiName: OBJECT_API_NAME,
+        objectApiName,
         chunkObjectApiName: chunkObjectApiName ?? undefined,
         chunkRecordIds: chunkRecordIds ?? undefined,
       });
       if (chunkObjectApiName && chunkRecordIds) {
         console.log("[chunk] Message click: chunk params from URL ->", chunkObjectApiName, chunkRecordIds?.slice(0, 50));
       }
-      navigate(`/article/${encodeURIComponent(dccid)}${query}`);
+      navigate(`${basePath}/article/${encodeURIComponent(dccid)}${query}`);
       fetchHarmonizationData(dccid, hudmo, message.id, false, chunkParams);
     }
   };
@@ -900,7 +973,7 @@ function App() {
   );
 
   const handleCloseArticle = () => {
-    navigate("/", { replace: true });
+    navigate(basePath, { replace: true });
     setHudmoData(null);
     setChunkRows([]);
     setCurrentContentId(null);
@@ -908,20 +981,21 @@ function App() {
 
   const handleTocContentClick = useCallback(
     (contentId: string) => {
-      navigate(`/article/${encodeURIComponent(contentId)}`);
+      const hudmoQuery = objectApiName ? `?hudmo=${encodeURIComponent(objectApiName)}` : "";
+      navigate(`${basePath}/article/${encodeURIComponent(contentId)}${hudmoQuery}`);
     },
-    [navigate]
+    [navigate, objectApiName, basePath]
   );
 
   const handleCitationTocContentClick = useCallback(
     (contentId: string) => {
-      fetchForCitationModal(contentId, OBJECT_API_NAME, undefined).then((result) => {
+      fetchForCitationModal(contentId, objectApiName, undefined).then((result) => {
         if (result) {
           setCitationModalData({ ...result, contentId });
         }
       });
     },
-    [fetchForCitationModal]
+    [fetchForCitationModal, objectApiName]
   );
 
   const handleDeleteSession = async () => {
@@ -971,15 +1045,16 @@ function App() {
 
     try {
       const newSessionKey = sessionStorage.getItem("agentforce-session-key") || crypto.randomUUID();
+      const customerParam = selectedCustomerId ? `&customerId=${encodeURIComponent(selectedCustomerId)}` : '';
 
       console.log("Initializing new Agentforce session...");
 
       const { timestamp, signature } = await generateSignature(
         "GET",
-        `/api/v1/start-session?sessionId=${newSessionKey}`
+        `/api/v1/start-session?sessionId=${newSessionKey}${customerParam}`
       );
 
-      const response = await fetch(`${API_URL}/api/v1/start-session?sessionId=${newSessionKey}`, {
+      const response = await fetch(`${API_URL}/api/v1/start-session?sessionId=${newSessionKey}${customerParam}`, {
         headers: {
           "X-Timestamp": timestamp,
           "X-Signature": signature,
@@ -992,6 +1067,8 @@ function App() {
 
       const data = await response.json();
       console.log("New session initialized:", data);
+      console.log("Agent ID:", data.agentId ?? "not provided");
+      console.log("Customer ID:", selectedCustomerId);
 
       setAgentforceSessionId(data.sessionId);
       setSessionInitialized(true);
@@ -1022,19 +1099,20 @@ function App() {
   };
 
   const initializeSession = useCallback(async () => {
-    if (sessionInitialized) return;
+    if (sessionInitialized || !selectedCustomerId) return;
 
     setIsLoading(true);
 
     try {
       console.log("Initializing Agentforce session...");
+      const customerParam = selectedCustomerId ? `&customerId=${encodeURIComponent(selectedCustomerId)}` : '';
 
       const { timestamp, signature } = await generateSignature(
         "GET",
-        `/api/v1/start-session?sessionId=${externalSessionKey}`
+        `/api/v1/start-session?sessionId=${externalSessionKey}${customerParam}`
       );
 
-      const response = await fetch(`${API_URL}/api/v1/start-session?sessionId=${externalSessionKey}`, {
+      const response = await fetch(`${API_URL}/api/v1/start-session?sessionId=${externalSessionKey}${customerParam}`, {
         headers: {
           "X-Timestamp": timestamp,
           "X-Signature": signature,
@@ -1047,6 +1125,8 @@ function App() {
 
       const data = await response.json();
       console.log("Session initialized:", data);
+      console.log("Agent ID:", data.agentId ?? "not provided");
+      console.log("Customer ID:", selectedCustomerId);
       console.log("response:", response);
 
       // Store the actual session ID returned by Agentforce
@@ -1077,14 +1157,49 @@ function App() {
     } finally {
       setIsLoading(false);
     }
-  }, [externalSessionKey, sessionInitialized]);
+  }, [externalSessionKey, sessionInitialized, selectedCustomerId]);
 
-  // Auto-initialize session when on welcome page
+  // Auto-initialize session when on welcome page and customer is selected
+  // Initialize objectApiName when selectedCustomerId changes
   useEffect(() => {
-    if (!sessionInitialized) {
-      initializeSession();
+    const loadCustomerObjectApiName = async () => {
+      if (selectedCustomerId) {
+        try {
+          const response = await fetch(`${API_URL}/api/v1/customers/${selectedCustomerId}`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.customer?.objectApiName) {
+              console.log(`Setting objectApiName to: ${data.customer.objectApiName} for customer: ${selectedCustomerId}`);
+              setObjectApiName(data.customer.objectApiName);
+            } else {
+              console.warn(`No objectApiName found for customer: ${selectedCustomerId}`);
+            }
+            if (data.customer?.tocUrl != null) {
+              setTocUrl(data.customer.tocUrl);
+            } else {
+              setTocUrl(null);
+            }
+          } else {
+            const errorText = await response.text();
+            console.error(`Failed to fetch customer details: ${response.status} ${response.statusText}`, errorText);
+          }
+        } catch (error) {
+          console.error('Error fetching customer objectApiName:', error);
+        }
+      }
+    };
+    
+    loadCustomerObjectApiName();
+  }, [selectedCustomerId]);
+
+  useEffect(() => {
+    if (!sessionInitialized && selectedCustomerId) {
+      console.log(`Initializing session for customer: ${selectedCustomerId}`);
+      initializeSession().catch((error) => {
+        console.error(`Error initializing session for ${selectedCustomerId}:`, error);
+      });
     }
-  }, [sessionInitialized, initializeSession]);
+  }, [sessionInitialized, initializeSession, selectedCustomerId]);
 
   // Sync URL -> article state: load article when URL is /article/:contentId, clear when on /
   useEffect(() => {
@@ -1110,7 +1225,7 @@ function App() {
   const handleChatToggle = async () => {
     const newIsOpen = !isChatOpen;
 
-    if (newIsOpen && !sessionInitialized) {
+    if (newIsOpen && !sessionInitialized && selectedCustomerId) {
       await initializeSession();
     }
     
@@ -1169,9 +1284,11 @@ function App() {
     };
   }, [embedLayout]);
 
-  if (embedLayout) {
+  if (embedLayout && selectedCustomerId) {
     return (
       <AppErrorBoundary>
+        <CustomerRouteProvider customerId={selectedCustomerId}>
+        <ThemeProvider customerId={selectedCustomerId}>
         <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2 bg-transparent">
             {isChatOpen ? (
               <div className="w-[calc(100vw-2rem)] sm:w-[400px] lg:w-[420px] h-[85vh] max-h-[700px] rounded-lg border border-gray-200 bg-white shadow-xl overflow-hidden flex flex-col animate-in slide-in-from-right-5 duration-200">
@@ -1223,19 +1340,50 @@ function App() {
           currentContentId={citationModalData?.contentId ?? null}
           onTocContentClick={handleCitationTocContentClick}
         />
+        </ThemeProvider>
+        </CustomerRouteProvider>
+      </AppErrorBoundary>
+    );
+  }
+
+  if (customerIdParam && customerNotFound) {
+    return (
+      <AppErrorBoundary>
+        <div className="min-h-screen flex flex-col bg-white items-center justify-center">
+          <p className="text-gray-600">Customer not found.</p>
+          <a href="/" className="mt-2 text-[var(--theme-primary)] hover:underline">Go home</a>
+        </div>
+      </AppErrorBoundary>
+    );
+  }
+
+  if (customerIdParam && customers.length === 0) {
+    return (
+      <AppErrorBoundary>
+        <div className="min-h-screen flex flex-col bg-white items-center justify-center">
+          <p className="text-gray-600">Loading…</p>
+        </div>
       </AppErrorBoundary>
     );
   }
 
   return (
     <AppErrorBoundary>
-    <div className="min-h-screen flex flex-col">
-      <Header />
-
+    <CustomerRouteProvider customerId={selectedCustomerId!}>
+    <ThemeProvider customerId={selectedCustomerId}>
+    <div className="min-h-screen flex flex-col bg-white">
+      <Header customers={customers} />
+      {!selectedCustomerId ? (
+        <main className="flex-1 flex items-center justify-center">
+          <p className="text-gray-600">Loading customer configuration...</p>
+        </main>
+      ) : (
+      <>
       <main className="flex-1 relative overflow-hidden flex">
-        {isArticleOpen && !isSearchPage && (
+        {isArticleOpen && !isSearchPage && tocUrl && (
           <div className="w-64 border-r border-gray-200 bg-white flex-shrink-0">
             <TOC 
+              tocUrl={tocUrl}
               onContentClick={handleTocContentClick}
               currentContentId={currentContentId}
               isVisible={isArticleOpen}
@@ -1248,13 +1396,11 @@ function App() {
           ) : isArticleOpen ? (
             hudmoData ? (
               <div className="flex flex-col md:flex-row h-full absolute inset-0">
-                {/* Article View - Main Content */}
                 <div className="flex-1 min-w-0 overflow-hidden order-2 md:order-1">
                   <ArticleErrorBoundary onClose={handleCloseArticle}>
-                    <ArticleView data={hudmoData} chunkRows={chunkRows} onClose={handleCloseArticle} />
+                    <ArticleView data={hudmoData} chunkRows={chunkRows} onClose={handleCloseArticle} customerId={selectedCustomerId} />
                   </ArticleErrorBoundary>
                 </div>
-                {/* Minimized Chat Widget - Right Side (hidden on mobile, shown on desktop) */}
                 <div className="hidden md:block w-80 border-l border-gray-200 bg-white flex-shrink-0 overflow-hidden order-1 md:order-2">
                   <ChatWidget
                     messages={messages}
@@ -1303,8 +1449,8 @@ function App() {
             hoverCardDataByMessageId={hoverCardDataByMessageId}
             activeHoverCitationMessageId={activeHoverCitationMessageId}
             onCitationHoverChange={onCitationHoverChange}
-                  onCitationHoverScheduleHide={onCitationHoverScheduleHide}
-                  onCitationHoverCancelHide={onCitationHoverCancelHide}
+            onCitationHoverScheduleHide={onCitationHoverScheduleHide}
+            onCitationHoverCancelHide={onCitationHoverCancelHide}
             onHoverCitation={handleHoverCitation}
           />
           )}
@@ -1349,7 +1495,11 @@ function App() {
         currentContentId={citationModalData?.contentId ?? null}
         onTocContentClick={handleCitationTocContentClick}
       />
+      </>
+      )}
     </div>
+    </ThemeProvider>
+    </CustomerRouteProvider>
     </AppErrorBoundary>
   );
 }

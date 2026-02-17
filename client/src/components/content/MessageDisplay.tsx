@@ -3,6 +3,7 @@ import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { generateSignature } from "../../utils/requestSigner";
 import { HarmonizedDataModal } from "./HarmonizedDataModal";
+import { useCustomerRoute } from "../../contexts/CustomerRouteContext";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -28,6 +29,7 @@ interface HudmoData {
 
 export const MessageDisplay = ({ message, onBack }: MessageDisplayProps) => {
   const navigate = useNavigate();
+  const { basePath } = useCustomerRoute();
   const [isLoadingHudmo, setIsLoadingHudmo] = useState(false);
 
   const handleContentClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -37,7 +39,7 @@ export const MessageDisplay = ({ message, onBack }: MessageDisplayProps) => {
       if (dccid) {
         e.preventDefault();
         e.stopPropagation();
-        navigate(`/article/${encodeURIComponent(dccid)}`);
+        navigate(`${basePath}/article/${encodeURIComponent(dccid)}`);
       }
     }
   };
