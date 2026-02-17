@@ -25,7 +25,7 @@
         }
       },
       "homeUrl": "https://www.salesforce.com",
-      "logoUrl": null,
+      "logoUrl": "/logos/salesforce.png",
       "footerLinks": [
         { "label": "Salesforce.com", "href": "https://www.salesforce.com" },
         { "label": "Help & Training", "href": "https://help.salesforce.com" },
@@ -57,11 +57,41 @@
         }
       },
       "homeUrl": "https://voceradocs.stryker.com/",
-      "logoUrl": null,
+      "logoUrl": "/logos/stryker.png",
       "footerLinks": [
         { "label": "Stryker.com", "href": "https://www.stryker.com" },
         { "label": "Vocera Documentation", "href": "https://voceradocs.stryker.com/" },
         { "label": "Support", "href": "https://www.stryker.com/us/en/support.html" }
+      ]
+    },
+    {
+      "id": "hexagon",
+      "name": "Hexagon",
+      "salesforceLoginUrl": "https://eheart-241222-495-demo.my.salesforce.com",
+      "clientId": "",
+      "clientSecret": "",
+      "agentforceAgentId": "0XxHr000000IOglKAG",
+      "objectApiName": "hexagon_zoomin_2_harmonized__dlm",
+      "ui": {
+        "colors": { "primary": "#015072", "primaryHover": "#013d56", "accent": "#333333" },
+        "labels": {
+          "siteName": "Hexagon",
+          "helpLabel": "Help",
+          "welcomeBadge": "Hexagon Documentation",
+          "welcomeTitle": "Welcome to Hexagon Help",
+          "welcomeSubtitle": "Hexagon Help on Enterprise Knowledge demo site",
+          "chatHeaderTitle": "Agentforce on EK",
+          "chatPlaceholder": "Ask any question about Hexagon products and features.",
+          "backToHelp": "← Back to Help",
+          "openInHelp": "Open in Help",
+          "footerCopyright": "© {year} Hexagon AB. All rights reserved."
+        }
+      },
+      "homeUrl": "https://www.hexagon.com",
+      "logoUrl": "/logos/hexagon.png",
+      "footerLinks": [
+        { "label": "Hexagon.com", "href": "https://www.hexagon.com" },
+        { "label": "Support", "href": "https://www.hexagon.com/support" }
       ]
     }
   ]

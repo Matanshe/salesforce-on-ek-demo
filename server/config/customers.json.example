@@ -39,6 +39,36 @@
           { "label": "Vocera Documentation", "href": "https://voceradocs.stryker.com/" }
         ]
       }
+    },
+    {
+      "id": "hexagon",
+      "name": "Hexagon",
+      "salesforceLoginUrl": "https://your-instance.my.salesforce.com",
+      "clientId": "YOUR_CLIENT_ID",
+      "clientSecret": "YOUR_CLIENT_SECRET",
+      "agentforceAgentId": "0XxHr000000IOglKAG",
+      "objectApiName": "YOUR_OBJECT_API_NAME",
+      "ui": {
+        "colors": { "primary": "#015072", "primaryHover": "#013d56", "accent": "#333333" },
+        "labels": {
+          "siteName": "Hexagon",
+          "helpLabel": "Help",
+          "welcomeBadge": "Hexagon Documentation",
+          "welcomeTitle": "Welcome to Hexagon Help",
+          "welcomeSubtitle": "Hexagon Help on Enterprise Knowledge demo site",
+          "chatHeaderTitle": "Agentforce on EK",
+          "chatPlaceholder": "Ask any question about Hexagon products and features.",
+          "backToHelp": "← Back to Help",
+          "openInHelp": "Open in Help",
+          "footerCopyright": "© {year} Hexagon AB. All rights reserved."
+        }
+      },
+      "homeUrl": "https://www.hexagon.com",
+      "logoUrl": null,
+      "footerLinks": [
+        { "label": "Hexagon.com", "href": "https://www.hexagon.com" },
+        { "label": "Support", "href": "https://www.hexagon.com/support" }
+      ]
     }
   ]
 }

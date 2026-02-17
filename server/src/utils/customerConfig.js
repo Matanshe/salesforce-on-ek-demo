@@ -38,5 +38,11 @@ export const getCustomerById = (customerId) => {
 
 export const getAllCustomers = () => {
   const config = loadCustomerConfig();
-  return config.customers.map(({ id, name }) => ({ id, name }));
+  return config.customers.map((c) => ({
+    id: c.id,
+    name: c.name,
+    primaryColor: c.ui?.colors?.primary ?? "#0176D3",
+    primaryHoverColor: c.ui?.colors?.primaryHover ?? "#014486",
+    logoUrl: c.logoUrl ?? null,
+  }));
 };
