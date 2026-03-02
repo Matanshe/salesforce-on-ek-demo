@@ -16,13 +16,14 @@ import { WelcomeContent } from "./components/content/WelcomeContent";
 import { SearchResultsPage } from "./components/content/SearchResultsPage";
 import { ChatWidget } from "./components/chat/ChatWidget";
 import { EmbedChatToggle } from "./components/chat/EmbedChatToggle";
+import { EmbedStaticBackground } from "./components/embed/EmbedStaticBackground";
 import { ArticleView } from "./components/content/ArticleView";
 import { CitationModal } from "./components/content/CitationModal";
 import { generateSignature } from "./utils/requestSigner";
 import TOC from "./components/TOC";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { CustomerRouteProvider } from "./contexts/CustomerRouteContext";
-import { citationBehavior, embedLayout } from "./config/appConfig";
+import { citationBehavior, embedLayout, embedFeatures } from "./config/appConfig";
 import "./App.css";
 
 class ArticleErrorBoundary extends Component<
@@ -870,6 +871,18 @@ function App() {
           ? { chunkObjectApiName, chunkRecordIds }
           : undefined;
 
+      if (citationBehavior === "modal" && embedLayout && !embedFeatures.preview) {
+        const query = buildArticleQuery({
+          hudmo,
+          objectApiName: objectApiName ?? hudmo,
+          chunkObjectApiName: chunkObjectApiName ?? undefined,
+          chunkRecordIds: chunkRecordIds ?? undefined,
+        });
+        const url = `${window.location.origin}${basePath}/article/${encodeURIComponent(dccid)}${query}`;
+        window.open(url, "_blank");
+        return;
+      }
+
       if (citationBehavior === "modal") {
         fetchForCitationModal(dccid, hudmo, chunkParams).then((result) => {
           if (result) {
@@ -1265,30 +1278,12 @@ function App() {
     return () => window.removeEventListener("message", onMessage);
   }, [embedLayout]);
 
-  // Transparent background in embed so no white box around the agent
-  useEffect(() => {
-    if (!embedLayout) return;
-    const html = document.documentElement;
-    const body = document.body;
-    const root = document.getElementById("root");
-    const prevHtml = html.style.background;
-    const prevBody = body.style.background;
-    const prevRoot = root?.style.background ?? "";
-    html.style.background = "transparent";
-    body.style.background = "transparent";
-    if (root) root.style.background = "transparent";
-    return () => {
-      html.style.background = prevHtml;
-      body.style.background = prevBody;
-      if (root) root.style.background = prevRoot;
-    };
-  }, [embedLayout]);
-
   if (embedLayout && selectedCustomerId) {
     return (
       <AppErrorBoundary>
         <CustomerRouteProvider customerId={selectedCustomerId}>
         <ThemeProvider customerId={selectedCustomerId}>
+        <EmbedStaticBackground />
         <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2 bg-transparent">
             {isChatOpen ? (
               <div className="w-[calc(100vw-2rem)] sm:w-[400px] lg:w-[420px] h-[85vh] max-h-[700px] rounded-lg border border-gray-200 bg-white shadow-xl overflow-hidden flex flex-col animate-in slide-in-from-right-5 duration-200">
@@ -1318,6 +1313,7 @@ function App() {
                   fetchingHudmoFor={fetchingHudmoFor}
                   prefetchedHudmoData={prefetchedHudmoData}
                   citationBehavior="modal"
+                  enableHover={embedFeatures.hover}
                   chunkPreviewByMessageId={chunkPreviewByMessageId}
                   hoverCardDataByMessageId={hoverCardDataByMessageId}
                   activeHoverCitationMessageId={activeHoverCitationMessageId}
@@ -1339,6 +1335,8 @@ function App() {
           articleTitle={citationModalData?.articleTitle ?? null}
           currentContentId={citationModalData?.contentId ?? null}
           onTocContentClick={handleCitationTocContentClick}
+          enableToc={embedFeatures.toc}
+          transparentOverlay={true}
         />
         </ThemeProvider>
         </CustomerRouteProvider>
@@ -1494,6 +1492,7 @@ function App() {
         articleTitle={citationModalData?.articleTitle ?? null}
         currentContentId={citationModalData?.contentId ?? null}
         onTocContentClick={handleCitationTocContentClick}
+        enableToc={true}
       />
       </>
       )}
