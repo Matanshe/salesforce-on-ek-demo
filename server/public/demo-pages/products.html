@@ -4,35 +4,77 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Products - Salesforce Help</title>
-  <style>
-    * { box-sizing: border-box; }
-    body { margin: 0; font-family: 'Salesforce Sans', Arial, sans-serif; color: #181818; background: #f3f3f3; }
-    header {
-      background: #fff; border-bottom: 1px solid #e5e5e5; padding: 0.75rem 1.5rem;
-      display: flex; align-items: center; gap: 1rem;
-    }
-    header a { color: #0176d3; text-decoration: none; font-weight: 600; }
-    header a:hover { text-decoration: underline; }
-    .container { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem; }
-    h1 { color: #0176d3; font-size: 1.75rem; margin-top: 0; }
-    p { line-height: 1.6; }
-    .breadcrumb { font-size: 0.875rem; color: #706e6b; margin-bottom: 1rem; }
-    .breadcrumb a { color: #0176d3; text-decoration: none; }
-  </style>
+  <link rel="stylesheet" href="salesforce-embed.css" />
 </head>
 <body>
-  <header>
-    <a href="/">Salesforce Help</a>
-    <span aria-hidden="true">|</span>
-    <a href="getting-started.html">Getting Started</a>
-    <a href="products.html">Products</a>
-    <a href="support.html">Support</a>
+  <div class="sf-topbar">
+    <a href="https://www.salesforce.com">Salesforce.com</a>
+    <a href="https://help.salesforce.com">Help &amp; Training</a>
+    <a href="https://trailhead.salesforce.com">Trailhead</a>
+    <a href="https://developer.salesforce.com">Developer</a>
+  </div>
+  <header class="sf-header">
+    <div class="sf-header-inner">
+      <a href="getting-started.html" class="sf-logo">
+        <span>Salesforce</span>
+        <span class="sf-sep" aria-hidden="true">|</span>
+        <span>Help</span>
+      </a>
+      <nav class="sf-nav">
+        <a href="getting-started.html">Getting Started</a>
+        <span class="sf-sep">|</span>
+        <a href="products.html">Products</a>
+        <span class="sf-sep">|</span>
+        <a href="support.html">Support</a>
+        <span class="sf-sep">|</span>
+        <a href="embed-with-loader.html">Embed</a>
+      </nav>
+    </div>
   </header>
-  <main class="container">
-    <div class="breadcrumb"><a href="/">Help</a> &gt; Products</div>
+  <section class="sf-hero">
     <h1>Salesforce Products</h1>
-    <p>Explore documentation for Sales Cloud, Service Cloud, Marketing Cloud, and other Salesforce products. The embedded agent can answer product-specific questions and cite relevant help articles. Hover over a citation link to see a preview; click to open the full source in a modal.</p>
+    <p>Explore documentation for Sales Cloud, Service Cloud, Marketing Cloud, and more. Ask the agent for product-specific help and cited articles.</p>
+  </section>
+  <main class="sf-container">
+    <div class="sf-breadcrumb"><a href="getting-started.html">Help</a> &gt; Products</div>
+    <div class="sf-main">
+      <h1>Product documentation</h1>
+      <p class="sf-lead">The embedded agent can answer product-specific questions and cite relevant help articles. Hover over a citation link to see a preview; click to open the full source in a modal.</p>
+      <div class="sf-cards">
+        <div class="sf-card">
+          <h3>Sales Cloud</h3>
+          <p>CRM for sales teams: leads, opportunities, forecasting.</p>
+          <a href="#">Ask the agent →</a>
+        </div>
+        <div class="sf-card">
+          <h3>Service Cloud</h3>
+          <p>Customer service, cases, knowledge, and field service.</p>
+          <a href="#">Ask the agent →</a>
+        </div>
+        <div class="sf-card">
+          <h3>Marketing Cloud</h3>
+          <p>Campaigns, journeys, email, and advertising.</p>
+          <a href="#">Ask the agent →</a>
+        </div>
+        <div class="sf-card">
+          <h3>Data &amp; Analytics</h3>
+          <p>Einstein, reports, dashboards, and Data Cloud.</p>
+          <a href="#">Ask the agent →</a>
+        </div>
+      </div>
+    </div>
   </main>
+  <footer class="sf-footer">
+    <div class="sf-footer-inner">
+      <div class="sf-footer-links">
+        <a href="https://www.salesforce.com">Salesforce.com</a>
+        <a href="https://help.salesforce.com">Help &amp; Training</a>
+        <a href="https://trailhead.salesforce.com">Trailhead</a>
+        <a href="https://developer.salesforce.com">Developer Center</a>
+      </div>
+      <p class="sf-footer-copy">© 2025 salesforce.com, inc. All rights reserved. Various trademarks held by their respective owners.</p>
+    </div>
+  </footer>
   <button
     type="button"
     id="agent-open-btn"
@@ -46,7 +88,7 @@
   <iframe
     id="agent-embed"
     title="Agentforce chat"
-    src="/?embed=1"
+    src="/salesforce?embed=1"
     style="position: fixed; bottom: 24px; right: 24px; border: none; box-shadow: 0 4px 20px rgba(0,0,0,0.15); border-radius: 8px; transition: width 0.2s, height 0.2s;"
   ></iframe>
   <script>

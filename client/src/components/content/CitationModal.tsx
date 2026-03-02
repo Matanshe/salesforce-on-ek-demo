@@ -25,6 +25,10 @@ interface CitationModalProps {
   currentContentId?: string | null;
   /** When user clicks another TOC item in expanded view, load that article */
   onTocContentClick?: (contentId: string) => void;
+  /** When false, hide "Show table of contents" and TOC sidebar in expanded view */
+  enableToc?: boolean;
+  /** When true, use transparent overlay (e.g. embed mode to avoid semi-transparent padding) */
+  transparentOverlay?: boolean;
 }
 
 export function CitationModal({
@@ -34,6 +38,8 @@ export function CitationModal({
   chunkRows,
   currentContentId,
   onTocContentClick,
+  enableToc = true,
+  transparentOverlay = false,
 }: CitationModalProps) {
   const [expanded, setExpanded] = useState(false);
 
@@ -48,15 +54,16 @@ export function CitationModal({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         showCloseButton={true}
+        overlayClassName={transparentOverlay ? "!bg-transparent" : undefined}
         className={
-          expanded
-            ? "sm:max-w-5xl h-[85vh] flex flex-col p-0 gap-0"
+          expanded && enableToc
+            ? "sm:max-w-7xl w-[calc(100vw-2rem)] h-[85vh] flex flex-col p-0 gap-0"
             : "sm:max-w-3xl h-[85vh] flex flex-col p-0 gap-0"
         }
       >
-        {expanded && hudmoData ? (
-          <div className="flex-1 min-h-0 overflow-hidden flex flex-row">
-            <div className="w-64 shrink-0 min-h-0 flex flex-col border-r border-gray-200">
+        {expanded && hudmoData && enableToc ? (
+          <div className="flex-1 min-h-0 overflow-hidden flex flex-row w-full">
+            <div className="w-[260px] shrink-0 min-h-0 flex flex-col border-r border-gray-200 overflow-hidden">
               <TOC
                 currentContentId={currentContentId ?? null}
                 isVisible={true}
@@ -64,7 +71,7 @@ export function CitationModal({
                 onContentClick={onTocContentClick}
               />
             </div>
-            <div className="flex-1 min-w-0 min-h-0 overflow-hidden flex flex-col">
+            <div className="flex-1 min-w-[320px] min-h-0 overflow-hidden flex flex-col">
               <ArticleView
                 data={hudmoData}
                 chunkRows={chunkRows}
@@ -79,17 +86,19 @@ export function CitationModal({
               chunkRows={chunkRows}
               onClose={onClose}
             />
-            <div className="shrink-0 px-4 py-2 border-t border-gray-200 bg-gray-50 flex items-center justify-between gap-2">
-              <p className="text-xs text-gray-500">
-                Hover for chunk preview · Click for full article · Expand for TOC
-              </p>
-              <Button
-                className="bg-[#0176D3] hover:bg-[#014486] shrink-0"
-                onClick={() => setExpanded(true)}
-              >
-                Show table of contents
-              </Button>
-            </div>
+            {enableToc && (
+              <div className="shrink-0 px-4 py-2 border-t border-gray-200 bg-gray-50 flex items-center justify-between gap-2">
+                <p className="text-xs text-gray-500">
+                  Hover for chunk preview · Click for full article · Expand for TOC
+                </p>
+                <Button
+                  className="bg-[#0176D3] hover:bg-[#014486] shrink-0"
+                  onClick={() => setExpanded(true)}
+                >
+                  Show table of contents
+                </Button>
+              </div>
+            )}
           </div>
         ) : null}
       </DialogContent>

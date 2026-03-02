@@ -72,6 +72,17 @@ The demo showcases how **Salesforce Data Cloud** and **Agentforce** work togethe
 - **Salesforce Branding**: Design matches help.salesforce.com with Salesforce colors and styling
 - **Real-time Indicators**: Visual feedback for article loading and readiness status
 
+## Embedding the widget
+
+You can add the chat widget to an existing website as an iframe addon, with optional toggles for citation hover, preview modal, and table of contents. Use the loader script and query parameters to configure behavior. See **[EMBED.md](EMBED.md)** for:
+
+- Quick start (script tag with `data-base-url` and `data-customer-id`)
+- Embed URL format and feature parameters (`hover`, `preview`, `toc`)
+- Loader script attributes and `AgentEmbed.init()` API
+- PostMessage API for resize and open
+- Raw iframe integration without the loader
+- Troubleshooting
+
 ## API Specification
 
 The application exposes four RESTful endpoints, all protected by HMAC-SHA256 signature validation:
