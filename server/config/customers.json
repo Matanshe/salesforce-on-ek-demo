@@ -126,7 +126,10 @@
       "proposedQuestion": "How does People Risk determine which users are included in the User Risk page, and what role do Azure Active Directory and Google Workspace play in supplying user data?",
       "footerLinks": [
         { "label": "Proofpoint.com", "href": "https://www.proofpoint.com" }
-      ]
+      ],
+      "embedUi": {
+        "colors": { "primary": "#66CC33", "primaryHover": "#52a82a", "accent": "#0066FF" }
+      }
     }
   ]
 }

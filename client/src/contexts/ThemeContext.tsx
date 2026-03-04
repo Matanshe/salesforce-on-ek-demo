@@ -30,26 +30,30 @@ function applyThemeToDocument(theme: ThemeConfig) {
 
 export function ThemeProvider({
   customerId,
+  embedLayout = false,
   children,
 }: {
   customerId: string | null;
+  embedLayout?: boolean;
   children: ReactNode;
 }) {
   const [theme, setTheme] = useState<ThemeConfig | null>(null);
 
-  const loadTheme = useCallback(async (id: string) => {
+  const loadTheme = useCallback(async (id: string, useEmbedTheme: boolean) => {
     try {
       const res = await fetch(`${API_URL}/api/v1/customers/${id}`);
       if (!res.ok) return setTheme(getDefaultTheme());
       const data = await res.json();
       const ui = data.customer?.ui;
-      if (ui?.colors && ui?.labels) {
+      const embedUi = data.customer?.embedUi;
+      const source = useEmbedTheme && embedUi?.colors && embedUi?.labels ? embedUi : ui;
+      if (source?.colors && source?.labels) {
         const merged: ThemeConfig = {
-          colors: { ...getDefaultTheme().colors, ...ui.colors },
-          labels: { ...getDefaultTheme().labels, ...ui.labels },
-          homeUrl: ui.homeUrl ?? getDefaultTheme().homeUrl,
-          logoUrl: ui.logoUrl ?? null,
-          footerLinks: Array.isArray(ui.footerLinks) ? ui.footerLinks : getDefaultTheme().footerLinks,
+          colors: { ...getDefaultTheme().colors, ...source.colors },
+          labels: { ...getDefaultTheme().labels, ...source.labels },
+          homeUrl: source.homeUrl ?? getDefaultTheme().homeUrl,
+          logoUrl: source.logoUrl ?? null,
+          footerLinks: Array.isArray(source.footerLinks) ? source.footerLinks : getDefaultTheme().footerLinks,
         };
         setTheme(merged);
         applyThemeToDocument(merged);
@@ -67,11 +71,11 @@ export function ThemeProvider({
 
   useEffect(() => {
     if (customerId) {
-      loadTheme(customerId);
+      loadTheme(customerId, embedLayout);
     } else {
       setTheme(null);
     }
-  }, [customerId, loadTheme]);
+  }, [customerId, embedLayout, loadTheme]);
 
   return (
     <ThemeContext.Provider value={theme}>{children}</ThemeContext.Provider>
