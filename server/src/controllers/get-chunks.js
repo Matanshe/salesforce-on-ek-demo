@@ -102,7 +102,6 @@ const getChunks = async (req, res) => {
   (() => {
     const payload = { location: "get-chunks.js:entry", message: "getChunks invoked", data: { chunkRecordIdsLen: (req.body?.chunkRecordIds != null) ? (Array.isArray(req.body.chunkRecordIds) ? req.body.chunkRecordIds.length : String(req.body.chunkRecordIds).split(",").length) : 0, requestOrderFirst3: Array.isArray(req.body?.chunkRecordIds) ? req.body.chunkRecordIds.slice(0, 3) : (typeof req.body?.chunkRecordIds === "string" ? req.body.chunkRecordIds.split(",").map((id) => id.trim()).filter(Boolean).slice(0, 3) : []) }, timestamp: Date.now(), hypothesisId: "A" };
     debugLog(payload);
-    fetch("http://127.0.0.1:7242/ingest/bebf9a71-04a2-4e86-a513-895cda001ee7", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }).catch(() => {});
   })();
   // #endregion
   console.log(
@@ -164,7 +163,6 @@ const getChunks = async (req, res) => {
           (() => {
             const payload = { location: "get-chunks.js:create-not-ok", message: "createSqlQuery failed", data: { createStatus: createRes.status, errLen: (errText || "").length }, timestamp: Date.now(), hypothesisId: "B" };
             debugLog(payload);
-            fetch("http://127.0.0.1:7242/ingest/bebf9a71-04a2-4e86-a513-895cda001ee7", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }).catch(() => {});
           })();
           // #endregion
           console.warn(
@@ -293,7 +291,6 @@ const getChunks = async (req, res) => {
               (() => {
                 const payload = { location: "get-chunks.js:rows-ok", message: "Data Cloud GET /rows ok", data: { branch: "rows", chunkRowsLen: chunkRows.length, requestOrderFirst3: chunkRecordIds.slice(0, 3), responseOrderFirst3: responseOrder.slice(0, 3), orderMatch: chunkRecordIds.slice(0, 3).every((id, i) => responseOrder[i] === id), columns: columns.slice(0, 5) }, timestamp: Date.now(), hypothesisId: "A" };
                 debugLog(payload);
-                fetch("http://127.0.0.1:7242/ingest/bebf9a71-04a2-4e86-a513-895cda001ee7", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }).catch(() => {});
               })();
               // #endregion
               const sample = chunkRows[0]?.Chunk__c?.slice(0, 60);
@@ -308,7 +305,6 @@ const getChunks = async (req, res) => {
             (() => {
               const payload = { location: "get-chunks.js:rows-not-ok", message: "GET /rows failed", data: { branch: "rows-failed", rowsStatus: rowsRes.status, rowsBodyLen: (rowsErrText || "").length, rowsBodyPreview: (rowsErrText || "").slice(0, 300), queryIdUsed: queryId }, timestamp: Date.now(), hypothesisId: "B" };
               debugLog(payload);
-              fetch("http://127.0.0.1:7242/ingest/bebf9a71-04a2-4e86-a513-895cda001ee7", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }).catch(() => {});
             })();
             // #endregion
             console.log(
@@ -354,7 +350,6 @@ const getChunks = async (req, res) => {
             (() => {
               const payload = { location: "get-chunks.js:inline-ok", message: "Data Cloud inline rows", data: { branch: "inline", chunkRowsLen: chunkRows.length, requestOrderFirst3: chunkRecordIds.slice(0, 3), responseOrderFirst3: responseOrderInline.slice(0, 3), orderMatch: chunkRecordIds.slice(0, 3).every((id, i) => responseOrderInline[i] === id), columns: columns.slice(0, 5) }, timestamp: Date.now(), hypothesisId: "A" };
               debugLog(payload);
-              fetch("http://127.0.0.1:7242/ingest/bebf9a71-04a2-4e86-a513-895cda001ee7", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }).catch(() => {});
             })();
             // #endregion
             console.log(
@@ -387,7 +382,6 @@ const getChunks = async (req, res) => {
                 hypothesisId: "B",
               };
               debugLog(payload);
-              fetch("http://127.0.0.1:7242/ingest/bebf9a71-04a2-4e86-a513-895cda001ee7", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }).catch(() => {});
             })();
             // #endregion
             console.log(
@@ -460,7 +454,6 @@ const getChunks = async (req, res) => {
               const fileKeysSample = Array.isArray(data.chunks) ? (data.chunks.slice(0, 2).map((c) => c.Id ?? c.id) || []) : Object.keys(data).slice(0, 3);
               const payload = { location: "get-chunks.js:local-ok", message: "Local file returned chunks", data: { branch: "local", chunkRowsLen: chunkRows.length, fileFormat, fileKeysSample, requestIdsFirst3: chunkRecordIds.slice(0, 3) }, timestamp: Date.now(), hypothesisId: "C" };
               debugLog(payload);
-              fetch("http://127.0.0.1:7242/ingest/bebf9a71-04a2-4e86-a513-895cda001ee7", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }).catch(() => {});
             })();
             // #endregion
             console.log(`${getCurrentTimestamp()} ✅ - getChunks - Local file returned ${chunkRows.length} chunk(s) from ${filePath}`);
@@ -470,7 +463,6 @@ const getChunks = async (req, res) => {
           (() => {
             const payload = { location: "get-chunks.js:local-zero-rows", message: "File parsed but 0 chunk rows", data: { branch: "local-zero", filePath: path.basename(filePath), fileFormat: Array.isArray(data.chunks) ? "chunksArray" : "objectMap", requestIdsFirst3: chunkRecordIds.slice(0, 3) }, timestamp: Date.now(), hypothesisId: "C" };
             debugLog(payload);
-            fetch("http://127.0.0.1:7242/ingest/bebf9a71-04a2-4e86-a513-895cda001ee7", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }).catch(() => {});
           })();
           // #endregion
           console.log(`${getCurrentTimestamp()} 📭 - getChunks - file ${filePath} parsed but produced 0 chunk rows`);
@@ -485,7 +477,6 @@ const getChunks = async (req, res) => {
     (() => {
       const payload = { location: "get-chunks.js:final-empty", message: "No chunk data from API or file", data: { branch: "empty", chunkRecordIdsLen: chunkRecordIds.length }, timestamp: Date.now(), hypothesisId: "B" };
       debugLog(payload);
-      fetch("http://127.0.0.1:7242/ingest/bebf9a71-04a2-4e86-a513-895cda001ee7", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }).catch(() => {});
     })();
     // #endregion
     console.log(`${getCurrentTimestamp()} 📭 - getChunks - No chunk data from Data Cloud or local file; returning empty chunkRows`);
