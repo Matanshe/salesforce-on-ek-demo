@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import './index.css'
 import App from './App.tsx'
-import { EmptyPage } from './components/EmptyPage.tsx'
+import { LandingPage } from './components/LandingPage.tsx'
 import { ErrorBoundary } from './components/ErrorBoundary.tsx'
 
 createRoot(document.getElementById('root')!).render(
@@ -11,7 +11,7 @@ createRoot(document.getElementById('root')!).render(
     <ErrorBoundary>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<EmptyPage />} />
+          <Route path="/" element={<LandingPage />} />
           <Route path="/:customerId/*" element={<App />} />
         </Routes>
       </BrowserRouter>

@@ -6,6 +6,6 @@
     "build-client:heroku": "node scripts/build-client-for-heroku.js",
     "validate-env": "node scripts/validate-env.js",
     "push-heroku": "node scripts/push-to-heroku.js",
-    "move-build": "rm -rf server/public && mv client/dist server/public"
+    "move-build": "rm -f server/public/index.html && rm -rf server/public/assets && cp -r client/dist/* server/public/ && echo 'move-build: copied (data/ preserved)'"
   }
 }

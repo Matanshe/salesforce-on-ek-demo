@@ -56,7 +56,7 @@ export interface CitationHoverCardData {
 export interface ChatWidgetProps {
   messages: Message[];
   onMessageClick: (message: Message) => void;
-  onSendMessage: (content: string) => void;
+  onSendMessage: (content: string) => void | Promise<void>;
   onDeleteSession: () => void;
   onStartNewSession: () => void;
   sessionInitialized: boolean;
@@ -84,4 +84,6 @@ export interface ChatWidgetProps {
   onCitationHoverCancelHide?: () => void;
   /** Called when user hovers citation in modal mode so parent can fetch chunk preview */
   onHoverCitation?: (message: Message) => void;
+  /** When true, do not show "Start New Session" button; show loading until session is ready (e.g. Proofpoint auto-start). */
+  hideStartNewSession?: boolean;
 }
