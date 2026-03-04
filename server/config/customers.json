@@ -111,9 +111,9 @@
         "labels": {
           "siteName": "Proofpoint",
           "helpLabel": "Help",
-          "welcomeBadge": "Proofpoint",
-          "welcomeTitle": "Proofpoint dummy pages",
-          "welcomeSubtitle": "Agent chat on dummy routes",
+          "welcomeBadge": "Proofpoint Help Portal",
+          "welcomeTitle": "Welcome to Proofpoint Help",
+          "welcomeSubtitle": "Proofpoint Help on Enterprise Knowledge demo site",
           "chatHeaderTitle": "Agentforce on EK",
           "chatPlaceholder": "Ask a question.",
           "backToHelp": "← Back to Help",

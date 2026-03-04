@@ -30,7 +30,7 @@ export interface ThemeConfig {
   footerLinks: ThemeFooterLink[];
 }
 
-const DEFAULT_THEME: ThemeConfig = {
+const SALESFORCE_DEFAULT_THEME: ThemeConfig = {
   colors: {
     primary: "#0176D3",
     primaryHover: "#014486",
@@ -58,8 +58,33 @@ const DEFAULT_THEME: ThemeConfig = {
   ],
 };
 
-export function getDefaultTheme(): ThemeConfig {
-  return DEFAULT_THEME;
+const PROOFPOINT_DEFAULT_THEME: ThemeConfig = {
+  colors: {
+    primary: "#C41E3A",
+    primaryHover: "#9e1830",
+    accent: "#333333",
+  },
+  labels: {
+    siteName: "Proofpoint",
+    helpLabel: "Help",
+    welcomeBadge: "Proofpoint Help Portal",
+    welcomeTitle: "Welcome to Proofpoint Help",
+    welcomeSubtitle: "Proofpoint Help on Enterprise Knowledge demo site",
+    chatHeaderTitle: "Agentforce on EK",
+    chatPlaceholder: "Ask a question.",
+    backToHelp: "← Back to Help",
+    openInHelp: "Open in Help",
+    footerCopyright: "© Proofpoint.",
+  },
+  homeUrl: "https://www.proofpoint.com",
+  logoUrl: null,
+  footerLinks: [{ label: "Proofpoint.com", href: "https://www.proofpoint.com" }],
+};
+
+/** Returns customer-specific default when known, so fallback never shows wrong brand (e.g. Proofpoint never shows "Salesforce"). */
+export function getDefaultTheme(customerId?: string | null): ThemeConfig {
+  if (customerId === "proofpoint") return PROOFPOINT_DEFAULT_THEME;
+  return SALESFORCE_DEFAULT_THEME;
 }
 
 export function formatFooterCopyright(template: string): string {

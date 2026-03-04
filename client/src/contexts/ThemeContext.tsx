@@ -37,40 +37,50 @@ export function ThemeProvider({
   embedLayout?: boolean;
   children: ReactNode;
 }) {
-  const [theme, setTheme] = useState<ThemeConfig | null>(null);
+  const [theme, setTheme] = useState<ThemeConfig | null>(() =>
+    customerId ? getDefaultTheme(customerId) : null
+  );
 
   const loadTheme = useCallback(async (id: string, useEmbedTheme: boolean) => {
+    const defaultForCustomer = () => getDefaultTheme(id);
     try {
       const res = await fetch(`${API_URL}/api/v1/customers/${id}`);
-      if (!res.ok) return setTheme(getDefaultTheme());
+      if (!res.ok) {
+        const theme = defaultForCustomer();
+        setTheme(theme);
+        applyThemeToDocument(theme);
+        return;
+      }
       const data = await res.json();
       const ui = data.customer?.ui;
       const embedUi = data.customer?.embedUi;
       const source = useEmbedTheme && embedUi?.colors && embedUi?.labels ? embedUi : ui;
       if (source?.colors && source?.labels) {
         const merged: ThemeConfig = {
-          colors: { ...getDefaultTheme().colors, ...source.colors },
-          labels: { ...getDefaultTheme().labels, ...source.labels },
-          homeUrl: source.homeUrl ?? getDefaultTheme().homeUrl,
+          colors: { ...defaultForCustomer().colors, ...source.colors },
+          labels: { ...defaultForCustomer().labels, ...source.labels },
+          homeUrl: source.homeUrl ?? defaultForCustomer().homeUrl,
           logoUrl: source.logoUrl ?? null,
-          footerLinks: Array.isArray(source.footerLinks) ? source.footerLinks : getDefaultTheme().footerLinks,
+          footerLinks: Array.isArray(source.footerLinks) ? source.footerLinks : defaultForCustomer().footerLinks,
         };
         setTheme(merged);
         applyThemeToDocument(merged);
       } else {
-        const defaultTheme = getDefaultTheme();
-        setTheme(defaultTheme);
-        applyThemeToDocument(defaultTheme);
+        const theme = defaultForCustomer();
+        setTheme(theme);
+        applyThemeToDocument(theme);
       }
     } catch {
-      const defaultTheme = getDefaultTheme();
-      setTheme(defaultTheme);
-      applyThemeToDocument(defaultTheme);
+      const theme = defaultForCustomer();
+      setTheme(theme);
+      applyThemeToDocument(theme);
     }
   }, []);
 
   useEffect(() => {
     if (customerId) {
+      setTheme(getDefaultTheme(customerId));
+      applyThemeToDocument(getDefaultTheme(customerId));
       loadTheme(customerId, embedLayout);
     } else {
       setTheme(null);
@@ -82,7 +92,7 @@ export function ThemeProvider({
   );
 }
 
-export function useTheme(): ThemeConfig {
+export function useTheme(customerId?: string | null): ThemeConfig {
   const theme = useContext(ThemeContext);
-  return theme ?? getDefaultTheme();
+  return theme ?? getDefaultTheme(customerId);
 }

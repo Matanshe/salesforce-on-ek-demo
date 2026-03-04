@@ -50,10 +50,14 @@ const TableOfContents = ({ tocUrl: tocUrlProp, onContentClick, currentContentId,
     loadXml();
   }, [tocXmlUrl]);
 
+  // Content ID: Salesforce uses content__id; Proofpoint (and some Zoomin) uses Content_ID__c
+  const getContentId = (el: Element): string | null =>
+    el.getAttribute('content__id') ?? el.getAttribute('Content_ID__c') ?? null;
+
   const parseNode = (node: Element): NavNode => ({
     title: node.getAttribute('title'),
     xmlHref: node.getAttribute('href'),
-    contentId: node.getAttribute('content__id'),
+    contentId: getContentId(node),
     children: Array.from(node.children)
       .filter((child): child is Element => child.nodeName === 'nav')
       .map((child) => parseNode(child))
