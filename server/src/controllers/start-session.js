@@ -32,9 +32,14 @@ const startSession = async (req, res) => {
       console.log(`${getCurrentTimestamp()} 🤖 - startSession - Using Agent ID: ${agentId} from environment variable`);
     }
     
-    // Ensure agentId is set
-    if (!agentId) {
-      console.warn(`${getCurrentTimestamp()} ⚠️ - startSession - Agent ID is empty! Customer ID: ${customerId || "none"}`);
+    // Ensure agentId is set before calling Agentforce
+    if (!agentId || !String(agentId).trim()) {
+      console.error(`${getCurrentTimestamp()} ❌ - startSession - Agent ID is missing. Customer: ${customerId || "default"}. Set agentforceAgentId in server/config/customers.json or AGENTFORCE_AGENT_ID in .env.`);
+      res.status(503).json({
+        error: "start_session_failed",
+        message: "Agent is not configured. Set agentforceAgentId for this customer in server/config/customers.json or AGENTFORCE_AGENT_ID in server/.env.",
+      });
+      return;
     }
 
     const body = {
@@ -70,7 +75,16 @@ const startSession = async (req, res) => {
         `${getCurrentTimestamp()} ❌ - startSession - API Error: ${response.status} ${response.statusText}`
       );
       console.error(`${getCurrentTimestamp()} ❌ - startSession - Response: ${errorText}`);
-      throw new Error(`There was an error while getting the Agentforce messages: ${response.statusText}`);
+      let detail = response.statusText;
+      try {
+        const errJson = JSON.parse(errorText);
+        if (errJson.message) detail = errJson.message;
+        else if (errJson.error_description) detail = errJson.error_description;
+        else if (errJson[0]?.message) detail = errJson[0].message;
+      } catch {
+        if (errorText && errorText.length < 200) detail = errorText;
+      }
+      throw new Error(`Agentforce error: ${detail}`);
     }
 
     const data = await response.json();
@@ -86,7 +100,9 @@ const startSession = async (req, res) => {
     });
   } catch (error) {
     console.error(`${getCurrentTimestamp()} ❌ - startSession - Error occurred: ${error.message}`);
-    res.status(500).json({
+    const status = error.message?.includes("Salesforce") || error.message?.includes("authentication") ? 503 : 500;
+    res.status(status).json({
+      error: "start_session_failed",
       message: error.message,
     });
   }

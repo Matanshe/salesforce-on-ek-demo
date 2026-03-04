@@ -5,6 +5,7 @@ import { ThemeProvider } from "../contexts/ThemeContext";
 import { CustomerRouteProvider } from "../contexts/CustomerRouteContext";
 import { useAgentChat } from "../hooks/useAgentChat";
 import { ChatWidget } from "./chat/ChatWidget";
+import { Header } from "./layout/Header";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 
@@ -93,11 +94,9 @@ export function ProofpointDummyPage() {
           {toastMessage}
         </div>
       )}
-      <header className="bg-white border-b border-gray-200 px-4 py-3">
-        <h1 className="text-lg font-semibold">Proofpoint (dummy pages)</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Route: {pathname || "/proofpoint"}</p>
-      </header>
+      <Header customers={[{ id: "proofpoint", name: "Proofpoint" }]} />
       <main className="max-w-3xl mx-auto px-4 py-8">
+        <p className="text-sm text-gray-500 mb-4">Route: {pathname || "/proofpoint"}</p>
         {isIndex ? (
           <>
             <h2 className="text-xl font-semibold mb-4">Routes</h2>
@@ -150,6 +149,7 @@ export function ProofpointDummyPage() {
           {...chatProps}
           isOpen={isChatOpen}
           onToggle={() => setIsChatOpen((prev) => !prev)}
+          hideStartNewSession
         />
     </div>
       </ThemeProvider>

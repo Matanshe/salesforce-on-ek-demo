@@ -34,7 +34,7 @@ export function useAgentChat(customerId: string): ChatWidgetProps {
   const [messages, setMessages] = useState<Message[]>([]);
   const [sessionInitialized, setSessionInitialized] = useState(false);
   const [agentforceSessionId, setAgentforceSessionId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // start true so we show loading until session is ready (no "Start New Session" flash)
   const [isOpen, setIsOpen] = useState(false);
   const [messageSequence, setMessageSequence] = useState(1);
 

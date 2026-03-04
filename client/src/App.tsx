@@ -1128,7 +1128,9 @@ function App() {
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to start session: ${response.statusText}`);
+        const errBody = await response.json().catch(() => ({}));
+        const msg = errBody?.message || errBody?.error || response.statusText;
+        throw new Error(`Failed to start session: ${msg}`);
       }
 
       const data = await response.json();
@@ -1269,6 +1271,9 @@ function App() {
     setIsChatOpen(newIsOpen);
   };
 
+  // Show loading until session is ready so we never show "Session ended / Start new session"
+  const effectiveChatLoading = isLoading || (!!selectedCustomerId && !sessionInitialized);
+
   // Tell parent frame to hide or resize iframe to match agent (embed mode only)
   useEffect(() => {
     if (!embedLayout || typeof window === "undefined" || window === window.parent) return;
@@ -1348,7 +1353,7 @@ function App() {
                   onDeleteSession={handleDeleteSession}
                   onStartNewSession={handleStartNewSession}
                   sessionInitialized={sessionInitialized}
-                  isLoading={isLoading}
+                  isLoading={effectiveChatLoading}
                   isOpen={true}
                   onToggle={handleChatToggle}
                   minimized={true}
@@ -1455,7 +1460,7 @@ function App() {
                     onDeleteSession={handleDeleteSession}
                     onStartNewSession={handleStartNewSession}
                     sessionInitialized={sessionInitialized}
-                    isLoading={isLoading}
+                    isLoading={effectiveChatLoading}
                     isOpen={true}
                     onToggle={handleChatToggle}
                     minimized={true}
@@ -1485,7 +1490,7 @@ function App() {
             onDeleteSession={handleDeleteSession}
             onStartNewSession={handleStartNewSession}
             sessionInitialized={sessionInitialized}
-            isLoading={isLoading}
+            isLoading={effectiveChatLoading}
             isOpen={isChatOpen}
             onToggle={handleChatToggle}
             fetchingHudmoFor={fetchingHudmoFor}
@@ -1512,8 +1517,8 @@ function App() {
             onSendMessage={handleSendMessage}
             onDeleteSession={handleDeleteSession}
             onStartNewSession={handleStartNewSession}
-            sessionInitialized={sessionInitialized}
-            isLoading={isLoading}
+sessionInitialized={sessionInitialized}
+            isLoading={effectiveChatLoading}
             isOpen={isChatOpen}
             onToggle={handleChatToggle}
             fetchingHudmoFor={fetchingHudmoFor}
@@ -1523,8 +1528,8 @@ function App() {
             hoverCardDataByMessageId={hoverCardDataByMessageId}
             activeHoverCitationMessageId={activeHoverCitationMessageId}
             onCitationHoverChange={onCitationHoverChange}
-                  onCitationHoverScheduleHide={onCitationHoverScheduleHide}
-                  onCitationHoverCancelHide={onCitationHoverCancelHide}
+            onCitationHoverScheduleHide={onCitationHoverScheduleHide}
+            onCitationHoverCancelHide={onCitationHoverCancelHide}
             onHoverCitation={handleHoverCitation}
           />
         </div>

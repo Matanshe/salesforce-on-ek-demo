@@ -23,6 +23,8 @@ app.use(
       cb(null, false);
     },
     credentials: true,
+    methods: ["GET", "POST", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "X-Timestamp", "X-Signature"],
   })
 );
 

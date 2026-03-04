@@ -28,6 +28,8 @@ interface ChatWindowProps {
   onCitationHoverScheduleHide?: () => void;
   onCitationHoverCancelHide?: () => void;
   onHoverCitation?: (message: Message) => void;
+  /** When true, never show "Start New Session"; show loading until session is ready. */
+  hideStartNewSession?: boolean;
 }
 
 const extractUrlParams = (url: string): { dccid: string | null; hudmo: string | null } => {
@@ -111,6 +113,7 @@ export const ChatWindow = ({
   onCitationHoverScheduleHide,
   onCitationHoverCancelHide,
   onHoverCitation,
+  hideStartNewSession = false,
 }: ChatWindowProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -189,7 +192,7 @@ export const ChatWindow = ({
 
       {/* Messages */}
       <div ref={messagesContainerRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-2 sm:p-3 md:p-4 bg-gray-50">
-        {messages.length === 0 && !isLoading && !sessionInitialized ? (
+        {messages.length === 0 && !isLoading && !sessionInitialized && !hideStartNewSession ? (
           <div className="flex flex-col items-center justify-center h-full text-gray-500 gap-3 sm:gap-4 px-3 sm:px-4">
             <p className="text-center text-xs sm:text-sm md:text-base">
               Session ended
@@ -200,13 +203,24 @@ export const ChatWindow = ({
               Start New Session
             </Button>
           </div>
-        ) : messages.length === 0 && !isLoading ? (
+        ) : messages.length === 0 && !isLoading && !(hideStartNewSession && !sessionInitialized) ? (
           <div className="flex items-center justify-center h-full text-gray-500 px-3 sm:px-4">
             <p className="text-center text-xs sm:text-sm md:text-base">
               Welcome to {theme.labels.chatHeaderTitle}!
               <br />
               <span className="text-xs sm:text-sm">{theme.labels.chatPlaceholder}</span>
             </p>
+          </div>
+        ) : messages.length === 0 && hideStartNewSession && !sessionInitialized ? (
+          <div className="flex items-center justify-center h-full text-gray-500 px-3 sm:px-4">
+            <div className="flex items-center gap-2">
+              <div className="flex gap-1">
+                <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" />
+                <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "0.1s" }} />
+                <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }} />
+              </div>
+              <span className="text-sm">Starting Agentforce on EK...</span>
+            </div>
           </div>
         ) : (
           <>

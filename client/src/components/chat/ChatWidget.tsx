@@ -23,6 +23,7 @@ export const ChatWidget = ({
   onCitationHoverScheduleHide,
   onCitationHoverCancelHide,
   onHoverCitation,
+  hideStartNewSession,
 }: ChatWidgetProps) => {
   const chatWindowProps = {
     messages,
@@ -42,6 +43,7 @@ export const ChatWidget = ({
     onCitationHoverScheduleHide,
     onCitationHoverCancelHide,
     onHoverCitation,
+    hideStartNewSession,
   };
 
   if (minimized) {
