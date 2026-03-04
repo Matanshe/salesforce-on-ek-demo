@@ -1,0 +1,58 @@
+{
+  "/proofpoint/npre/audit/change-logs": [
+    "/proofpoint/bundle/npre-user-guide/page/Audit_Change_Log.html#navPoint_79",
+    "/proofpoint/bundle/npre-user-guide/page/Audit_Risk_Posture.html#navPoint_80",
+    "/proofpoint/bundle/npre-user-guide/page/Audit_Risk_Posture_People_csv_File_Format.html#navPoint_81",
+    "/proofpoint/bundle/npre-user-guide/page/Appendix_%D0%A1_NPRE_API_NPRE_Data_Files.html#navPoint_118"
+  ],
+  "/proofpoint/npre/settings/system": [
+    "/proofpoint/bundle/npre-user-guide/page/Settings_Settings_Overview_Monitoring_Groups.html#navPoint_87"
+  ],
+  "/proofpoint/npre/target-groups/day/all-people": [
+    "/proofpoint/bundle/npre-user-guide/page/People_Risk_Overview.html#navPoint_3",
+    "/proofpoint/bundle/npre-user-guide/page/Getting_Started_Navigating_Between_Views.html#navPoint_23",
+    "/proofpoint/bundle/npre-user-guide/page/Getting_Started_NPRE_Main_Window_Cloud_Risk_Main_Window.html#navPoint_26",
+    "/proofpoint/bundle/npre-user-guide/page/Target_Groups_People_Risk_Venn_Diagram.html#navPoint_28",
+    "/proofpoint/bundle/npre-user-guide/page/Target_Groups_People_Risk_Using_the_Dashboard_Context_Focusing_on_a_Specific_Group.html#navPoint_33"
+  ],
+  "/proofpoint/npre/user-risk/users": [
+    "/proofpoint/bundle/npre-user-guide/page/User_Risk_People_Risk_Users_List.html#navPoint_56"
+  ],
+  "/proofpoint/settings/monitoring-groups/departments*": [
+    "/proofpoint/bundle/npre-user-guide/page/Settings_Settings_Overview_Default_Risk.html#navPoint_88"
+  ],
+  "/proofpoint/backoffice/conf/library": [
+    "/proofpoint/bundle/web/page/threat_library/threat_library.htm",
+    "/proofpoint/bundle/web/page/threat_library/threat_library_items.htm",
+    "/proofpoint/bundle/web/page/threat_library/threat_library_using.htm"
+  ],
+  "/proofpoint/backoffice/conf/rules": [
+    "/proofpoint/bundle/web/page/rules/rules_overview.htm",
+    "/proofpoint/bundle/web/page/incidents/incidents.htm",
+    "/proofpoint/bundle/web/page/admin/conditions_overview.htm"
+  ],
+  "/proofpoint/backoffice/definitions/alerts-workflow": [
+    "/proofpoint/bundle/web/page/admin/statuses_overview.htm"
+  ],
+  "/proofpoint/backoffice/definitions/conditions": [
+    "/proofpoint/bundle/web/page/admin/conditions_overview.htm"
+  ],
+  "/proofpoint/backoffice/definitions/justifications": [
+    "/proofpoint/bundle/web/page/admin/justifications_overview.htm",
+    "/proofpoint/bundle/web/page/admin/justifications.htm"
+  ],
+  "/proofpoint/casb/rule-editor": [
+    "/proofpoint/bundle/web/page/pcasb/policies/rules/rules.htm",
+    "/proofpoint/bundle/web/page/pcasb/policies/rules/rule_editor/rule_editor.htm",
+    "/proofpoint/bundle/web/page/pcasb/policies/rules/inline_rules/inline_rules.htm",
+    "/proofpoint/bundle/web/page/pcasb/policies/rules/configuring_policies_according_to_best_practices/configuring_policies_according.htm",
+    "/proofpoint/bundle/web/page/pcasb/policies/rules/casb_threat_detection_capabilities/casb_threat_detection_capabilities.htm"
+  ],
+  "/proofpoint/casb/rules": [
+    "/proofpoint/bundle/web/page/pcasb/policies/rules/configuring_policies_according_to_best_practices/configuring_policies_according.htm",
+    "/proofpoint/bundle/web/page/pcasb/policies/rules/configuring_policies_according_to_best_practices/remediation_details.htm"
+  ],
+  "/proofpoint/dlp/detector-sets": [
+    "/proofpoint/bundle/web/page/dlp/data_detection_detector_sets.htm"
+  ]
+}

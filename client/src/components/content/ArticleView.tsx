@@ -6,6 +6,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import type { ChunkRow } from "@/types/message";
 import { highlightChunksInElement } from "@/utils/chunkHighlight";
 import { fetchRelatedDmoData, type RelatedDmoData } from "@/api/fetchRelatedDmoData";
+import { fetchArticleVersions, fetchArticleVersionsBySoql, type ArticleVersion } from "@/api/fastSearch";
+import { fetchHarmonizationData } from "@/api/fetchHarmonizationData";
 
 export interface ParsedMetaTag {
   name?: string;
@@ -43,6 +45,29 @@ function parseMetaTagsFromHtml(html: string): ParsedMetaTag[] {
     if (name || property) result.push({ name, property, content });
   }
   return result;
+}
+
+/** Returns the value of the "content" attribute of the meta tag with name or property "version" (e.g. <meta name="version" content="espritedge-2023.2"> → "espritedge-2023.2"). */
+function getVersionFromArticleHtml(html: string): string | null {
+  const tags = parseMetaTagsFromHtml(html);
+  const versionTag = tags.find(
+    (t) => (t.name && t.name.toLowerCase() === "version") || (t.property && t.property.toLowerCase() === "version")
+  );
+  if (versionTag) {
+    console.log('[ArticleView] meta name="version" content="' + (versionTag.content ?? "") + '"');
+  } else {
+    const metaNames = tags.map((t) => t.name || t.property || "(unknown)").join(", ");
+    console.log(
+      '[ArticleView] no meta name="version" found. Parsed meta tags (' + tags.length + '):',
+      metaNames || "(none)"
+    );
+    if (html && html.length > 0) {
+      const snippet = html.substring(0, 300).replace(/\n/g, " ");
+      console.log("[ArticleView] HTML snippet (first 300 chars):", snippet);
+    }
+  }
+  const contentAttr = versionTag?.content;
+  return contentAttr != null ? String(contentAttr).trim() : null;
 }
 
 /** Get nested value by path (e.g. "DC.Language" or "data.ReleaseName") */
@@ -162,17 +187,21 @@ interface ArticleViewProps {
   chunkRows?: ChunkRow[];
   onClose: () => void;
   customerId?: string | null;
+  /** Current article content ID (from URL). Used to exclude current article from "other versions" and to show version dropdown. */
+  contentId?: string | null;
 }
 
-export const ArticleView = ({ data, chunkRows = [], onClose, customerId }: ArticleViewProps) => {
+export const ArticleView = ({ data, chunkRows = [], onClose, customerId, contentId }: ArticleViewProps) => {
   const navigate = useNavigate();
   const { basePath } = useCustomerRoute();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const contentProseRef = useRef<HTMLDivElement>(null);
   const [qaExpanded, setQaExpanded] = useState(false);
   const [relatedDmoData, setRelatedDmoData] = useState<RelatedDmoData | null>(null);
+  const [otherVersions, setOtherVersions] = useState<ArticleVersion[]>([]);
 
   if (data) {
+    console.log("[ArticleView] open article title:", data.attributes?.title ?? "(no title)");
     console.log("[chunk] ArticleView render: title=" + (data.attributes?.title ?? "")?.slice(0, 40) + " chunkRows.length=" + (chunkRows?.length ?? 0));
   }
 
@@ -222,6 +251,60 @@ export const ArticleView = ({ data, chunkRows = [], onClose, customerId }: Artic
       setRelatedDmoData(null);
     }
   }, [data?.attributes?.title, customerId]);
+
+  const currentLanguage = useMemo(
+    () => metadataEntries.find((e) => e.title === "Language")?.value ?? null,
+    [metadataEntries]
+  );
+
+  // When article view is opened: fetch other versions (same title + language) to fill the clustering dropdown.
+  // Then enrich each version with versionName from the article HTML meta tag "version" (get-hudmo content).
+  useEffect(() => {
+    const title = data?.attributes?.title;
+    if (!title || !contentId) {
+      setOtherVersions([]);
+      return;
+    }
+    let cancelled = false;
+    const load = customerId
+      ? () =>
+          fetchArticleVersionsBySoql(customerId, title, currentLanguage, contentId).catch((err) => {
+            console.warn("Article versions by SOQL failed, falling back to fast-search:", err);
+            return fetchArticleVersions(title, currentLanguage, contentId);
+          })
+      : () => fetchArticleVersions(title, currentLanguage, contentId);
+    load().then((versions) => {
+      if (cancelled) return;
+      setOtherVersions(versions);
+      if (versions.length === 0) return;
+      Promise.all(
+        versions.map(async (v) => {
+          try {
+            const articleData = await fetchHarmonizationData(v.hudmo, v.contentId);
+            const html = articleData?.attributes?.content;
+            if (articleData == null) {
+              console.warn("[ArticleView] No article data for version", v.contentId);
+            } else if (typeof html !== "string") {
+              console.warn("[ArticleView] No HTML content (attributes.content) for version", v.contentId);
+            } else {
+              console.log("[ArticleView] Fetched article HTML for", v.contentId, "length:", html.length);
+            }
+            const versionName =
+              typeof html === "string" ? getVersionFromArticleHtml(html) : null;
+            return { ...v, versionName: versionName ?? v.contentId };
+          } catch (err) {
+            console.warn("[ArticleView] Failed to fetch article for version", v.contentId, err);
+            return { ...v, versionName: v.contentId };
+          }
+        })
+      ).then((enriched) => {
+        if (!cancelled) setOtherVersions(enriched);
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [data?.attributes?.title, contentId, currentLanguage, customerId]);
 
   // Filter to show only: Last updated
   const allowedFields = ["Last updated"];
@@ -318,11 +401,38 @@ export const ArticleView = ({ data, chunkRows = [], onClose, customerId }: Artic
   return (
     <div className="w-full h-full flex flex-col bg-white overflow-hidden">
       {/* Header */}
-      <div className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 border-b border-gray-200 flex flex-row items-center justify-between shrink-0 bg-white">
+      <div className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 shrink-0 bg-white">
         <div className="flex-1 min-w-0 pr-2">
           <h1 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 truncate">
             {data.attributes?.title || "Article"}
           </h1>
+          {otherVersions.length > 0 && (
+            <div className="mt-2 flex items-center gap-2">
+              <label htmlFor="article-version-select" className="text-xs font-medium text-gray-500 shrink-0">
+                Other versions
+              </label>
+              <select
+                id="article-version-select"
+                className="text-xs rounded border border-gray-300 bg-white px-2 py-1.5 text-gray-700 focus:border-[var(--theme-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--theme-primary)]"
+                value=""
+                onChange={(e) => {
+                  const id = e.target.value;
+                  if (!id) return;
+                  const version = otherVersions.find((v) => v.contentId === id);
+                  const hudmoQuery = version?.hudmo ? `?hudmo=${encodeURIComponent(version.hudmo)}` : "";
+                  navigate(`${basePath}/article/${encodeURIComponent(id)}${hudmoQuery}`);
+                }}
+                aria-label="Select another version of this article"
+              >
+                <option value="">— Select version —</option>
+                {otherVersions.map((v) => (
+                  <option key={v.contentId} value={v.contentId}>
+                    {v.versionName ?? v.contentId}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
         <Button onClick={onClose} variant="ghost" size="icon" className="shrink-0 h-8 w-8 sm:h-10 sm:w-10 hidden">
           <svg

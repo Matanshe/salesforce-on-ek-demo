@@ -397,14 +397,6 @@ function App() {
 
       const data = await response.json();
 
-      // #region agent log
-      const _keys = data ? Object.keys(data) : [];
-      const _msgs = data?.messages;
-      const _first = _msgs?.[0];
-      fetch('http://127.0.0.1:7242/ingest/bebf9a71-04a2-4e86-a513-895cda001ee7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:handleSendMessage',message:'client received sendMessage response',data:{responseKeys:_keys,messagesLength:Array.isArray(_msgs)?_msgs.length:null,firstMessageKeys:_first?Object.keys(_first):null,hasMessageText:!!_first?.message,citedRefsCount:_first?.citedReferences?.length??null},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
-      fetch('http://127.0.0.1:7242/ingest/bebf9a71-04a2-4e86-a513-895cda001ee7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:first message',message:'first message content',data:{firstType:_first?.type,hasContent:!!_first?.message},timestamp:Date.now(),hypothesisId:'H5'})}).catch(()=>{});
-      // #endregion
-
       setMessageSequence((prev) => prev + 1);
 
       const agentResponse = data.messages?.[0];
@@ -424,20 +416,32 @@ function App() {
         console.log("[Agent response shape] Full message:", JSON.stringify(agentResponse, null, 2));
       }
 
-      if (!agentResponse) {
-        throw new Error("No message received from agent");
+      // When agent returns no message or empty (e.g. agent not configured for this customer), show a clear fallback
+      const messageText = agentResponse
+        ? getAgentMessageText(agentResponse, "")
+        : "";
+      const hasContent = typeof messageText === "string" && messageText.trim().length > 0;
+      if (!agentResponse || !hasContent) {
+        const fallbackMessage: Message = {
+          id: `msg-${Date.now()}-bot-no-response`,
+          content: "The agent didn't return a response. The agent may still be processing, or it may not be configured for this customer's content. Try rephrasing or check back in a moment.",
+          timestamp: new Date(),
+          sender: "bot",
+        };
+        setMessages((prev) => [...prev, fallbackMessage]);
+        return;
       }
 
-      const messageText = getAgentMessageText(agentResponse, "Response received");
-      if (messageText.includes("URL_Redacted") || messageText.includes("(URL_Redacted)")) {
-        console.log("⚠️ Found URL_Redacted in agent response message:", messageText);
+      const messageTextFinal = messageText;
+      if (messageTextFinal.includes("URL_Redacted") || messageTextFinal.includes("(URL_Redacted)")) {
+        console.log("⚠️ Found URL_Redacted in agent response message:", messageTextFinal);
       }
 
       // Build bot message with only safe, serializable values so rendering never throws.
       // Ensure unique id so React keys stay stable (API may reuse or omit id).
       const baseId = typeof agentResponse.id === "string" ? agentResponse.id : `msg-${Date.now()}-bot`;
       const safeId = `${baseId}-${Date.now()}`;
-      const safeContent = typeof messageText === "string" ? messageText : "Response received";
+      const safeContent = typeof messageTextFinal === "string" ? messageTextFinal : "Response received";
       const botMessage: Message = {
         id: safeId,
         content: safeContent,
@@ -1440,7 +1444,7 @@ function App() {
               <div className="flex flex-col md:flex-row h-full absolute inset-0">
                 <div className="flex-1 min-w-0 overflow-hidden order-2 md:order-1">
                   <ArticleErrorBoundary onClose={handleCloseArticle}>
-                    <ArticleView data={hudmoData} chunkRows={chunkRows} onClose={handleCloseArticle} customerId={selectedCustomerId} />
+                    <ArticleView data={hudmoData} chunkRows={chunkRows} onClose={handleCloseArticle} customerId={selectedCustomerId} contentId={currentContentId} />
                   </ArticleErrorBoundary>
                 </div>
                 <div className="hidden md:block w-80 border-l border-gray-200 bg-white flex-shrink-0 overflow-hidden order-1 md:order-2">

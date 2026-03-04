@@ -96,6 +96,37 @@
         { "label": "Hexagon.com", "href": "https://www.hexagon.com" },
         { "label": "Support", "href": "https://www.hexagon.com/support" }
       ]
+    },
+    {
+      "id": "proofpoint",
+      "name": "Proofpoint",
+      "salesforceLoginUrl": "https://eheart-241222-495-demo.my.salesforce.com",
+      "clientId": "",
+      "clientSecret": "",
+      "agentforceAgentId": "0XxHr000000IOh0KAG",
+      "objectApiName": "proofpoint2_dmo_harmonized__dlm",
+      "tocUrl": "/data/npre-user-guide-enus-toc-enhanced.xml",
+      "ui": {
+        "colors": { "primary": "#C41E3A", "primaryHover": "#9e1830", "accent": "#333333" },
+        "labels": {
+          "siteName": "Proofpoint",
+          "helpLabel": "Help",
+          "welcomeBadge": "Proofpoint",
+          "welcomeTitle": "Proofpoint dummy pages",
+          "welcomeSubtitle": "Agent chat on dummy routes",
+          "chatHeaderTitle": "Agentforce on EK",
+          "chatPlaceholder": "Ask a question.",
+          "backToHelp": "← Back to Help",
+          "openInHelp": "Open in Help",
+          "footerCopyright": "© Proofpoint."
+        }
+      },
+      "homeUrl": "https://www.proofpoint.com",
+      "logoUrl": null,
+      "proposedQuestion": "How does People Risk determine which users are included in the User Risk page, and what role do Azure Active Directory and Google Workspace play in supplying user data?",
+      "footerLinks": [
+        { "label": "Proofpoint.com", "href": "https://www.proofpoint.com" }
+      ]
     }
   ]
 }

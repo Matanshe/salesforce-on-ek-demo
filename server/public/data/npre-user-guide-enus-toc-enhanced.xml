@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nav title="NPRE UG 3.6  " homepage="Contents.html">
+   <nav title="untitled" href="Contents.html"/>
+   <nav title="Contents" href="About_this_Guide.html#navPoint_1" Content_ID__c="674574b41c96942d1071b46361e8a7ed"/>
+   <nav title="About this Guide" href="Nexus_People_Risk_Explorer_Overview.html#navPoint_2" Content_ID__c="f87377849d8d37d89624b3a869bd9b64"/>
+   <nav title="Nexus People Risk Explorer Overview" href="People_Risk_Overview.html#navPoint_3" Content_ID__c="94120212538fd94bcbf0bc324897716a"/>
+   <nav title="People Risk Overview" href="People_Risk_Overview_Risk_Scores.html#navPoint_4" Content_ID__c="04e14c8fbfb1efa36693e476c60170a0">
+      <nav title="Risk Scores" href="People_Risk_Overview_Risk_Scores_Attacked_Risk.html#navPoint_5" Content_ID__c="ccc3e989dd181d3e8efeb9731f2c331d">
+         <nav title="Attacked Risk" href="People_Risk_Overview_Risk_Scores_Vulnerable_Risk.html#navPoint_6" Content_ID__c="358d05ad79ac29a27b1780ce6041e0cb"/>
+         <nav title="Vulnerable Risk" href="People_Risk_Overview_Risk_Scores_Privileged_Risk.html#navPoint_7" Content_ID__c="e01f4c412f56542b38515934327ed586"/>
+         <nav title="Privileged Risk" href="People_Risk_Overview_People_Risk_Users.html#navPoint_8" Content_ID__c="a4da7f27e1c54917c5a9ef063aaed6c8"/>
+      </nav>
+      <nav title="People Risk Users" href="People_Risk_Overview_People_Risk_Users_Cloud_Protection_Deployed.html#navPoint_9" Content_ID__c="601fe5a7d1b5eedf8120cede328516d7">
+         <nav title="Cloud Protection Deployed" href="People_Risk_Overview_People_Risk_Users_Cloud_Protection_Not_Deployed.html#navPoint_10" Content_ID__c="4e93a6a795f45f06a8c2bfd6ab2dd346"/>
+         <nav title="Cloud Protection Not Deployed" href="People_Risk_Overview_Segmentation_High_Risk_Individuals_Very_Attacked_People_Very_Vulnerable_People_Very_Privileged_People.html#navPoint_11" Content_ID__c="e3bf33a0a03e8eac3369bbc044eabc82"/>
+      </nav>
+      <nav title="Segmentation: High Risk Individuals (Very Attacked People, Very Vulnerable People, Very Privileged People)" href="People_Risk_Overview_Segmentation_High_Risk_Individuals_Very_Attacked_People_Very_Vulnerable_People_Very_Privileged_People_Very_Attacked_People_in_People_Risk_View.html#navPoint_12" Content_ID__c="970a451ee254a45f7c3d9d02cfd9565b">
+         <nav title="Very Attacked People in People Risk View" href="People_Risk_Overview_Segmentation_High-Risk_Target_Groups.html#navPoint_13" Content_ID__c="e3f23192bef39fd91e8e64ed70e3ef6e"/>
+      </nav>
+      <nav title="Segmentation: High-Risk Target Groups" href="Cloud_Risk_Overview.html#navPoint_14" Content_ID__c="d72be5a5d313be53c6d5de03c50bb19e"/>
+   </nav>
+   <nav title="Cloud Risk Overview" href="Cloud_Risk_Overview_Cloud_Risk_View_Risk_Scores.html#navPoint_15" Content_ID__c="e439f02e41532c95067c4d87b56a4f12">
+      <nav title="Cloud Risk View Risk Scores" href="Cloud_Risk_Overview_Cloud_Risk_View_Risk_Scores_Cloud_Risk_Attacked_Risk.html#navPoint_16" Content_ID__c="74654e4a1e9222b979fa7dc69e910775">
+         <nav title="Cloud Risk Attacked Risk" href="Cloud_Risk_Overview_Cloud_Risk_View_Risk_Scores_Cloud_Risk_Vulnerable_Risk.html#navPoint_17" Content_ID__c="7f05e9dbcd0d7cfee5c1f24dac71d509"/>
+         <nav title="Cloud Risk Vulnerable Risk" href="Cloud_Risk_Overview_Cloud_Risk_View_Risk_Scores_Cloud_Risk_Privileged_Risk.html#navPoint_18" Content_ID__c="a8d86fd895bc10b17ab2c7b8ab7780c6"/>
+         <nav title="Cloud Risk Privileged Risk" href="Cloud_Risk_Overview_Cloud_Risk_View_Risk_Scores_Cloud_Risk_Overall_Risk.html#navPoint_19" Content_ID__c="af2b8b22bf88c3e6fe2869b6af526ece"/>
+         <nav title="Cloud Risk Overall Risk" href="Cloud_Risk_Overview_Application_Status.html#navPoint_20" Content_ID__c="e00da7f82e4675a0b432cb83eac4c1d5"/>
+      </nav>
+      <nav title="Application Status" href="Getting_Started.html#navPoint_21" Content_ID__c="ed2350c304075cbfdb3917eb6346c430"/>
+   </nav>
+   <nav title="Getting Started" href="Getting_Started_Accessing_the_NPRE.html#navPoint_22" Content_ID__c="988294c59b9c70cb9d588f9b5ee6b3b4">
+      <nav title="Accessing the NPRE" href="Getting_Started_Navigating_Between_Views.html#navPoint_23" Content_ID__c="18befbfb227e7be38d3558a02488ea25"/>
+      <nav title="Navigating Between Views" href="Getting_Started_NPRE_Main_Window.html#navPoint_24" Content_ID__c="4c400f2591de9a885c2434a9b1d58667"/>
+      <nav title="NPRE Main Window" href="Getting_Started_NPRE_Main_Window_People_Risk_Main_Window.html#navPoint_25" Content_ID__c="beee880eea1a929201acf5abf828813e">
+         <nav title="People Risk Main Window" href="Getting_Started_NPRE_Main_Window_Cloud_Risk_Main_Window.html#navPoint_26" Content_ID__c="fce7928cc842a352da66e78e19ae8fe7"/>
+         <nav title="Cloud Risk Main Window" href="Getting_Started_NPRE_Main_Window_Reports_Main_Window.html#navPoint_27" Content_ID__c="cc343ead18cf2c1c508eed6263a2c85b"/>
+         <nav title="Reports Main Window" href="Target_Groups_People_Risk.html#navPoint_28" Content_ID__c="c73b47232b3363e1983f798666d381cf"/>
+      </nav>
+   </nav>
+   <nav title="Target Groups (People Risk)" href="Target_Groups_People_Risk_Venn_Diagram.html#navPoint_29" Content_ID__c="507a48efbd401bbf9c1722bb6943415a">
+      <nav title="Venn Diagram" href="Target_Groups_People_Risk_General_Information_People_Risk.html#navPoint_30" Content_ID__c="a8d41d16cd9ae57b53b5a26b6fd3b41e"/>
+      <nav title="General Information (People Risk)" href="Target_Groups_People_Risk_General_Information_Cloud_Risk.html#navPoint_31" Content_ID__c="297dfb331fbbfc12942fc3ab1c0ababb"/>
+      <nav title="General Information (Cloud Risk)" href="Target_Groups_People_Risk_Specific_Information.html#navPoint_32" Content_ID__c="b7ae79a217c8948ef710fd50468bc40a"/>
+      <nav title="Specific Information" href="Target_Groups_People_Risk_Using_the_Dashboard.html#navPoint_33" Content_ID__c="77418fa0299187c9a40def7996bb115f"/>
+      <nav title="Using the Dashboard" href="Target_Groups_People_Risk_Using_the_Dashboard_Context_Focusing_on_a_Specific_Group.html#navPoint_34" Content_ID__c="142b548c74cef88136b9ff98190ac744">
+         <nav title="Context: Focusing on a Specific Group" href="Target_Groups_People_Risk_Using_the_Dashboard_Drilling_Down_for_Details.html#navPoint_35" Content_ID__c="84bebf949432e892c94149a811f01fc0"/>
+         <nav title="Drilling Down for Details" href="Target_Groups_People_Risk_Using_the_Dashboard_Selecting_the_Date.html#navPoint_36" Content_ID__c="fb72756ccbad56950a7c15a1284f96c1"/>
+         <nav title="Selecting the Date" href="Target_Groups_People_Risk_Using_the_Dashboard_Displaying_a_Summary_of_the_Settings_for_the_Selected_Risk_Snapshot.html#navPoint_37" Content_ID__c="b573a6d61207a4399f6b4fb6b8f833a8"/>
+         <nav title="Displaying a Summary of the Settings for the Selected Risk Snapshot" href="Target_Groups_People_Risk_Using_the_Dashboard_Trends.html#navPoint_38" Content_ID__c="60184b23fa0f3d08998805ca652b9bbe"/>
+         <nav title="Trends" href="Target_Groups_Cloud_Risk.html#navPoint_39" Content_ID__c="e9540cf9ed049e4975a2282ce664fcbe"/>
+      </nav>
+   </nav>
+   <nav title="Target Groups (Cloud Risk)" href="Target_Groups_Cloud_Risk_Venn_Diagram.html#navPoint_40" Content_ID__c="37abc5dd31cc9f9f7614efbeaea17449">
+      <nav title="Venn Diagram" href="Target_Groups_Cloud_Risk_General_Information.html#navPoint_41" Content_ID__c="a8d41d16cd9ae57b53b5a26b6fd3b41e"/>
+      <nav title="General Information" href="Target_Groups_Cloud_Risk_Specific_Information.html#navPoint_42" Content_ID__c="4215a9504c69ef737a7a32f0e27387b8"/>
+      <nav title="Specific Information" href="Target_Groups_Cloud_Risk_Using_the_Dashboard.html#navPoint_43" Content_ID__c="77418fa0299187c9a40def7996bb115f"/>
+      <nav title="Using the Dashboard" href="Target_Groups_Cloud_Risk_Using_the_Dashboard_Context_Focusing_on_a_Specific_Group.html#navPoint_44" Content_ID__c="142b548c74cef88136b9ff98190ac744">
+         <nav title="Context: Focusing on a Specific Group" href="Target_Groups_Cloud_Risk_Using_the_Dashboard_Drilling_down_for_Details.html#navPoint_45" Content_ID__c="84bebf949432e892c94149a811f01fc0"/>
+         <nav title="Drilling down for Details" href="Target_Groups_Cloud_Risk_Using_the_Dashboard_Selecting_the_Date.html#navPoint_46" Content_ID__c="8d84b8bf2d482dac8b10e279699f2ba8"/>
+         <nav title="Selecting the Date" href="Target_Groups_Cloud_Risk_Using_the_Dashboard_Displaying_a_Summary_of_the_Settings_for_the_Selected_Risk_Snapshot.html#navPoint_47" Content_ID__c="b573a6d61207a4399f6b4fb6b8f833a8"/>
+         <nav title="Displaying a Summary of the Settings for the Selected Risk Snapshot" href="Target_Groups_Cloud_Risk_Using_the_Dashboard_Changing_the_Status.html#navPoint_48" Content_ID__c="60184b23fa0f3d08998805ca652b9bbe"/>
+         <nav title="Changing the Status" href="Target_Groups_Cloud_Risk_Using_the_Dashboard_Trends.html#navPoint_49" Content_ID__c="acc14e87a3a150eb26c6288402129e65"/>
+         <nav title="Trends" href="Organizational_Risk_People_Risk.html#navPoint_50" Content_ID__c="e9540cf9ed049e4975a2282ce664fcbe"/>
+      </nav>
+   </nav>
+   <nav title="Organizational Risk (People Risk)" href="Organizational_Risk_People_Risk_Organizational_Groups_List.html#navPoint_51" Content_ID__c="c3bfd8ba688b0b448aa20201edf2c95b">
+      <nav title="Organizational Groups List" href="Organizational_Risk_People_Risk_Specific_Information.html#navPoint_52" Content_ID__c="6fa80b479e4733aaa6c13f53ae81c1c4"/>
+      <nav title="Specific Information" href="Organizational_Risk_People_Risk_Using_the_Organizational_Risk_Page.html#navPoint_53" Content_ID__c="77418fa0299187c9a40def7996bb115f"/>
+      <nav title="Using the Organizational Risk Page" href="Organizational_Risk_People_Risk_Using_the_Organizational_Risk_Page_Organizational_Risk_Context_Focusing_on_a_Specific_Group.html#navPoint_54" Content_ID__c="bc21ee31f36c2057e45102315e729d45">
+         <nav title="Organizational Risk Context: Focusing on a Specific Group" href="Organizational_Risk_People_Risk_Using_the_Organizational_Risk_Page_Organizational_Risk_Trends.html#navPoint_55" Content_ID__c="c0c7ef2b273907d8b8dbe8c94acb1be7"/>
+         <nav title="Organizational Risk: Trends" href="User_Risk_People_Risk.html#navPoint_56" Content_ID__c="d9bb4f715b217efbbda8b3ec725be165"/>
+      </nav>
+   </nav>
+   <nav title="User Risk (People Risk)" href="User_Risk_People_Risk_Users_List.html#navPoint_57" Content_ID__c="6216caa75faa8b5169ab9c78a503e79a">
+      <nav title="Users List" href="User_Risk_People_Risk_Using_the_User_Risk_Page.html#navPoint_58" Content_ID__c="fae5c11200fcd87f191bc5a27bbc99d2"/>
+      <nav title="Using the User Risk Page" href="User_Risk_People_Risk_Using_the_User_Risk_Page_Defining_Conditions.html#navPoint_59" Content_ID__c="9e8851f8ae04a0f226616d088d4f3181">
+         <nav title="Defining Conditions" href="User_Risk_People_Risk_Risk_Profile_Library.html#navPoint_60" Content_ID__c="812a88a31889050c583603950e068237"/>
+      </nav>
+      <nav title="Risk Profile Library" href="User_Risk_People_Risk_Risk_Profile_Library_Filtering_the_Users_Listing_for_a_Selected_Risk_Profile.html#navPoint_61" Content_ID__c="f478b8f9b5ac4b4ede6db2ede69f3d0c">
+         <nav title="Filtering the Users Listing for a Selected Risk Profile" href="User_Risk_People_Risk_Risk_Profile_Library_Creating_or_Editing_a_Risk_Profile.html#navPoint_62" Content_ID__c="d4a05d0e8c7354741b7caac15de73bfe"/>
+         <nav title="Creating or Editing a Risk Profile" href="User_Risk_People_Risk_Individual_User_Details_Page.html#navPoint_63" Content_ID__c="a4249eca5b164d7c83611a1a44e34b4b"/>
+      </nav>
+      <nav title="Individual User Details Page" href="Organizational_Risk_Cloud_Risk.html#navPoint_64" Content_ID__c="a222722792d34bf5a0b6663bc26ac109"/>
+   </nav>
+   <nav title="Organizational Risk (Cloud Risk)" href="Organizational_Risk_Cloud_Risk_Organizational_Groups_List.html#navPoint_65" Content_ID__c="ae442e5bba4e93b7d3f5e42f456198f3">
+      <nav title="Organizational Groups List" href="Organizational_Risk_Cloud_Risk_Specific_Information.html#navPoint_66" Content_ID__c="6fa80b479e4733aaa6c13f53ae81c1c4"/>
+      <nav title="Specific Information" href="Organizational_Risk_Cloud_Risk_Using_the_Organizational_Risk_Page.html#navPoint_67" Content_ID__c="77418fa0299187c9a40def7996bb115f"/>
+      <nav title="Using the Organizational Risk Page" href="Organizational_Risk_Cloud_Risk_Using_the_Organizational_Risk_Page_Organizational_Risk_Context_Focusing_on_a_Specific_App_Group_within_a_Selected_User_Group.html#navPoint_68" Content_ID__c="bc21ee31f36c2057e45102315e729d45">
+         <nav title="Organizational Risk Context: Focusing on a Specific App Group within a Selected User Group" href="Organizational_Risk_Cloud_Risk_Using_the_Organizational_Risk_Page_Organizational_Risk_Trends.html#navPoint_69" Content_ID__c="8c5c31e09386c502e6e771c0fe8ce36c"/>
+         <nav title="Organizational Risk: Trends" href="Apps_Group_Risk_Cloud_Risk.html#navPoint_70" Content_ID__c="d9bb4f715b217efbbda8b3ec725be165"/>
+      </nav>
+   </nav>
+   <nav title="Apps Group Risk (Cloud Risk)" href="Apps_Group_Risk_Cloud_Risk_Apps_Groups_List.html#navPoint_71" Content_ID__c="9bbe0188a8d5c2216a28863c2164fa13">
+      <nav title="Apps Groups List" href="Apps_Group_Risk_Cloud_Risk_Using_the_App_Groups_Risk_Page.html#navPoint_72" Content_ID__c="2f394884caa03919fd096c6d6c874a5d"/>
+      <nav title="Using the App Groups Risk Page" href="Apps_Group_Risk_Cloud_Risk_Specific_Information.html#navPoint_73" Content_ID__c="596bc0548f37d1d86d6c31cca8f9f92f"/>
+      <nav title="Specific Information" href="Application_Risk_Cloud_Risk.html#navPoint_74" Content_ID__c="77418fa0299187c9a40def7996bb115f"/>
+   </nav>
+   <nav title="Application Risk (Cloud Risk)" href="Application_Risk_Cloud_Risk_Application_List.html#navPoint_75" Content_ID__c="8ce6f2b7038eefa069ff55ffe91fd4de">
+      <nav title="Application List" href="Application_Risk_Cloud_Risk_Using_the_Application_Risk_Page.html#navPoint_76" Content_ID__c="a0d633b791cf0057d9339427fd2d610d"/>
+      <nav title="Using the Application Risk Page" href="Application_Risk_Cloud_Risk_Using_the_Application_Risk_Page_Changing_the_Status_of_an_Application.html#navPoint_77" Content_ID__c="d5ddfd8985ee84edb0b67bc7c2d4f26a">
+         <nav title="Changing the Status of an Application" href="Application_Risk_Cloud_Risk_Individual_App_Details_Page.html#navPoint_78" Content_ID__c="e4b4f51d7b222e117b7769a44759659a"/>
+      </nav>
+      <nav title="Individual App Details Page" href="Audit.html#navPoint_79" Content_ID__c="6a786fea3f2883b4a103c2664f1e4c5f"/>
+   </nav>
+   <nav title="Audit" href="Audit_Change_Log.html#navPoint_80" Content_ID__c="3be9b96d40a531daa72e205b5c0ee659">
+      <nav title="Change Log" href="Audit_Risk_Posture.html#navPoint_81" Content_ID__c="25e28fb196c94a22856a86984468cb44"/>
+      <nav title="Risk Posture" href="Audit_Risk_Posture_People_csv_File_Format.html#navPoint_82" Content_ID__c="4892e1d72f23215aaa8abb9642ee5e7b">
+         <nav title="People csv File Format" href="Audit_Risk_Posture_Organizational_Groups_csv_File_Format.html#navPoint_83" Content_ID__c="3cf807b3626bf2f91b72c92307bd37a1"/>
+         <nav title="Organizational Groups csv File Format" href="Audit_Risk_Posture_Application_csv_file_format_Cloud_Risk_only.html#navPoint_84" Content_ID__c="e15576d46751d57156dff42f301206ac"/>
+         <nav title="Application csv file format (Cloud Risk only)" href="Settings.html#navPoint_85" Content_ID__c="36296533ceb466d7f176a3d315560ae4"/>
+      </nav>
+   </nav>
+   <nav title="Settings" href="Settings_Risk_Score_Thresholds.html#navPoint_86" Content_ID__c="774e20665c6463fbc4798d21f6754968">
+      <nav title="Risk Score Thresholds" href="Settings_Monitoring_Groups.html#navPoint_87" Content_ID__c="10ae4b46ce79d4b5814a54200570cac9"/>
+      <nav title="Monitoring Groups" href="Settings_Default_Risk.html#navPoint_88" Content_ID__c="716003df13f7e56cf2a23f2399f72d5e"/>
+      <nav title="Default Risk" href="Settings_People_Risk_Data_Sources_and_Residual_Risk.html#navPoint_89" Content_ID__c="d9d25128e733d4c0feeb45c3195cf5e5"/>
+      <nav title="People Risk Data Sources and Residual Risk" href="Settings_Customizing_the_Data_Collection_Period.html#navPoint_90" Content_ID__c="339ffa75cdbdf659185b457795f69289"/>
+      <nav title="Customizing the Data Collection Period" href="Settings_Selecting_Security_Awareness_Training_Domains.html#navPoint_91" Content_ID__c="2d9c94f97584c0af6f37a63586020af3"/>
+      <nav title="Selecting Security Awareness Training Domains" href="Settings_User_Exclusion_Filters.html#navPoint_92" Content_ID__c="cb0408dfff91a693591569ad5a180c38"/>
+      <nav title="User Exclusion Filters" href="Settings_Risk_Profiles.html#navPoint_93" Content_ID__c="5512f78edcaebf49d674485ee91aa446"/>
+      <nav title="Risk Profiles" href="Settings_Countries.html#navPoint_94" Content_ID__c="8ce58b1597e4c241696f4b050f1d71ea"/>
+      <nav title="Countries" href="Settings_Cloud_Discovery_Cloud_Risk.html#navPoint_95" Content_ID__c="f5cac682ed41389b293d0e5ebbbc64f5"/>
+      <nav title="Cloud Discovery (Cloud Risk)" href="Settings_Configuring_NPRE.html#navPoint_96" Content_ID__c="f2d8f3a9df07266326a94ab358d65aee"/>
+      <nav title="Configuring NPRE" href="Settings_Configuring_NPRE_Accessing_the_Configuration_Settings.html#navPoint_97" Content_ID__c="e962d1122ce4d81d44c8fbe8cd2302c7">
+         <nav title="Accessing the Configuration Settings" href="Settings_Configuring_NPRE_How_to_Set_Thresholds.html#navPoint_98" Content_ID__c="20f641cef89c3924016242d09f752a94"/>
+         <nav title="How to Set Thresholds" href="Settings_Configuring_NPRE_How_to_Configure_Risk_Data_Sources.html#navPoint_99" Content_ID__c="9626efc9ae863b04d449bdba9731259e"/>
+         <nav title="How to Configure Risk Data Sources" href="Settings_Configuring_NPRE_How_to_Configure_User_Exclusion_Filters.html#navPoint_100" Content_ID__c="a14f8b2135a83c1e04ee4ae16c5da15f"/>
+         <nav title="How to Configure User Exclusion Filters" href="Settings_Configuring_NPRE_How_to_Set_Default_Risk_for_Privileged_Risk_Groups.html#navPoint_101" Content_ID__c="f1c21a8e248bd4efbc3e17876690d2cb"/>
+         <nav title="How to Set Default Risk for Privileged Risk Groups" href="Settings_Configuring_NPRE_How_to_Edit_a_Monitoring_Group.html#navPoint_102" Content_ID__c="744a849dcfa441a4249ba18fb8e80131"/>
+         <nav title="How to Edit a Monitoring Group" href="Settings_Configuring_NPRE_How_to_Create_User-Defined_Monitoring_Groups_via_csv_Upload.html#navPoint_103" Content_ID__c="9256f9bb3aa0e6aaf9bc441bb1f89001"/>
+         <nav title="How to Create User-Defined Monitoring Groups via csv Upload" href="Settings_Configuring_NPRE_How_to_Create_User-Defined_Monitoring_Groups_in_the_Monitoring_Groups_Page.html#navPoint_104" Content_ID__c="dce79288e0e04fe279d697738d5d2b3f"/>
+         <nav title="How to Create User-Defined Monitoring Groups in the Monitoring Groups Page" href="Settings_Configuring_NPRE_How_to_Set_the_Data_Collection_Period.html#navPoint_105" Content_ID__c="9f65e2e7b6249a7afdfbb7c24f947169"/>
+         <nav title="How to Set the Data Collection Period" href="Settings_Configuring_NPRE_How_to_Manage_Risk_Profiles.html#navPoint_106" Content_ID__c="c79dbb413d632ecdbbee22594e51b404"/>
+         <nav title="How to Manage Risk Profiles" href="Settings_Configuring_NPRE_How_to_Set_Countries_Risk.html#navPoint_107" Content_ID__c="c2cf4792ed3ed7159327e9820ed09a8d"/>
+         <nav title="How to Set Countries Risk" href="Settings_Configuring_NPRE_How_to_Add_an_NPRE_User.html#navPoint_108" Content_ID__c="58426a1ec220782b86da296281550ce1"/>
+         <nav title="How to Add an NPRE User" href="Settings_Configuring_Cloud_Risk_View.html#navPoint_109" Content_ID__c="72902574dbb70c52c1e2d39acb8a2e1a"/>
+      </nav>
+      <nav title="Configuring Cloud Risk View" href="Settings_Configuring_Cloud_Risk_View_Thresholds_Cloud_Apps_Risk_Group.html#navPoint_110" Content_ID__c="939756c4df4edb369be05528798cd5ac">
+         <nav title="Thresholds: Cloud Apps Risk Group" href="Settings_Configuring_Cloud_Risk_View_Cloud_Risk_Data_Sources.html#navPoint_111" Content_ID__c="500445c3ebfc4db542292347c568654d"/>
+         <nav title="Cloud Risk Data Sources" href="Settings_Configuring_Cloud_Risk_View_Cloud_Risk_Custom_Apps_Groups.html#navPoint_112" Content_ID__c="440ab69bdc20530d6b88295634568295"/>
+         <nav title="Cloud Risk Custom Apps Groups" href="Settings_Configuring_Cloud_Risk_View_Cloud_Discovery.html#navPoint_113" Content_ID__c="696b536f93bee6a5588dfb0af7f40872"/>
+         <nav title="Cloud Discovery" href="Settings_Configuring_Cloud_Risk_View_Zscaler.html#navPoint_114" Content_ID__c="7e2b6a325fda2d35a337c8936c563a14"/>
+         <nav title="Zscaler" href="Reports.html#navPoint_115" Content_ID__c="21dedacf1313d2508295c2226a5dfaef"/>
+      </nav>
+   </nav>
+   <nav title="Reports" href="Reports_Generating_Reports.html#navPoint_116" Content_ID__c="c431625a7dee53a66ef8cfc331b3b51b">
+      <nav title="Generating Reports" href="Reports_Organization_Risk_Report.html#navPoint_117" Content_ID__c="0c056ca088b84c8191d6f9a7447f0804"/>
+      <nav title="Organization Risk Report" href="Reports_Organization_Risk_Report_Organization_Report_Pane.html#navPoint_118" Content_ID__c="55e073ad6978e7e6a9adb78464b58038">
+         <nav title="Organization Report Pane" href="Reports_User_Risk_Digest.html#navPoint_119" Content_ID__c="049eaf07576e2d42d6eae62497f66412"/>
+      </nav>
+      <nav title="User Risk Digest" href="Reports_User_Risk_Digest_User_Risk_Digest_Pane.html#navPoint_120" Content_ID__c="974c0dc0cc11398bda1a14f82f77425a">
+         <nav title="User Risk Digest Pane" href="Appendix_A_NPRE_Risk_Attributes.html#navPoint_121" Content_ID__c="b39e25a571c479a7b25a5598f2c29b13"/>
+      </nav>
+   </nav>
+   <nav title="Appendix A: NPRE Risk Attributes" href="Appendix_B_Cloud_Risk_View_Risk_Attributes.html#navPoint_122" Content_ID__c="3675fae60abd170bf4049c60f8340d63"/>
+   <nav title="Appendix B: Cloud Risk View Risk Attributes" href="Appendix_С_NPRE_API.html#navPoint_123" Content_ID__c="2aefb475591486be3d6794039c88698e"/>
+   <nav title="Appendix С: NPRE API" href="Appendix_С_NPRE_API_NPRE_Data_Files.html#navPoint_124" Content_ID__c="3b2684d8c1eea93aecddf775a424306c">
+      <nav title="NPRE Data Files" href="Appendix_С_NPRE_API_Using_the_NPRE_API.html#navPoint_125" Content_ID__c="eccd1ee0bc1425f86b1ddfb6dfe4c150"/>
+      <nav title="Using the NPRE API" href="Appendix_С_NPRE_API_Using_the_NPRE_API_Using_the_NPRE_API_Python.html#navPoint_126" Content_ID__c="5ced7893ec41c2c5773b302ef5dc1a69">
+         <nav title="Using the NPRE API – Python" href="Appendix_С_NPRE_API_Using_the_NPRE_API_Using_the_NPRE_API_CLI_Curl.html#navPoint_127" Content_ID__c="2a59ef8fb1d711bde0c684bc162a2cfc"/>
+         <nav title="Using the NPRE API – CLI (Curl)" href="Appendix_С_NPRE_API_Using_the_NPRE_API_People_Groups_File_Schema.html#navPoint_128" Content_ID__c="79c27f9a20aa10feb18c3ab61029497a"/>
+         <nav title="People Groups File Schema" href="Appendix_D_Cloud_Risk_Application_Categories.html#navPoint_129" Content_ID__c="fe55148fa2fa75a6fea004fd9c22ad06"/>
+      </nav>
+   </nav>
+   <nav title="Appendix D: Cloud Risk Application Categories" href="file131.html#navPoint_130" Content_ID__c="6239eee996c9b6f16944d08d2da1624e"/>
+</nav>

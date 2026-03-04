@@ -56,7 +56,7 @@ export interface CitationHoverCardData {
 export interface ChatWidgetProps {
   messages: Message[];
   onMessageClick: (message: Message) => void;
-  onSendMessage: (content: string) => void;
+  onSendMessage: (content: string) => void | Promise<void>;
   onDeleteSession: () => void;
   onStartNewSession: () => void;
   sessionInitialized: boolean;
