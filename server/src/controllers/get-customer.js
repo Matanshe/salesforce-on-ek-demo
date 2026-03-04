@@ -45,6 +45,10 @@ const getCustomer = async (req, res) => {
       ? { ...defaultUi, ...customer.ui, colors: { ...defaultUi.colors, ...customer.ui.colors }, labels: { ...defaultUi.labels, ...customer.ui.labels } }
       : defaultUi;
 
+    const embedUi = customer.embedUi
+      ? { ...ui, colors: { ...ui.colors, ...customer.embedUi.colors } }
+      : null;
+
     // Return customer without sensitive data (or return all if needed)
     const customerResponse = {
       id: customer.id,
@@ -53,6 +57,7 @@ const getCustomer = async (req, res) => {
       tocUrl: customer.tocUrl || null,
       proposedQuestion: customer.proposedQuestion ?? null,
       ui,
+      embedUi: embedUi ?? null,
     };
 
     if (!customer.objectApiName) {

@@ -30,29 +30,38 @@ function applyThemeToDocument(theme: ThemeConfig) {
 
 export function ThemeProvider({
   customerId,
+  embedLayout = false,
   children,
 }: {
   customerId: string | null;
+  embedLayout?: boolean;
   children: ReactNode;
 }) {
   const [theme, setTheme] = useState<ThemeConfig | null>(() =>
     customerId ? getDefaultTheme(customerId) : null
   );
 
-  const loadTheme = useCallback(async (id: string) => {
+  const loadTheme = useCallback(async (id: string, useEmbedTheme: boolean) => {
     const defaultForCustomer = () => getDefaultTheme(id);
     try {
       const res = await fetch(`${API_URL}/api/v1/customers/${id}`);
-      if (!res.ok) return setTheme(defaultForCustomer()), applyThemeToDocument(defaultForCustomer());
+      if (!res.ok) {
+        const theme = defaultForCustomer();
+        setTheme(theme);
+        applyThemeToDocument(theme);
+        return;
+      }
       const data = await res.json();
       const ui = data.customer?.ui;
-      if (ui?.colors && ui?.labels) {
+      const embedUi = data.customer?.embedUi;
+      const source = useEmbedTheme && embedUi?.colors && embedUi?.labels ? embedUi : ui;
+      if (source?.colors && source?.labels) {
         const merged: ThemeConfig = {
-          colors: { ...defaultForCustomer().colors, ...ui.colors },
-          labels: { ...defaultForCustomer().labels, ...ui.labels },
-          homeUrl: ui.homeUrl ?? defaultForCustomer().homeUrl,
-          logoUrl: ui.logoUrl ?? null,
-          footerLinks: Array.isArray(ui.footerLinks) ? ui.footerLinks : defaultForCustomer().footerLinks,
+          colors: { ...defaultForCustomer().colors, ...source.colors },
+          labels: { ...defaultForCustomer().labels, ...source.labels },
+          homeUrl: source.homeUrl ?? defaultForCustomer().homeUrl,
+          logoUrl: source.logoUrl ?? null,
+          footerLinks: Array.isArray(source.footerLinks) ? source.footerLinks : defaultForCustomer().footerLinks,
         };
         setTheme(merged);
         applyThemeToDocument(merged);
@@ -72,11 +81,11 @@ export function ThemeProvider({
     if (customerId) {
       setTheme(getDefaultTheme(customerId));
       applyThemeToDocument(getDefaultTheme(customerId));
-      loadTheme(customerId);
+      loadTheme(customerId, embedLayout);
     } else {
       setTheme(null);
     }
-  }, [customerId, loadTheme]);
+  }, [customerId, embedLayout, loadTheme]);
 
   return (
     <ThemeContext.Provider value={theme}>{children}</ThemeContext.Provider>

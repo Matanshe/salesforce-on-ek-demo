@@ -1324,8 +1324,8 @@ function App() {
     return (
       <AppErrorBoundary>
         <CustomerRouteProvider customerId={selectedCustomerId}>
-        <ThemeProvider customerId={selectedCustomerId}>
-        <EmbedStaticBackground />
+        <ThemeProvider customerId={selectedCustomerId} embedLayout={true}>
+        <EmbedStaticBackground customerId={selectedCustomerId} />
         <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2 bg-transparent">
             {isChatOpen ? (
               <div className="w-[calc(100vw-2rem)] sm:w-[400px] lg:w-[420px] h-[85vh] max-h-[700px] rounded-lg border border-gray-200 bg-white shadow-xl overflow-hidden flex flex-col animate-in slide-in-from-right-5 duration-200">
