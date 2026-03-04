@@ -21,6 +21,8 @@ interface ChatWindowProps {
   fetchingHudmoFor?: Set<string>;
   prefetchedHudmoData?: Map<string, unknown>;
   citationBehavior?: "fullPage" | "modal";
+  /** When false, disable citation hover card and hover fetch. Default true. */
+  enableHover?: boolean;
   chunkPreviewByMessageId?: Record<string, string>;
   hoverCardDataByMessageId?: Record<string, import("@/types/message").CitationHoverCardData | null>;
   activeHoverCitationMessageId?: string | null;
@@ -106,6 +108,7 @@ export const ChatWindow = ({
   fetchingHudmoFor = new Set(),
   prefetchedHudmoData = new Map(),
   citationBehavior = "fullPage",
+  enableHover = true,
   chunkPreviewByMessageId,
   hoverCardDataByMessageId,
   activeHoverCitationMessageId,
@@ -130,7 +133,7 @@ export const ChatWindow = ({
     ? chunkPreviewByMessageId?.[activeHoverCitationMessageId]
     : undefined;
   const showHoverCardSlot =
-    citationBehavior === "modal" && !!activeHoverCitationMessageId;
+    citationBehavior === "modal" && enableHover && !!activeHoverCitationMessageId;
 
   // Auto-scroll to the last message (bottom) when the agent adds a message or loading state changes
   useEffect(() => {
@@ -242,6 +245,7 @@ export const ChatWindow = ({
                     isFetched={isFetched}
                     articleTitle={articleTitle}
                     citationBehavior={citationBehavior}
+                    enableHover={enableHover}
                     chunkPreviewForMessage={message?.id ? chunkPreviewByMessageId?.[message.id] : undefined}
                     hoverCardData={message?.id ? hoverCardDataByMessageId?.[message.id] : undefined}
                     onCitationHoverChange={onCitationHoverChange}

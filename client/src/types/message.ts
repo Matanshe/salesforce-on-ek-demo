@@ -68,6 +68,8 @@ export interface ChatWidgetProps {
   prefetchedHudmoData?: Map<string, unknown>;
   /** When "modal", citations open in modal; used for hover tooltip and behavior */
   citationBehavior?: "fullPage" | "modal";
+  /** When false (embed only), disable citation hover card and hover fetch. Default true. */
+  enableHover?: boolean;
   /** Chunk preview text per message id (for tooltip in modal mode) */
   chunkPreviewByMessageId?: Record<string, string>;
   /** Hover card data per message id (metadata, title, source, summary for citation hover card) */
