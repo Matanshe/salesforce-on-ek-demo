@@ -24,12 +24,41 @@ app.use(
     },
     credentials: true,
     methods: ["GET", "POST", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "X-Timestamp", "X-Signature"],
+    allowedHeaders: ["Content-Type", "X-Timestamp", "X-Signature", "Authorization"],
   })
 );
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+// Optional HTTP Basic Auth gate: when GATE_USER and GATE_PASSWORD are set, require them for all routes
+const gateUser = process.env.GATE_USER;
+const gatePassword = process.env.GATE_PASSWORD;
+if (gateUser && gatePassword) {
+  app.use((req, res, next) => {
+    const auth = req.headers.authorization;
+    if (!auth || !auth.startsWith("Basic ")) {
+      res.setHeader("WWW-Authenticate", 'Basic realm="Site"');
+      return res.status(401).send("Authentication required");
+    }
+    const b64 = auth.slice(6);
+    let decoded;
+    try {
+      decoded = Buffer.from(b64, "base64").toString("utf8");
+    } catch {
+      res.setHeader("WWW-Authenticate", 'Basic realm="Site"');
+      return res.status(401).send("Authentication required");
+    }
+    const colon = decoded.indexOf(":");
+    const user = colon === -1 ? decoded : decoded.slice(0, colon);
+    const pass = colon === -1 ? "" : decoded.slice(colon + 1);
+    if (user !== gateUser || pass !== gatePassword) {
+      res.setHeader("WWW-Authenticate", 'Basic realm="Site"');
+      return res.status(401).send("Authentication required");
+    }
+    next();
+  });
+}
 
 // Register fast-search on app so it always matches (Express 5 router can be strict)
 app.get("/api/v1/fast-search", validateSignature, fastSearch);
