@@ -18,6 +18,20 @@ function parseEmbedLayout(value: string | undefined): boolean {
   return v === "1" || v === "true" || v === "yes";
 }
 
+function parseFeatureFlag(value: string | undefined, defaultValue: boolean): boolean {
+  if (value === undefined || value === "") return defaultValue;
+  const v = value.toLowerCase();
+  if (v === "0" || v === "false" || v === "no") return false;
+  if (v === "1" || v === "true" || v === "yes") return true;
+  return defaultValue;
+}
+
+export interface EmbedFeatures {
+  hover: boolean;
+  preview: boolean;
+  toc: boolean;
+}
+
 /**
  * Citation behavior: fullPage = navigate to article; modal = open citation in modal.
  */
@@ -41,4 +55,34 @@ export const embedLayout: boolean = (() => {
     if (params.get("embed") === "1" || params.get("embed") === "true") return true;
   }
   return parseEmbedLayout(import.meta.env.VITE_EMBED_LAYOUT);
+})();
+
+/**
+ * Embed content features: hover card, preview modal, TOC in modal.
+ * Only relevant when embedLayout is true; read from URL params (hover, preview, toc) or env.
+ */
+export const embedFeatures: EmbedFeatures = (() => {
+  const defaultOn = true;
+  if (typeof window !== "undefined") {
+    const params = new URLSearchParams(window.location.search);
+    return {
+      hover: parseFeatureFlag(
+        params.get("hover") ?? undefined,
+        parseFeatureFlag(import.meta.env.VITE_EMBED_FEATURE_HOVER, defaultOn)
+      ),
+      preview: parseFeatureFlag(
+        params.get("preview") ?? undefined,
+        parseFeatureFlag(import.meta.env.VITE_EMBED_FEATURE_PREVIEW, defaultOn)
+      ),
+      toc: parseFeatureFlag(
+        params.get("toc") ?? undefined,
+        parseFeatureFlag(import.meta.env.VITE_EMBED_FEATURE_TOC, defaultOn)
+      ),
+    };
+  }
+  return {
+    hover: parseFeatureFlag(import.meta.env.VITE_EMBED_FEATURE_HOVER, defaultOn),
+    preview: parseFeatureFlag(import.meta.env.VITE_EMBED_FEATURE_PREVIEW, defaultOn),
+    toc: parseFeatureFlag(import.meta.env.VITE_EMBED_FEATURE_TOC, defaultOn),
+  };
 })();

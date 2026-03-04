@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Embed with loader - Salesforce Help</title>
+  <link rel="stylesheet" href="salesforce-embed.css" />
+</head>
+<body>
+  <div class="sf-topbar">
+    <a href="https://www.salesforce.com">Salesforce.com</a>
+    <a href="https://help.salesforce.com">Help &amp; Training</a>
+    <a href="https://trailhead.salesforce.com">Trailhead</a>
+    <a href="https://developer.salesforce.com">Developer</a>
+  </div>
+  <header class="sf-header">
+    <div class="sf-header-inner">
+      <a href="getting-started.html" class="sf-logo">
+        <span>Salesforce</span>
+        <span class="sf-sep" aria-hidden="true">|</span>
+        <span>Help</span>
+      </a>
+      <nav class="sf-nav">
+        <a href="getting-started.html">Getting Started</a>
+        <span class="sf-sep">|</span>
+        <a href="products.html">Products</a>
+        <span class="sf-sep">|</span>
+        <a href="support.html">Support</a>
+        <span class="sf-sep">|</span>
+        <a href="embed-with-loader.html">Embed (loader)</a>
+      </nav>
+    </div>
+  </header>
+  <section class="sf-hero">
+    <h1>Embed the chat widget</h1>
+    <p>This page uses the agent-embed.js loader with feature toggles. The citation modal can show hover, preview, and optional table of contents.</p>
+  </section>
+  <main class="sf-container">
+    <div class="sf-breadcrumb"><a href="getting-started.html">Help</a> &gt; Embed with loader</div>
+    <div class="sf-main">
+      <h1>Loader script</h1>
+      <p class="sf-lead">This page uses the <code>agent-embed.js</code> loader with feature toggles. TOC is disabled (<code>data-features="hover,preview"</code>), so the citation modal does not show the &quot;Show table of contents&quot; button.</p>
+      <p class="sf-note">The loader creates the iframe and floating button automatically. No manual postMessage or iframe markup is required. See EMBED.md in the project for full documentation.</p>
+    </div>
+  </main>
+  <footer class="sf-footer">
+    <div class="sf-footer-inner">
+      <div class="sf-footer-links">
+        <a href="https://www.salesforce.com">Salesforce.com</a>
+        <a href="https://help.salesforce.com">Help &amp; Training</a>
+        <a href="https://trailhead.salesforce.com">Trailhead</a>
+        <a href="https://developer.salesforce.com">Developer Center</a>
+      </div>
+      <p class="sf-footer-copy">© 2025 salesforce.com, inc. All rights reserved. Various trademarks held by their respective owners.</p>
+    </div>
+  </footer>
+  <script
+    src="/embed/agent-embed.js"
+    data-base-url=""
+    data-customer-id="salesforce"
+    data-features="hover,preview"
+  ></script>
+</body>
+</html>
