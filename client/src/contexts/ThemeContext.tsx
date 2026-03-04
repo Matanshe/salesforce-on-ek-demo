@@ -35,38 +35,43 @@ export function ThemeProvider({
   customerId: string | null;
   children: ReactNode;
 }) {
-  const [theme, setTheme] = useState<ThemeConfig | null>(null);
+  const [theme, setTheme] = useState<ThemeConfig | null>(() =>
+    customerId ? getDefaultTheme(customerId) : null
+  );
 
   const loadTheme = useCallback(async (id: string) => {
+    const defaultForCustomer = () => getDefaultTheme(id);
     try {
       const res = await fetch(`${API_URL}/api/v1/customers/${id}`);
-      if (!res.ok) return setTheme(getDefaultTheme());
+      if (!res.ok) return setTheme(defaultForCustomer()), applyThemeToDocument(defaultForCustomer());
       const data = await res.json();
       const ui = data.customer?.ui;
       if (ui?.colors && ui?.labels) {
         const merged: ThemeConfig = {
-          colors: { ...getDefaultTheme().colors, ...ui.colors },
-          labels: { ...getDefaultTheme().labels, ...ui.labels },
-          homeUrl: ui.homeUrl ?? getDefaultTheme().homeUrl,
+          colors: { ...defaultForCustomer().colors, ...ui.colors },
+          labels: { ...defaultForCustomer().labels, ...ui.labels },
+          homeUrl: ui.homeUrl ?? defaultForCustomer().homeUrl,
           logoUrl: ui.logoUrl ?? null,
-          footerLinks: Array.isArray(ui.footerLinks) ? ui.footerLinks : getDefaultTheme().footerLinks,
+          footerLinks: Array.isArray(ui.footerLinks) ? ui.footerLinks : defaultForCustomer().footerLinks,
         };
         setTheme(merged);
         applyThemeToDocument(merged);
       } else {
-        const defaultTheme = getDefaultTheme();
-        setTheme(defaultTheme);
-        applyThemeToDocument(defaultTheme);
+        const theme = defaultForCustomer();
+        setTheme(theme);
+        applyThemeToDocument(theme);
       }
     } catch {
-      const defaultTheme = getDefaultTheme();
-      setTheme(defaultTheme);
-      applyThemeToDocument(defaultTheme);
+      const theme = defaultForCustomer();
+      setTheme(theme);
+      applyThemeToDocument(theme);
     }
   }, []);
 
   useEffect(() => {
     if (customerId) {
+      setTheme(getDefaultTheme(customerId));
+      applyThemeToDocument(getDefaultTheme(customerId));
       loadTheme(customerId);
     } else {
       setTheme(null);
@@ -78,7 +83,7 @@ export function ThemeProvider({
   );
 }
 
-export function useTheme(): ThemeConfig {
+export function useTheme(customerId?: string | null): ThemeConfig {
   const theme = useContext(ThemeContext);
-  return theme ?? getDefaultTheme();
+  return theme ?? getDefaultTheme(customerId);
 }
