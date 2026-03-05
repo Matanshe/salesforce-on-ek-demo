@@ -32,6 +32,34 @@ export interface EmbedFeatures {
   toc: boolean;
 }
 
+export interface EmbedConfig {
+  embedLayout: boolean;
+  citationBehavior: CitationBehavior;
+  embedFeatures: EmbedFeatures;
+}
+
+const defaultOn = true;
+const envFeatures: EmbedFeatures = {
+  hover: parseFeatureFlag(import.meta.env.VITE_EMBED_FEATURE_HOVER, defaultOn),
+  preview: parseFeatureFlag(import.meta.env.VITE_EMBED_FEATURE_PREVIEW, defaultOn),
+  toc: parseFeatureFlag(import.meta.env.VITE_EMBED_FEATURE_TOC, defaultOn),
+};
+
+/** Derive embed config from current URL params (e.g. after client-side nav to /proofpoint?embed=1). */
+export function getEmbedConfigFromParams(params: URLSearchParams): EmbedConfig {
+  const embedLayout =
+    params.get("embed") === "1" || params.get("embed") === "true";
+  const citationBehavior = embedLayout
+    ? parseCitationBehavior(params.get("citation") ?? "modal")
+    : parseCitationBehavior(import.meta.env.VITE_CITATION_BEHAVIOR);
+  const embedFeatures: EmbedFeatures = {
+    hover: parseFeatureFlag(params.get("hover") ?? undefined, envFeatures.hover),
+    preview: parseFeatureFlag(params.get("preview") ?? undefined, envFeatures.preview),
+    toc: parseFeatureFlag(params.get("toc") ?? undefined, envFeatures.toc),
+  };
+  return { embedLayout, citationBehavior, embedFeatures };
+}
+
 /**
  * Citation behavior: fullPage = navigate to article; modal = open citation in modal.
  */
