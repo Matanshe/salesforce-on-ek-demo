@@ -234,12 +234,12 @@ export const ArticleView = ({ data, chunkRows = [], onClose, customerId, content
     [data?.attributes?.metadata, metaTags]
   );
 
-  // Fetch related DMO data when article title is available
-  // Match by title internally
+  // Fetch related DMO data when article title or contentId is available.
+  // Proofpoint matches by contentId; Salesforce matches by title.
   useEffect(() => {
     const title = data?.attributes?.title;
-    if (title) {
-      fetchRelatedDmoData(title, customerId)
+    if (title || contentId) {
+      fetchRelatedDmoData(title ?? "", customerId, contentId ?? undefined)
         .then((relatedData) => {
           setRelatedDmoData(relatedData);
         })
@@ -250,7 +250,7 @@ export const ArticleView = ({ data, chunkRows = [], onClose, customerId, content
     } else {
       setRelatedDmoData(null);
     }
-  }, [data?.attributes?.title, customerId]);
+  }, [data?.attributes?.title, customerId, contentId]);
 
   const currentLanguage = useMemo(
     () => metadataEntries.find((e) => e.title === "Language")?.value ?? null,

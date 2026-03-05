@@ -1384,6 +1384,7 @@ function App() {
           chunkRows={citationModalData?.chunkRows ?? []}
           articleTitle={citationModalData?.articleTitle ?? null}
           currentContentId={citationModalData?.contentId ?? null}
+          customerId={selectedCustomerId}
           onTocContentClick={handleCitationTocContentClick}
           enableToc={effectiveEmbedFeatures.toc}
           tocUrl={tocUrl}
@@ -1551,6 +1552,7 @@ sessionInitialized={sessionInitialized}
         chunkRows={citationModalData?.chunkRows ?? []}
         articleTitle={citationModalData?.articleTitle ?? null}
         currentContentId={citationModalData?.contentId ?? null}
+        customerId={selectedCustomerId}
         onTocContentClick={handleCitationTocContentClick}
         enableToc={true}
         tocUrl={tocUrl}

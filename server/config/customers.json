@@ -3,6 +3,8 @@
     {
       "id": "salesforce",
       "name": "Salesforce",
+      "relationshipObjectApiName": "sf_zooomin_api_tdta_apps__dlm",
+      "relationshipSelectFields": "title__c, product_name__c, major_version__c, minor_version__c, patch_version__c",
       "salesforceLoginUrl": "https://eheart-241222-495-demo.my.salesforce.com",
       "clientId": "",
       "clientSecret": "",
@@ -100,6 +102,8 @@
     {
       "id": "proofpoint",
       "name": "Proofpoint",
+      "relationshipObjectApiName": "proofpoint_content_ids_2csv__dlm",
+      "relationshipSelectFields": "Title__c, Content_ID__c, Product__c",
       "salesforceLoginUrl": "https://eheart-241222-495-demo.my.salesforce.com",
       "clientId": "",
       "clientSecret": "",
