@@ -27,6 +27,8 @@ interface CitationModalProps {
   onTocContentClick?: (contentId: string) => void;
   /** When false, hide "Show table of contents" and TOC sidebar in expanded view */
   enableToc?: boolean;
+  /** TOC XML URL for the current customer (e.g. Proofpoint vs Salesforce). When missing, TOC uses default. */
+  tocUrl?: string | null;
   /** When true, use transparent overlay (e.g. embed mode to avoid semi-transparent padding) */
   transparentOverlay?: boolean;
 }
@@ -39,6 +41,7 @@ export function CitationModal({
   currentContentId,
   onTocContentClick,
   enableToc = true,
+  tocUrl,
   transparentOverlay = false,
 }: CitationModalProps) {
   const [expanded, setExpanded] = useState(false);
@@ -65,6 +68,7 @@ export function CitationModal({
           <div className="flex-1 min-h-0 overflow-hidden flex flex-row w-full">
             <div className="w-[260px] shrink-0 min-h-0 flex flex-col border-r border-gray-200 overflow-hidden">
               <TOC
+                tocUrl={tocUrl}
                 currentContentId={currentContentId ?? null}
                 isVisible={true}
                 embedded={true}

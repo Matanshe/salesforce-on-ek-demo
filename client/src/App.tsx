@@ -23,7 +23,7 @@ import { generateSignature } from "./utils/requestSigner";
 import TOC from "./components/TOC";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { CustomerRouteProvider } from "./contexts/CustomerRouteContext";
-import { citationBehavior, embedLayout, embedFeatures } from "./config/appConfig";
+import { citationBehavior, embedLayout, embedFeatures, getEmbedConfigFromParams } from "./config/appConfig";
 import "./App.css";
 
 class ArticleErrorBoundary extends Component<
@@ -241,8 +241,14 @@ function App() {
   const selectedCustomerId = customerIdParam && !customerNotFound ? customerIdParam : null;
   const basePath = selectedCustomerId ? `/${encodeURIComponent(selectedCustomerId)}` : "";
 
+  // Derive embed config from current URL so client-side nav to /proofpoint?embed=1 behaves like direct load
+  const effectiveEmbed = getEmbedConfigFromParams(searchParams);
+  const effectiveEmbedLayout = selectedCustomerId ? effectiveEmbed.embedLayout : embedLayout;
+  const effectiveCitationBehavior = selectedCustomerId ? effectiveEmbed.citationBehavior : citationBehavior;
+  const effectiveEmbedFeatures = selectedCustomerId ? effectiveEmbed.embedFeatures : embedFeatures;
+
   const [messages, setMessages] = useState<Message[]>([]);
-  const [isChatOpen, setIsChatOpen] = useState(() => !embedLayout);
+  const [isChatOpen, setIsChatOpen] = useState(() => !effectiveEmbedLayout);
   const [messageSequence, setMessageSequence] = useState(1);
   const [sessionInitialized, setSessionInitialized] = useState(false);
   const [agentforceSessionId, setAgentforceSessionId] = useState<string | null>(null);
@@ -879,7 +885,7 @@ function App() {
           ? { chunkObjectApiName, chunkRecordIds }
           : undefined;
 
-      if (citationBehavior === "modal" && embedLayout && !embedFeatures.preview) {
+      if (effectiveCitationBehavior === "modal" && effectiveEmbedLayout && !effectiveEmbedFeatures.preview) {
         const query = buildArticleQuery({
           hudmo,
           objectApiName: objectApiName ?? hudmo,
@@ -891,7 +897,7 @@ function App() {
         return;
       }
 
-      if (citationBehavior === "modal") {
+      if (effectiveCitationBehavior === "modal") {
         fetchForCitationModal(dccid, hudmo, chunkParams).then((result) => {
           if (result) {
             setCitationModalData({ ...result, contentId: dccid });
@@ -931,7 +937,7 @@ function App() {
 
   const handleHoverCitation = useCallback(
     (message: Message) => {
-      if (citationBehavior !== "modal" || !message.id) return;
+      if (effectiveCitationBehavior !== "modal" || !message.id) return;
       if (hoverCardDataByMessageId[message.id]) return;
 
       let dccid: string | null = message.dccid || null;
@@ -990,11 +996,12 @@ function App() {
         }
       });
     },
-    [citationBehavior, hoverCardDataByMessageId, chunkPreviewByMessageId, fetchForCitationModal]
+    [effectiveCitationBehavior, hoverCardDataByMessageId, chunkPreviewByMessageId, fetchForCitationModal]
   );
 
   const handleCloseArticle = () => {
-    navigate(basePath, { replace: true });
+    const search = location.search ? `${location.search}` : "";
+    navigate(`${basePath}${search}`, { replace: true });
     setHudmoData(null);
     setChunkRows([]);
     setCurrentContentId(null);
@@ -1238,7 +1245,8 @@ function App() {
     proposedQuestionSentRef.current = true;
     const question = proposedQuestionToSend;
     if (basePath) {
-      navigate(basePath, { replace: true, state: {} });
+      const search = location.search ? `${location.search}` : "";
+      navigate(`${basePath}${search}`, { replace: true, state: {} });
     }
     setToastMessage("Proposing a question based on customer content…");
     const sendDelayMs = 2000;
@@ -1251,7 +1259,7 @@ function App() {
       });
     }, sendDelayMs);
     return () => clearTimeout(t);
-  }, [sessionInitialized, proposedQuestionToSend, basePath, navigate]);
+  }, [sessionInitialized, proposedQuestionToSend, basePath, location.search, navigate]);
 
   // Sync URL -> article state: load article when URL is /article/:contentId, clear when on /
   useEffect(() => {
@@ -1289,7 +1297,7 @@ function App() {
 
   // Tell parent frame to hide or resize iframe to match agent (embed mode only)
   useEffect(() => {
-    if (!embedLayout || typeof window === "undefined" || window === window.parent) return;
+    if (!effectiveEmbedLayout || typeof window === "undefined" || window === window.parent) return;
     const open = isChatOpen;
     const width = open ? 420 : 0;
     const height = open ? 700 : 0;
@@ -1301,7 +1309,7 @@ function App() {
     } catch {
       // cross-origin or no parent
     }
-  }, [embedLayout, isChatOpen]);
+  }, [effectiveEmbedLayout, isChatOpen]);
 
   const handleChatToggleRef = useRef(handleChatToggle);
   handleChatToggleRef.current = handleChatToggle;
@@ -1310,7 +1318,7 @@ function App() {
 
   // Listen for parent asking to open the agent (one-click open from demo page button)
   useEffect(() => {
-    if (!embedLayout || typeof window === "undefined") return;
+    if (!effectiveEmbedLayout || typeof window === "undefined") return;
     const onMessage = (e: MessageEvent) => {
       if (e.data?.type === "agent-embed-open" && !isChatOpenRef.current) {
         handleChatToggleRef.current();
@@ -1318,9 +1326,9 @@ function App() {
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [embedLayout]);
+  }, [effectiveEmbedLayout]);
 
-  if (embedLayout && selectedCustomerId) {
+  if (effectiveEmbedLayout && selectedCustomerId) {
     return (
       <AppErrorBoundary>
         <CustomerRouteProvider customerId={selectedCustomerId}>
@@ -1354,8 +1362,8 @@ function App() {
                   minimized={true}
                   fetchingHudmoFor={fetchingHudmoFor}
                   prefetchedHudmoData={prefetchedHudmoData}
-                  citationBehavior="modal"
-                  enableHover={embedFeatures.hover}
+                  citationBehavior={effectiveCitationBehavior}
+                  enableHover={effectiveEmbedFeatures.hover}
                   chunkPreviewByMessageId={chunkPreviewByMessageId}
                   hoverCardDataByMessageId={hoverCardDataByMessageId}
                   activeHoverCitationMessageId={activeHoverCitationMessageId}
@@ -1377,7 +1385,8 @@ function App() {
           articleTitle={citationModalData?.articleTitle ?? null}
           currentContentId={citationModalData?.contentId ?? null}
           onTocContentClick={handleCitationTocContentClick}
-          enableToc={embedFeatures.toc}
+          enableToc={effectiveEmbedFeatures.toc}
+          tocUrl={tocUrl}
           transparentOverlay={true}
         />
         </ThemeProvider>
@@ -1464,7 +1473,7 @@ function App() {
                     minimized={true}
                     fetchingHudmoFor={fetchingHudmoFor}
                     prefetchedHudmoData={prefetchedHudmoData}
-                    citationBehavior={citationBehavior}
+                    citationBehavior={effectiveCitationBehavior}
                     chunkPreviewByMessageId={chunkPreviewByMessageId}
                     hoverCardDataByMessageId={hoverCardDataByMessageId}
                     activeHoverCitationMessageId={activeHoverCitationMessageId}
@@ -1493,7 +1502,7 @@ function App() {
             onToggle={handleChatToggle}
             fetchingHudmoFor={fetchingHudmoFor}
             prefetchedHudmoData={prefetchedHudmoData}
-            citationBehavior={citationBehavior}
+            citationBehavior={effectiveCitationBehavior}
             chunkPreviewByMessageId={chunkPreviewByMessageId}
             hoverCardDataByMessageId={hoverCardDataByMessageId}
             activeHoverCitationMessageId={activeHoverCitationMessageId}
@@ -1521,7 +1530,7 @@ sessionInitialized={sessionInitialized}
             onToggle={handleChatToggle}
             fetchingHudmoFor={fetchingHudmoFor}
             prefetchedHudmoData={prefetchedHudmoData}
-            citationBehavior={citationBehavior}
+            citationBehavior={effectiveCitationBehavior}
             chunkPreviewByMessageId={chunkPreviewByMessageId}
             hoverCardDataByMessageId={hoverCardDataByMessageId}
             activeHoverCitationMessageId={activeHoverCitationMessageId}
@@ -1544,6 +1553,7 @@ sessionInitialized={sessionInitialized}
         currentContentId={citationModalData?.contentId ?? null}
         onTocContentClick={handleCitationTocContentClick}
         enableToc={true}
+        tocUrl={tocUrl}
       />
       </>
       )}
