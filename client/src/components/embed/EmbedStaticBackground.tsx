@@ -3,6 +3,7 @@
  * Customer-aware: Proofpoint gets branded layout; others get Salesforce-style.
  * pointer-events: none so the chat widget overlay remains clickable.
  */
+import { Link } from "react-router-dom";
 import salesforceLogo from "../../assets/Salesforce Logo.jpeg";
 
 const PROOFPOINT_BLUE = "#0066FF";
@@ -20,11 +21,14 @@ function ProofpointEmbedBackground() {
       style={{ pointerEvents: "none", backgroundColor: PROOFPOINT_DARK }}
       aria-hidden
     >
-      {/* Top bar - white */}
-      <header className="sticky top-0 z-10 flex h-[70px] min-h-[70px] w-full items-center justify-between gap-4 bg-white px-4 sm:px-6 lg:px-8">
+      {/* Top bar - dark, white text (match screenshot) */}
+      <header
+        className="sticky top-0 z-10 flex h-[70px] min-h-[70px] w-full items-center justify-between gap-4 px-4 sm:px-6 lg:px-8"
+        style={{ backgroundColor: PROOFPOINT_DARK }}
+      >
         <div className="flex items-center gap-6">
-          <span className="text-xl font-bold text-black">proofpoint.</span>
-          <nav className="hidden items-center gap-5 text-sm font-medium text-gray-800 md:flex">
+          <span className="text-xl font-bold text-white">proofpoint.</span>
+          <nav className="hidden items-center gap-5 text-sm font-medium text-white/90 md:flex">
             <span>Platform</span>
             <span>Solutions</span>
             <span>Why Proofpoint</span>
@@ -34,12 +38,11 @@ function ProofpointEmbedBackground() {
         </div>
         <div className="flex flex-1 max-w-md justify-end items-center gap-3">
           <span
-            className="hidden sm:inline-flex h-9 px-4 rounded border-2 items-center justify-center text-sm font-medium shrink-0"
-            style={{ borderColor: PROOFPOINT_BLUE, color: PROOFPOINT_BLUE }}
+            className="hidden sm:inline-flex h-9 px-4 rounded border-2 items-center justify-center text-sm font-medium shrink-0 bg-[#0066FF] border-[#0066FF] text-white"
           >
             Assess Your Risk →
           </span>
-          <span className="inline-flex h-9 px-4 rounded bg-black text-white items-center justify-center text-sm font-medium shrink-0">
+          <span className="inline-flex h-9 px-4 rounded bg-black text-white items-center justify-center text-sm font-medium shrink-0 border border-white/20">
             Contact Us →
           </span>
         </div>
@@ -73,40 +76,52 @@ function ProofpointEmbedBackground() {
             Don&apos;t miss one of our worldwide events, coming to a city near you.
           </p>
           <span
-            className="mt-6 inline-flex h-11 min-w-[160px] items-center justify-center rounded-md bg-white px-6 text-sm font-medium"
-            style={{ color: PROOFPOINT_BLUE }}
+            className="mt-6 inline-flex h-11 min-w-[160px] items-center justify-center rounded-md bg-white px-6 text-sm font-medium border-2"
+            style={{ color: PROOFPOINT_BLUE, borderColor: PROOFPOINT_BLUE }}
           >
             See events →
           </span>
         </div>
       </div>
 
-      {/* Bottom - three dark cards */}
+      {/* Bottom - three dark cards (links to product routes) */}
       <div className="flex flex-wrap justify-center gap-4 px-4 py-8 sm:px-6" style={{ backgroundColor: "#0A1628" }}>
-        <div className="flex-1 min-w-[240px] max-w-[320px] rounded-lg p-5 text-left bg-black/40 border border-white/10">
+        <Link
+          to="/proofpoint/casb"
+          className="flex-1 min-w-[240px] max-w-[320px] rounded-lg p-5 text-left bg-black/40 border border-white/10 hover:border-white/25 hover:bg-black/50 transition-all duration-200 no-underline block"
+          style={{ pointerEvents: "auto" }}
+        >
           <h3 className="text-white text-xs font-semibold uppercase tracking-wide mb-2">
             Secure and govern your AI before risk becomes reality
           </h3>
           <p className="text-white/80 text-sm">
             A modern approach to managing human...
           </p>
-        </div>
-        <div className="flex-1 min-w-[240px] max-w-[320px] rounded-lg p-5 text-left bg-black/40 border border-white/10">
+        </Link>
+        <Link
+          to="/proofpoint/websecurity"
+          className="flex-1 min-w-[240px] max-w-[320px] rounded-lg p-5 text-left bg-black/40 border border-white/10 hover:border-white/25 hover:bg-black/50 transition-all duration-200 no-underline block"
+          style={{ pointerEvents: "auto" }}
+        >
           <h3 className="text-white text-xs font-semibold uppercase tracking-wide mb-2">
             Leader for email security
           </h3>
           <p className="text-white/80 text-sm">
             Proofpoint provides comprehensive...
           </p>
-        </div>
-        <div className="flex-1 min-w-[240px] max-w-[320px] rounded-lg p-5 text-left bg-black/40 border border-white/10">
+        </Link>
+        <Link
+          to="/proofpoint/npre"
+          className="flex-1 min-w-[240px] max-w-[320px] rounded-lg p-5 text-left bg-black/40 border border-white/10 hover:border-white/25 hover:bg-black/50 transition-all duration-200 no-underline block"
+          style={{ pointerEvents: "auto" }}
+        >
           <h3 className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: PROOFPOINT_GREEN }}>
             Proofpoint Protect Series
           </h3>
           <p className="text-white/80 text-sm">
             Proofpoint Protect is a multi-layer...
           </p>
-        </div>
+        </Link>
       </div>
     </div>
   );

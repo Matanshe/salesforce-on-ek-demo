@@ -46,7 +46,7 @@ export const ChatInput = ({ onSend }: ChatInputProps) => {
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Type your message..."
-          className="flex-1 min-h-[36px] sm:min-h-10 max-h-[120px] sm:max-h-[150px] resize-none text-sm sm:text-base"
+          className="flex-1 min-h-[36px] sm:min-h-10 max-h-[120px] sm:max-h-[150px] resize-none text-sm sm:text-base text-black"
           rows={1}
         />
         <Button 

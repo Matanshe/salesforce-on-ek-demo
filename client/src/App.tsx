@@ -1352,6 +1352,7 @@ function App() {
                 <ChatWidget
                   messages={messages}
                   onMessageClick={handleMessageClick}
+                  onOpenArticle={handleCitationTocContentClick}
                   onSendMessage={handleSendMessage}
                   onDeleteSession={handleDeleteSession}
                   onStartNewSession={handleStartNewSession}
@@ -1464,6 +1465,7 @@ function App() {
                   <ChatWidget
                     messages={messages}
                     onMessageClick={handleMessageClick}
+                    onOpenArticle={handleCitationTocContentClick}
                     onSendMessage={handleSendMessage}
                     onDeleteSession={handleDeleteSession}
                     onStartNewSession={handleStartNewSession}
@@ -1522,6 +1524,7 @@ function App() {
           <ChatWidget
             messages={messages}
             onMessageClick={handleMessageClick}
+            onOpenArticle={handleCitationTocContentClick}
             onSendMessage={handleSendMessage}
             onDeleteSession={handleDeleteSession}
             onStartNewSession={handleStartNewSession}

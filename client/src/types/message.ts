@@ -86,4 +86,20 @@ export interface ChatWidgetProps {
   onHoverCitation?: (message: Message) => void;
   /** When true, do not show "Start New Session" button; show loading until session is ready (e.g. Proofpoint auto-start). */
   hideStartNewSession?: boolean;
+  /** Articles relevant to the current URL (from url-based-content config), shown after the first message. */
+  urlBasedContentArticles?: UrlBasedContentArticle[];
+  /** Base path for article links (e.g. /proofpoint) when showing urlBasedContentArticles. */
+  basePath?: string;
+  /** When set, "Articles relevant for this page" cards call this instead of navigating; use to open the same modal as citation clicks. */
+  onOpenArticle?: (contentId: string) => void;
+  /** Customer objectApiName (e.g. for fetching HUDMO in citation modal). Set by useAgentChat. */
+  objectApiName?: string | null;
+  /** TOC URL for citation modal (from customer config). Set by useAgentChat. */
+  tocUrl?: string | null;
+}
+
+export interface UrlBasedContentArticle {
+  contentId: string;
+  title?: string | null;
+  summary?: string | null;
 }

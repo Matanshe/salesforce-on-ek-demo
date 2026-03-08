@@ -60,9 +60,9 @@ const SALESFORCE_DEFAULT_THEME: ThemeConfig = {
 
 const PROOFPOINT_DEFAULT_THEME: ThemeConfig = {
   colors: {
-    primary: "#C41E3A",
-    primaryHover: "#9e1830",
-    accent: "#333333",
+    primary: "#66CC33",
+    primaryHover: "#52a82a",
+    accent: "#0066FF",
   },
   labels: {
     siteName: "Proofpoint",

@@ -1,11 +1,13 @@
 import { type ErrorInfo, type ReactNode, Component, useRef, useEffect } from "react";
 import type { Message } from "../../types/message";
+import type { UrlBasedContentArticle } from "../../types/message";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
 import { CitationHoverCard } from "./CitationHoverCard";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useTheme } from "../../contexts/ThemeContext";
+import { Link } from "react-router-dom";
 
 interface ChatWindowProps {
   messages: Message[];
@@ -32,6 +34,12 @@ interface ChatWindowProps {
   onHoverCitation?: (message: Message) => void;
   /** When true, never show "Start New Session"; show loading until session is ready. */
   hideStartNewSession?: boolean;
+  /** Articles relevant to this page (from url-based-content), shown after the first message. */
+  urlBasedContentArticles?: UrlBasedContentArticle[];
+  /** Base path for article links (e.g. /proofpoint). */
+  basePath?: string;
+  /** When set, "Articles relevant for this page" cards open article via this callback (e.g. citation modal) instead of navigating. */
+  onOpenArticle?: (contentId: string) => void;
 }
 
 const extractUrlParams = (url: string): { dccid: string | null; hudmo: string | null } => {
@@ -117,6 +125,9 @@ export const ChatWindow = ({
   onCitationHoverCancelHide,
   onHoverCitation,
   hideStartNewSession = false,
+  urlBasedContentArticles,
+  basePath = "",
+  onOpenArticle,
 }: ChatWindowProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -235,23 +246,64 @@ export const ChatWindow = ({
               const articleTitle = prefetched?.attributes?.title ?? message.articleTitle ?? null;
               // Stable unique key: id can be missing or duplicated from API; index keeps list order correct
               const messageKey = message?.id ? `${String(message.id)}-${index}` : `msg-${index}`;
+              const isFirstBotMessage = index === 0 && message?.sender === "bot";
+              const showRelevantArticles = isFirstBotMessage && (urlBasedContentArticles?.length ?? 0) > 0;
 
               return (
                 <MessageErrorBoundary key={messageKey} messageId={message?.id ?? String(index)}>
-                  <ChatMessage
-                    message={message}
-                    onClick={onMessageClick}
-                    isFetching={isFetching}
-                    isFetched={isFetched}
-                    articleTitle={articleTitle}
-                    citationBehavior={citationBehavior}
-                    enableHover={enableHover}
-                    chunkPreviewForMessage={message?.id ? chunkPreviewByMessageId?.[message.id] : undefined}
-                    hoverCardData={message?.id ? hoverCardDataByMessageId?.[message.id] : undefined}
-                    onCitationHoverChange={onCitationHoverChange}
-                    onCitationHoverScheduleHide={onCitationHoverScheduleHide}
-                    onHoverCitation={onHoverCitation}
-                  />
+                  <>
+                    <ChatMessage
+                      message={message}
+                      onClick={onMessageClick}
+                      isFetching={isFetching}
+                      isFetched={isFetched}
+                      articleTitle={articleTitle}
+                      citationBehavior={citationBehavior}
+                      enableHover={enableHover}
+                      chunkPreviewForMessage={message?.id ? chunkPreviewByMessageId?.[message.id] : undefined}
+                      hoverCardData={message?.id ? hoverCardDataByMessageId?.[message.id] : undefined}
+                      onCitationHoverChange={onCitationHoverChange}
+                      onCitationHoverScheduleHide={onCitationHoverScheduleHide}
+                      onHoverCitation={onHoverCitation}
+                    />
+                    {showRelevantArticles && (
+                      <div className="mt-3 mb-2 px-0 sm:px-1">
+                        <p className="text-xs font-medium text-gray-500 mb-2">Articles relevant for this page</p>
+                        <div className="flex flex-col gap-2">
+                          {urlBasedContentArticles!.map((article) => (
+                            onOpenArticle ? (
+                              <button
+                                key={article.contentId}
+                                type="button"
+                                onClick={() => onOpenArticle(article.contentId)}
+                                className="block w-full rounded-lg border border-gray-200 bg-white p-2.5 text-left shadow-sm hover:border-[var(--theme-primary)] hover:bg-gray-50 transition-colors cursor-pointer"
+                              >
+                                <span className="font-medium text-sm text-gray-900 line-clamp-2">
+                                  {article.title || "Article"}
+                                </span>
+                                {article.summary && (
+                                  <p className="text-xs text-gray-500 mt-1 line-clamp-2">{article.summary}</p>
+                                )}
+                              </button>
+                            ) : (
+                              <Link
+                                key={article.contentId}
+                                to={`${basePath}/article/${article.contentId}`}
+                                className="block rounded-lg border border-gray-200 bg-white p-2.5 text-left shadow-sm hover:border-[var(--theme-primary)] hover:bg-gray-50 transition-colors"
+                              >
+                                <span className="font-medium text-sm text-gray-900 line-clamp-2">
+                                  {article.title || "Article"}
+                                </span>
+                                {article.summary && (
+                                  <p className="text-xs text-gray-500 mt-1 line-clamp-2">{article.summary}</p>
+                                )}
+                              </Link>
+                            )
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
                 </MessageErrorBoundary>
               );
             })}

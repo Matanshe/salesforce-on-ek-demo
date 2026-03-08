@@ -1,0 +1,229 @@
+/**
+ * Proofpoint internal pages – styling to match main page.
+ * Colors and layout tokens used by ProofpointHeader and product pages (CASB, Web Security, NPRE).
+ */
+:root {
+  --proofpoint-blue: #0066FF;
+  --proofpoint-dark: #0A1C2B;
+  --proofpoint-dark-gradient-end: #0F2E4A;
+  --proofpoint-section: #0A1628;
+}
+
+/* Page shell */
+.proofpoint-page {
+  background-color: var(--proofpoint-dark);
+  min-height: 100vh;
+  color: #fff;
+}
+
+/* Header – dark bar */
+.proofpoint-header {
+  background-color: var(--proofpoint-dark);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  height: 70px;
+  min-height: 70px;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+@media (min-width: 640px) {
+  .proofpoint-header { padding-left: 1.5rem; padding-right: 1.5rem; }
+}
+@media (min-width: 1024px) {
+  .proofpoint-header { padding-left: 2rem; padding-right: 2rem; }
+}
+
+.proofpoint-header .proofpoint-logo {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: white;
+}
+
+.proofpoint-header .proofpoint-nav {
+  display: none;
+  align-items: center;
+  gap: 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+}
+@media (min-width: 768px) {
+  .proofpoint-header .proofpoint-nav { display: flex; }
+}
+
+.proofpoint-header .proofpoint-cta-assess {
+  display: none;
+  height: 2.25rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  border-radius: 0.25rem;
+  border: 2px solid var(--proofpoint-blue);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: white;
+  background-color: var(--proofpoint-blue);
+}
+@media (min-width: 640px) {
+  .proofpoint-header .proofpoint-cta-assess { display: inline-flex; align-items: center; justify-content: center; }
+}
+
+.proofpoint-header .proofpoint-cta-contact {
+  display: inline-flex;
+  height: 2.25rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  border-radius: 0.25rem;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: white;
+  background-color: black;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Banner */
+.proofpoint-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  color: white;
+  background-color: var(--proofpoint-blue);
+}
+@media (min-width: 640px) {
+  .proofpoint-banner { padding-left: 1.5rem; padding-right: 1.5rem; }
+}
+
+/* Hero gradient */
+.proofpoint-hero {
+  background: linear-gradient(180deg, var(--proofpoint-dark) 0%, var(--proofpoint-dark-gradient-end) 100%);
+}
+
+/* Section background */
+.proofpoint-section {
+  background-color: var(--proofpoint-section);
+}
+
+/* Cards on dark background */
+.proofpoint-card {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.5rem;
+  padding: 1.25rem;
+  text-align: left;
+}
+
+.proofpoint-card h3 {
+  color: white;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.proofpoint-card p,
+.proofpoint-card .proofpoint-card-muted {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.875rem;
+}
+
+.proofpoint-card .proofpoint-link,
+a.proofpoint-link {
+  color: var(--proofpoint-blue);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+/* Badge / pill on dark */
+.proofpoint-badge {
+  background-color: rgba(0, 102, 255, 0.2);
+  color: var(--proofpoint-blue);
+}
+
+/* Tabs bar on dark */
+.proofpoint-tabs {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: var(--proofpoint-section);
+}
+
+.proofpoint-tabs a {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.proofpoint-tabs a:hover {
+  color: white;
+}
+
+.proofpoint-tabs a.proofpoint-tab-active {
+  color: white;
+  border-bottom: 2px solid var(--proofpoint-blue);
+}
+
+/* Footer on dark */
+.proofpoint-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: var(--proofpoint-section);
+}
+
+.proofpoint-footer a {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.proofpoint-footer a:hover {
+  color: white;
+}
+
+.proofpoint-footer .proofpoint-copyright {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.875rem;
+}
+
+/* Primary button (white bg, blue text) */
+.proofpoint-btn-primary {
+  display: inline-flex;
+  height: 2.75rem;
+  min-width: 10rem;
+  align-items: center;
+  justify-content: center;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  background: white;
+  color: var(--proofpoint-blue);
+  border: 2px solid var(--proofpoint-blue);
+}
+
+.proofpoint-btn-outline {
+  display: inline-flex;
+  height: 2.75rem;
+  min-width: 10rem;
+  align-items: center;
+  justify-content: center;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  background: transparent;
+  color: white;
+  border: 2px solid white;
+}
+
+/* Chat widget: keep input text black so it's readable (page theme must not turn it white) */
+.proofpoint-page textarea#chatInput,
+.proofpoint-page [data-slot="textarea"] {
+  color: #000;
+}

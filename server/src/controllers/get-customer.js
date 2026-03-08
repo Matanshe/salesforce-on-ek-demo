@@ -56,6 +56,7 @@ const getCustomer = async (req, res) => {
       objectApiName: customer.objectApiName || null,
       tocUrl: customer.tocUrl || null,
       proposedQuestion: customer.proposedQuestion ?? null,
+      urlBasedContent: customer["url-based-content"] ?? null,
       ui,
       embedUi: embedUi ?? null,
     };
