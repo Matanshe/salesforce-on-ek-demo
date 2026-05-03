@@ -1387,7 +1387,7 @@ function App() {
           articleTitle={citationModalData?.articleTitle ?? null}
           currentContentId={citationModalData?.contentId ?? null}
           onTocContentClick={handleCitationTocContentClick}
-          enableToc={effectiveEmbedFeatures.toc}
+          enableToc={effectiveEmbedFeatures.toc && !!tocUrl}
           tocUrl={tocUrl}
           transparentOverlay={true}
         />
