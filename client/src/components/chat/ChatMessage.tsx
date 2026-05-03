@@ -151,8 +151,9 @@ export const ChatMessage = ({
     const urls = extractUrlsFromContent(safeMessage.content);
     if (urls.length > 0) return urls[0];
     const refs = safeMessage.citedReferences;
-    if (Array.isArray(refs) && refs.length > 0 && refs[0]?.url) {
-      const u = refs[0].url;
+    if (Array.isArray(refs) && refs.length > 0) {
+      const ref = refs[0];
+      const u = ref?.url ?? ref?.value;
       return typeof u === "string" ? u : null;
     }
     return null;
@@ -161,8 +162,10 @@ export const ChatMessage = ({
   const hasCitationData = () => {
     if (safeMessage.dccid && safeMessage.hudmo) return true;
     const url = getCitationUrl();
+    console.log("[hasCitationData] id:", safeMessage.id, "url:", url, "citedRefs:", JSON.stringify(safeMessage.citedReferences));
     if (url) {
       const { dccid, hudmo } = extractUrlParams(url);
+      console.log("[hasCitationData] dccid:", dccid, "hudmo:", hudmo);
       return !!(dccid && hudmo);
     }
     return false;
