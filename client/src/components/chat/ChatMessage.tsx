@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback } from "react";
+import { type ReactNode, useCallback, useState } from "react";
 import type { Message, CitationHoverCardData } from "../../types/message";
 import { Card } from "@/components/ui/card";
 import agentforceLogo from "../../assets/agentforce_logo.webp";
@@ -12,6 +12,8 @@ interface ChatMessageProps {
   isFetched?: boolean;
   /** Article title from get-hudmo (attributes.title), shown as "View Source: Title" when available */
   articleTitle?: string | null;
+  /** Presigned image URL when the citation content type is image/*; renders inline in the chat bubble */
+  inlineImageUrl?: string | null;
   /** When "modal", citations open in modal; hover can show chunk preview */
   citationBehavior?: CitationBehaviorType;
   /** When false, do not show hover card or trigger hover fetch. Default true. */
@@ -123,6 +125,7 @@ export const ChatMessage = ({
   isFetching = false,
   isFetched: _isFetched = false,
   articleTitle,
+  inlineImageUrl,
   citationBehavior = "fullPage",
   enableHover = true,
   chunkPreviewForMessage: _chunkPreviewForMessage,
@@ -146,6 +149,8 @@ export const ChatMessage = ({
 
   const isUser = safeMessage.sender === "user";
   const isBot = safeMessage.sender === "bot";
+  const [imgError, setImgError] = useState(false);
+  const showInlineImage = !!inlineImageUrl && !imgError;
 
   const getCitationUrl = (): string | null => {
     const urls = extractUrlsFromContent(safeMessage.content);
@@ -267,28 +272,53 @@ export const ChatMessage = ({
             <div
               className="relative mt-2 pt-2 border-t border-gray-300 border-opacity-30"
               onMouseEnter={() => {
-                if (citationBehavior === "modal" && enableHover) {
+                if (citationBehavior === "modal" && enableHover && !showInlineImage) {
                   showCard();
                   onHoverCitation?.(safeMessage);
                 }
               }}
               onMouseLeave={scheduleHideCard}
             >
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={handleMessageClick}
-                onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), handleMessageClick())}
-                className="cursor-pointer flex items-center text-[var(--theme-primary)] hover:text-[var(--theme-primary-hover)] hover:underline"
-              >
-                <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-                <span className="text-[10px] sm:text-xs font-semibold">
-                  {isFetching ? "Preparing article..." : articleTitle ? `View Source: ${articleTitle}` : "View Source"}
-                </span>
-              </div>
+              {showInlineImage ? (
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={handleMessageClick}
+                  onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), handleMessageClick())}
+                  className="cursor-pointer group"
+                  title={articleTitle ?? "View full image"}
+                >
+                  <img
+                    src={inlineImageUrl!}
+                    alt={articleTitle ?? "Citation image"}
+                    onError={() => setImgError(true)}
+                    className="w-full rounded-md border border-gray-200 group-hover:opacity-90 group-hover:ring-2 group-hover:ring-[var(--theme-primary)] transition-all"
+                  />
+                  <span className="mt-1 flex items-center gap-1 text-[10px] text-[var(--theme-primary)] opacity-70 group-hover:opacity-100">
+                    <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                    Click to view full size
+                  </span>
+                </div>
+              ) : (
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={handleMessageClick}
+                  onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), handleMessageClick())}
+                  className="cursor-pointer flex items-center text-[var(--theme-primary)] hover:text-[var(--theme-primary-hover)] hover:underline"
+                >
+                  <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  <span className="text-[10px] sm:text-xs font-semibold">
+                    {isFetching ? "Preparing article..." : articleTitle ? `View Source: ${articleTitle}` : "View Source"}
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </div>

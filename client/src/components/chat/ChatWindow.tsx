@@ -231,8 +231,13 @@ export const ChatWindow = ({
               const cacheKey = getCacheKey(message);
               const isFetching = cacheKey ? fetchingHudmoFor.has(cacheKey) : false;
               const isFetched = cacheKey ? prefetchedHudmoData.has(cacheKey) : false;
-              const prefetched = cacheKey ? (prefetchedHudmoData.get(cacheKey) as { attributes?: { title?: string } } | undefined) : undefined;
+              const prefetched = cacheKey ? (prefetchedHudmoData.get(cacheKey) as { attributes?: { title?: string; content?: string; metadata?: { contentType?: string } } } | undefined) : undefined;
               const articleTitle = prefetched?.attributes?.title ?? message.articleTitle ?? null;
+              const prefetchedContentType = prefetched?.attributes?.metadata?.contentType;
+              const inlineImageUrl =
+                typeof prefetchedContentType === "string" && prefetchedContentType.startsWith("image/") && typeof prefetched?.attributes?.content === "string"
+                  ? prefetched.attributes.content
+                  : null;
               // Stable unique key: id can be missing or duplicated from API; index keeps list order correct
               const messageKey = message?.id ? `${String(message.id)}-${index}` : `msg-${index}`;
 
@@ -244,6 +249,7 @@ export const ChatWindow = ({
                     isFetching={isFetching}
                     isFetched={isFetched}
                     articleTitle={articleTitle}
+                    inlineImageUrl={inlineImageUrl}
                     citationBehavior={citationBehavior}
                     enableHover={enableHover}
                     chunkPreviewForMessage={message?.id ? chunkPreviewByMessageId?.[message.id] : undefined}
