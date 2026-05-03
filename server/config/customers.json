@@ -121,7 +121,7 @@
       },
       "homeUrl": "https://www.salesforce.com",
       "logoUrl": "/logos/salesforce.png",
-      "proposedQuestion": "How do I access Data Cloud analytics?",
+      "proposedQuestion": "how to set up google drive connector in data cloud?",
       "footerLinks": [
         { "label": "Salesforce.com", "href": "https://www.salesforce.com" },
         { "label": "Help & Training", "href": "https://help.salesforce.com" },
