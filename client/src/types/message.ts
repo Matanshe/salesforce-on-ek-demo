@@ -4,10 +4,14 @@ export interface ChunkRow {
 }
 
 export interface CitedReference {
-  id: string;
+  id?: string;
   name?: string;
   url?: string;
+  value?: string;
   type?: string;
+  label?: string;
+  recordId?: string | null;
+  inlineMetadata?: unknown;
 }
 
 export interface QAPair {

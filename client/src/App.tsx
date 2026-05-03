@@ -480,7 +480,8 @@ function App() {
       if (contentUrls.length > 0 && contentUrls[0]) {
         citationUrl = contentUrls[0].replace(/[).,;!?]+$/, "");
       } else if (Array.isArray(botMessage.citedReferences) && botMessage.citedReferences.length > 0) {
-        const refUrl = botMessage.citedReferences[0]?.url;
+        const ref0 = botMessage.citedReferences[0];
+        const refUrl = ref0?.url ?? ref0?.value;
         if (typeof refUrl === "string") citationUrl = refUrl;
       }
       if (citationUrl) {
@@ -1202,7 +1203,8 @@ function App() {
               console.log(`Setting objectApiName to: ${data.customer.objectApiName} for customer: ${selectedCustomerId}`);
               setObjectApiName(data.customer.objectApiName);
             } else {
-              console.warn(`No objectApiName found for customer: ${selectedCustomerId}`);
+              console.warn(`No objectApiName found for customer: ${selectedCustomerId}, will use value from citation URL`);
+              setObjectApiName("");
             }
             if (data.customer?.tocUrl != null) {
               setTocUrl(data.customer.tocUrl);
