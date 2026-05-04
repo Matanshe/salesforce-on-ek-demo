@@ -45,6 +45,13 @@ export interface Message {
   articleTitle?: string;
 }
 
+export interface ImageSlide {
+  url: string;
+  title: string | null;
+  dccid: string;
+  hudmo: string;
+}
+
 /** Data for the citation hover card (metadata, title, source, summary, Copy/Preview) */
 export interface CitationHoverCardData {
   title?: string | null;
