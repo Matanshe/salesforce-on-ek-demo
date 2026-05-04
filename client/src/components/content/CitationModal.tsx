@@ -9,7 +9,7 @@ export interface CitationModalHudmoData {
   attributes?: {
     content?: string;
     title?: string;
-    metadata?: { sourceUrl?: string };
+    metadata?: { sourceUrl?: string; contentType?: string };
     qa?: Array<{ question?: string; answer?: string }>;
     summary?: string;
   };
@@ -45,6 +45,8 @@ export function CitationModal({
   transparentOverlay = false,
 }: CitationModalProps) {
   const [expanded, setExpanded] = useState(false);
+  const isImage = typeof hudmoData?.attributes?.metadata?.contentType === "string" &&
+    hudmoData.attributes.metadata.contentType.startsWith("image/");
 
   const handleOpenChange = (isOpen: boolean) => {
     if (!isOpen) {
@@ -90,7 +92,7 @@ export function CitationModal({
               chunkRows={chunkRows}
               onClose={onClose}
             />
-            {enableToc && (
+            {enableToc && !isImage && (
               <div className="shrink-0 px-4 py-2 border-t border-gray-200 bg-gray-50 flex items-center justify-between gap-2">
                 <p className="text-xs text-gray-500">
                   Hover for chunk preview · Click for full article · Expand for TOC
