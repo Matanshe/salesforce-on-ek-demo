@@ -1,5 +1,5 @@
 import { type ErrorInfo, type ReactNode, Component, useRef, useEffect } from "react";
-import type { Message } from "../../types/message";
+import type { Message, ImageSlide } from "../../types/message";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
 import { CitationHoverCard } from "./CitationHoverCard";
@@ -231,13 +231,32 @@ export const ChatWindow = ({
               const cacheKey = getCacheKey(message);
               const isFetching = cacheKey ? fetchingHudmoFor.has(cacheKey) : false;
               const isFetched = cacheKey ? prefetchedHudmoData.has(cacheKey) : false;
-              const prefetched = cacheKey ? (prefetchedHudmoData.get(cacheKey) as { attributes?: { title?: string; content?: string; metadata?: { contentType?: string } } } | undefined) : undefined;
+              type PrefetchedData = { attributes?: { title?: string; content?: string; metadata?: { contentType?: string } } };
+              const prefetched = cacheKey ? (prefetchedHudmoData.get(cacheKey) as PrefetchedData | undefined) : undefined;
               const articleTitle = prefetched?.attributes?.title ?? message.articleTitle ?? null;
-              const prefetchedContentType = prefetched?.attributes?.metadata?.contentType;
-              const inlineImageUrl =
-                typeof prefetchedContentType === "string" && prefetchedContentType.startsWith("image/") && typeof prefetched?.attributes?.content === "string"
-                  ? prefetched.attributes.content
-                  : null;
+
+              // Collect image slides from all citedReferences that are prefetched and image/*
+              const imageSlides: ImageSlide[] = [];
+              const refs = message.citedReferences;
+              if (Array.isArray(refs)) {
+                for (const ref of refs) {
+                  const refUrl = ref?.url ?? ref?.value;
+                  if (typeof refUrl !== "string") continue;
+                  try {
+                    const urlObj = new URL(refUrl.replace(/[).,;!?]+$/, ""));
+                    const dccid = urlObj.searchParams.get("c__dccid") || urlObj.searchParams.get("c__contentId");
+                    const hudmo = urlObj.searchParams.get("c__hudmo") || urlObj.searchParams.get("c__objectApiName");
+                    if (!dccid || !hudmo) continue;
+                    const key = `${dccid}-${hudmo}`;
+                    const data = prefetchedHudmoData.get(key) as PrefetchedData | undefined;
+                    const ct = data?.attributes?.metadata?.contentType;
+                    const imgSrc = data?.attributes?.content;
+                    if (typeof ct === "string" && ct.startsWith("image/") && typeof imgSrc === "string") {
+                      imageSlides.push({ url: imgSrc, title: data?.attributes?.title ?? null, dccid, hudmo });
+                    }
+                  } catch { /* ignore malformed URLs */ }
+                }
+              }
               // Stable unique key: id can be missing or duplicated from API; index keeps list order correct
               const messageKey = message?.id ? `${String(message.id)}-${index}` : `msg-${index}`;
 
@@ -249,7 +268,7 @@ export const ChatWindow = ({
                     isFetching={isFetching}
                     isFetched={isFetched}
                     articleTitle={articleTitle}
-                    inlineImageUrl={inlineImageUrl}
+                    imageSlides={imageSlides}
                     citationBehavior={citationBehavior}
                     enableHover={enableHover}
                     chunkPreviewForMessage={message?.id ? chunkPreviewByMessageId?.[message.id] : undefined}

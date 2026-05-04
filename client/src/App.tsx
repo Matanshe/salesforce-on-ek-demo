@@ -474,17 +474,24 @@ function App() {
         customerId: selectedCustomerId,
       });
 
-      // Pre-fetch citation data: get URL from message content or from citedReferences
-      let citationUrl: string | null = null;
+      // Pre-fetch citation data for ALL citedReferences (enables carousel for image citations)
+      // Collect URLs from inline content first, then from citedReferences
+      const allCitationUrls: string[] = [];
       const contentUrls = botMessage.content.match(/(https?:\/\/[^\s)]+)/g) || [];
-      if (contentUrls.length > 0 && contentUrls[0]) {
-        citationUrl = contentUrls[0].replace(/[).,;!?]+$/, "");
-      } else if (Array.isArray(botMessage.citedReferences) && botMessage.citedReferences.length > 0) {
-        const ref0 = botMessage.citedReferences[0];
-        const refUrl = ref0?.url ?? ref0?.value;
-        if (typeof refUrl === "string") citationUrl = refUrl;
+      if (contentUrls.length > 0) {
+        allCitationUrls.push(...contentUrls.map((u) => u.replace(/[).,;!?]+$/, "")));
       }
-      if (citationUrl) {
+      if (Array.isArray(botMessage.citedReferences)) {
+        for (const ref of botMessage.citedReferences) {
+          const refUrl = ref?.url ?? ref?.value;
+          if (typeof refUrl === "string" && !allCitationUrls.includes(refUrl)) {
+            allCitationUrls.push(refUrl);
+          }
+        }
+      }
+      // Use first ref for the primary message dccid/hudmo (click handler); prefetch all
+      let primarySet = false;
+      for (const citationUrl of allCitationUrls) {
         try {
           const urlObj = new URL(citationUrl);
           let dccid = urlObj.searchParams.get("c__dccid") || urlObj.searchParams.get("c__contentId");
@@ -499,22 +506,22 @@ function App() {
               ? { chunkObjectApiName, chunkRecordIds }
               : undefined;
           if (dccid && hudmo) {
-            if (prefetchChunkParams && chunkObjectApiName && chunkRecordIds) {
-              chunkParamsByMessageIdRef.current[botMessage.id] = {
-                chunkObjectApiName,
-                chunkRecordIds,
-              };
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === botMessage.id
-                    ? { ...m, dccid, hudmo, chunkObjectApiName: chunkObjectApiName ?? undefined, chunkRecordIds: chunkRecordIds ?? undefined }
-                    : m
-                )
-              );
-            } else {
-              setMessages((prev) =>
-                prev.map((m) => (m.id === botMessage.id ? { ...m, dccid, hudmo } : m))
-              );
+            if (!primarySet) {
+              if (prefetchChunkParams && chunkObjectApiName && chunkRecordIds) {
+                chunkParamsByMessageIdRef.current[botMessage.id] = { chunkObjectApiName, chunkRecordIds };
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === botMessage.id
+                      ? { ...m, dccid, hudmo, chunkObjectApiName: chunkObjectApiName ?? undefined, chunkRecordIds: chunkRecordIds ?? undefined }
+                      : m
+                  )
+                );
+              } else {
+                setMessages((prev) =>
+                  prev.map((m) => (m.id === botMessage.id ? { ...m, dccid, hudmo } : m))
+                );
+              }
+              primarySet = true;
             }
             fetchHarmonizationData(dccid, hudmo, botMessage.id, true, prefetchChunkParams);
           }
