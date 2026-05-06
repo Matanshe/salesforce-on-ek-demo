@@ -1,37 +1,31 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { generateSignature } from "../utils/requestSigner";
+import { getAgentMessageText } from "../utils/getAgentMessageText";
 import type { Message } from "../types/message";
 import type { ChatWidgetProps, UrlBasedContentArticle } from "../types/message";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 
-function getAgentMessageText(
-  msg: { message?: string; messageParts?: Array<{ type?: string; text?: string }> } | null | undefined,
-  fallback: string
-): string {
-  try {
-    if (!msg || typeof msg !== "object") return fallback;
-    if (typeof msg.message === "string" && msg.message.trim()) return msg.message;
-    const parts = msg.messageParts;
-    if (Array.isArray(parts)) {
-      const text = parts
-        .map((p) => (p && typeof p === "object" && typeof (p as { text?: string }).text === "string" ? (p as { text: string }).text : ""))
-        .join("");
-      if (typeof text === "string" && text.trim()) return text;
-    }
-  } catch {
-    // ignore
-  }
-  return fallback;
-}
-
 /**
  * Hook that provides chat state and handlers for the Agentforce widget.
  * Used by Proofpoint dummy pages (and can be reused elsewhere) with a fixed customerId.
  * When pathname is provided and customer has url-based-content, fetches relevant HUDMOs and returns them as urlBasedContentArticles (show after first message).
+ * Optional accountName is passed to start-session and send-message for the agent (e.g. "Northbridge Data Security").
  */
-export function useAgentChat(customerId: string, pathname?: string | null): ChatWidgetProps {
-  const sessionStorageKey = `agentforce-session-key-${customerId}`;
+export function useAgentChat(customerId: string, pathname?: string | null, accountName?: string | null): ChatWidgetProps {
+  /** Scope session per route + account so e.g. /proofpoint, /proofpoint/websecurity, /proofpoint/npre each get their own external session (and accountName) without cross-talk. */
+  const pathSegment =
+    (pathname ?? "")
+      .replace(/^\/+|\/+$/g, "")
+      .replace(/\//g, "__") || "root";
+  const accountSegment =
+    (accountName ?? "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/gi, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 48) || "no-account";
+  const sessionStorageKey = `agentforce-session-key-${customerId}__${pathSegment}__${accountSegment}`;
   const sessionKeyRef = useRef(sessionStorage.getItem(sessionStorageKey) || crypto.randomUUID());
   const [messages, setMessages] = useState<Message[]>([]);
   const [sessionInitialized, setSessionInitialized] = useState(false);
@@ -42,8 +36,9 @@ export function useAgentChat(customerId: string, pathname?: string | null): Chat
   const [urlBasedContentArticles, setUrlBasedContentArticles] = useState<UrlBasedContentArticle[]>([]);
   const [objectApiName, setObjectApiName] = useState<string | null>(null);
   const [tocUrl, setTocUrl] = useState<string | null>(null);
+  const [tocUrls, setTocUrls] = useState<string[] | null>(null);
 
-  // Fetch customer config so we have objectApiName for citation modal (and url-based content)
+  // Fetch customer config so we have objectApiName and tocUrls for citation modal
   useEffect(() => {
     if (!customerId) return;
     let cancelled = false;
@@ -53,6 +48,13 @@ export function useAgentChat(customerId: string, pathname?: string | null): Chat
         if (!cancelled && data?.customer) {
           if (data.customer.objectApiName) setObjectApiName(data.customer.objectApiName);
           if (data.customer.tocUrl) setTocUrl(data.customer.tocUrl);
+          if (Array.isArray(data.customer.tocUrls) && data.customer.tocUrls.length > 0) {
+            setTocUrls(data.customer.tocUrls);
+          } else if (data.customer.tocUrl) {
+            setTocUrls([data.customer.tocUrl]);
+          } else {
+            setTocUrls(null);
+          }
         }
       })
       .catch(() => {});
@@ -67,7 +69,8 @@ export function useAgentChat(customerId: string, pathname?: string | null): Chat
     try {
       const key = sessionKeyRef.current;
       const customerParam = `&customerId=${encodeURIComponent(customerId)}`;
-      const path = `/api/v1/start-session?sessionId=${key}${customerParam}`;
+      const accountParam = accountName ? `&accountName=${encodeURIComponent(accountName)}` : "";
+      const path = `/api/v1/start-session?sessionId=${key}${customerParam}${accountParam}`;
       const { timestamp, signature } = await generateSignature("GET", path);
       const response = await fetch(`${API_URL}${path}`, {
         headers: { "X-Timestamp": timestamp, "X-Signature": signature },
@@ -77,16 +80,23 @@ export function useAgentChat(customerId: string, pathname?: string | null): Chat
       setAgentforceSessionId(data.sessionId);
       setSessionInitialized(true);
       if (data.messages?.[0]) {
-        const welcomeText = getAgentMessageText(data.messages[0], "Hi, I'm Agentforce on EK. How can I help you?");
+        const m0 = data.messages[0] as Record<string, unknown>;
+        const welcomeText = getAgentMessageText(m0, "Hi, I'm Agentforce on EK. How can I help you?");
         setMessages([
           {
-            id: data.messages[0].id || `msg-welcome-${Date.now()}`,
+            id: (typeof m0.id === "string" && m0.id) || `msg-welcome-${Date.now()}`,
             content: welcomeText,
             timestamp: new Date(),
             sender: "bot",
-            type: data.messages[0].type,
+            type: typeof m0.type === "string" ? m0.type : undefined,
+            feedbackId: typeof m0.feedbackId === "string" ? m0.feedbackId : undefined,
+            isContentSafe: typeof m0.isContentSafe === "boolean" ? m0.isContentSafe : undefined,
             message: welcomeText,
-            citedReferences: data.messages[0].citedReferences,
+            metrics: m0.metrics != null && typeof m0.metrics === "object" && !Array.isArray(m0.metrics) ? (m0.metrics as Record<string, unknown>) : undefined,
+            planId: typeof m0.planId === "string" ? m0.planId : undefined,
+            result: Array.isArray(m0.result) ? (m0.result as Message["result"]) : undefined,
+            citedReferences: Array.isArray(m0.citedReferences) ? (m0.citedReferences as Message["citedReferences"]) : undefined,
+            qa: Array.isArray(m0.qa) ? (m0.qa as Message["qa"]) : undefined,
           },
         ]);
       }
@@ -95,7 +105,7 @@ export function useAgentChat(customerId: string, pathname?: string | null): Chat
     } finally {
       setIsLoading(false);
     }
-  }, [customerId, sessionInitialized]);
+  }, [customerId, sessionInitialized, accountName]);
 
   useEffect(() => {
     if (customerId) initSession();
@@ -173,21 +183,35 @@ export function useAgentChat(customerId: string, pathname?: string | null): Chat
             message: content,
             sequenceId: messageSequence,
             customerId,
+            ...(accountName ? { accountName } : {}),
           }),
         });
         if (!response.ok) throw new Error(`Send message failed: ${response.statusText}`);
         const data = await response.json();
-        const agentResponse = data.messages?.[0];
+        const agentResponse = data.messages?.[0] as Record<string, unknown> | undefined;
         if (agentResponse) {
           const messageText = getAgentMessageText(agentResponse, "Response received");
           const botMessage: Message = {
-            id: (agentResponse.id as string) || `msg-bot-${Date.now()}`,
+            id: (typeof agentResponse.id === "string" && agentResponse.id) || `msg-bot-${Date.now()}`,
             content: messageText,
             timestamp: new Date(),
             sender: "bot",
-            type: agentResponse.type,
+            type: typeof agentResponse.type === "string" ? agentResponse.type : undefined,
+            feedbackId: typeof agentResponse.feedbackId === "string" ? agentResponse.feedbackId : undefined,
+            isContentSafe: typeof agentResponse.isContentSafe === "boolean" ? agentResponse.isContentSafe : undefined,
             message: messageText,
-            citedReferences: agentResponse.citedReferences,
+            metrics:
+              agentResponse.metrics != null &&
+              typeof agentResponse.metrics === "object" &&
+              !Array.isArray(agentResponse.metrics)
+                ? (agentResponse.metrics as Record<string, unknown>)
+                : undefined,
+            planId: typeof agentResponse.planId === "string" ? agentResponse.planId : undefined,
+            result: Array.isArray(agentResponse.result) ? (agentResponse.result as Message["result"]) : undefined,
+            citedReferences: Array.isArray(agentResponse.citedReferences)
+              ? (agentResponse.citedReferences as Message["citedReferences"])
+              : undefined,
+            qa: Array.isArray(agentResponse.qa) ? (agentResponse.qa as Message["qa"]) : undefined,
           };
           setMessages((prev) => [...prev, botMessage]);
         }
@@ -198,7 +222,7 @@ export function useAgentChat(customerId: string, pathname?: string | null): Chat
         setIsLoading(false);
       }
     },
-    [agentforceSessionId, customerId, messageSequence]
+    [agentforceSessionId, customerId, messageSequence, accountName]
   );
 
   const onDeleteSession = useCallback(async () => {
@@ -233,7 +257,8 @@ export function useAgentChat(customerId: string, pathname?: string | null): Chat
     setIsLoading(true);
     try {
       const key = sessionKeyRef.current;
-      const path = `/api/v1/start-session?sessionId=${key}&customerId=${encodeURIComponent(customerId)}`;
+      const accountParam = accountName ? `&accountName=${encodeURIComponent(accountName)}` : "";
+      const path = `/api/v1/start-session?sessionId=${key}&customerId=${encodeURIComponent(customerId)}${accountParam}`;
       const { timestamp, signature } = await generateSignature("GET", path);
       const response = await fetch(`${API_URL}${path}`, {
         headers: { "X-Timestamp": timestamp, "X-Signature": signature },
@@ -243,15 +268,23 @@ export function useAgentChat(customerId: string, pathname?: string | null): Chat
       setAgentforceSessionId(data.sessionId);
       setSessionInitialized(true);
       if (data.messages?.[0]) {
-        const welcomeText = getAgentMessageText(data.messages[0], "Hi, I'm Agentforce on EK. How can I help you?");
+        const m0 = data.messages[0] as Record<string, unknown>;
+        const welcomeText = getAgentMessageText(m0, "Hi, I'm Agentforce on EK. How can I help you?");
         setMessages([
           {
-            id: data.messages[0].id || `msg-welcome-${Date.now()}`,
+            id: (typeof m0.id === "string" && m0.id) || `msg-welcome-${Date.now()}`,
             content: welcomeText,
             timestamp: new Date(),
             sender: "bot",
+            type: typeof m0.type === "string" ? m0.type : undefined,
+            feedbackId: typeof m0.feedbackId === "string" ? m0.feedbackId : undefined,
+            isContentSafe: typeof m0.isContentSafe === "boolean" ? m0.isContentSafe : undefined,
             message: welcomeText,
-            citedReferences: data.messages[0].citedReferences,
+            metrics: m0.metrics != null && typeof m0.metrics === "object" && !Array.isArray(m0.metrics) ? (m0.metrics as Record<string, unknown>) : undefined,
+            planId: typeof m0.planId === "string" ? m0.planId : undefined,
+            result: Array.isArray(m0.result) ? (m0.result as Message["result"]) : undefined,
+            citedReferences: Array.isArray(m0.citedReferences) ? (m0.citedReferences as Message["citedReferences"]) : undefined,
+            qa: Array.isArray(m0.qa) ? (m0.qa as Message["qa"]) : undefined,
           },
         ]);
       }
@@ -260,7 +293,7 @@ export function useAgentChat(customerId: string, pathname?: string | null): Chat
     } finally {
       setIsLoading(false);
     }
-  }, [customerId]);
+  }, [customerId, accountName]);
 
   const onToggle = useCallback(() => setIsOpen((o) => !o), []);
 
@@ -288,5 +321,6 @@ export function useAgentChat(customerId: string, pathname?: string | null): Chat
     basePath: pathname ? `/${pathname.split("/").filter(Boolean)[0] ?? ""}` : undefined,
     objectApiName,
     tocUrl,
+    tocUrls,
   };
 }

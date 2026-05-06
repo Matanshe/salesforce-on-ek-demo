@@ -1,13 +1,22 @@
-import { useEffect, useRef, useState } from "react";
+import { useState, useCallback } from "react";
 import { useLocation, Link } from "react-router-dom";
 import routesData from "../data/proofpointRoutes.json";
 import { ThemeProvider } from "../contexts/ThemeContext";
 import { CustomerRouteProvider } from "../contexts/CustomerRouteContext";
 import { useAgentChat } from "../hooks/useAgentChat";
+import { useCustomerProposedQuestionAutoSend } from "../hooks/useCustomerProposedQuestionAutoSend";
+import { ProposedQuestionToast } from "./ProposedQuestionToast";
+import { AutoProposeQuestionsToggle } from "./proofpoint/AutoProposeQuestionsToggle";
 import { ChatWidget } from "./chat/ChatWidget";
+import { CitationModal } from "./content/CitationModal";
+import { fetchCitationModal } from "../api/fetchCitationModal";
+import type { CitationModalResult } from "../api/fetchCitationModal";
+import type { Message } from "../types/message";
 import { Header } from "./layout/Header";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
+const CUSTOMER_ID = "proofpoint";
+/** Account name passed to the agent on the Proofpoint main (dummy) page. */
+const ACCOUNT_NAME = "Northbridge Data Security";
 
 const routes = routesData as Record<string, string[]>;
 
@@ -32,24 +41,24 @@ const PROOFPOINT_GREEN = "#66CC33";
 const PROOFPOINT_DARK = "#0A1C2B";
 const PROOFPOINT_BLUE = "#0066FF";
 
-/** Exact same content as EmbedStaticBackground Proofpoint view (screenshot); tiles link to product routes */
+/** Tiles link to product routes; text matches the URL paths (CASB, Web Security, NPRE) */
 const proofpointStaticTiles = [
   {
     to: "/proofpoint/casb",
-    title: "Secure and govern your AI before risk becomes reality",
-    description: "A modern approach to managing human...",
+    title: "CASB",
+    description: "Cloud App Security Broker",
     titleGreen: false,
   },
   {
     to: "/proofpoint/websecurity",
-    title: "Leader for email security",
-    description: "Proofpoint provides comprehensive...",
+    title: "Web Security",
+    description: "Proofpoint Web Security",
     titleGreen: false,
   },
   {
     to: "/proofpoint/npre",
-    title: "Proofpoint Protect Series",
-    description: "Proofpoint Protect is a multi-layer...",
+    title: "NPRE",
+    description: "Nexus People Risk Explorer",
     titleGreen: true,
   },
 ];
@@ -60,63 +69,73 @@ export function ProofpointDummyPage() {
   const isIndex = pathname === "/proofpoint";
   const routeKey = isIndex ? null : findRouteKey(pathname);
   const contentLinks = routeKey ? routes[routeKey] : null;
-  const chatProps = useAgentChat("proofpoint");
-  const [proposedQuestion, setProposedQuestion] = useState<string | null>(null);
-  const proposedQuestionSentRef = useRef(false);
+  const chatProps = useAgentChat(CUSTOMER_ID, pathname, ACCOUNT_NAME);
+  const [autoProposeEnabled, setAutoProposeEnabled] = useState(false);
+  const { toastMessage } = useCustomerProposedQuestionAutoSend(
+    CUSTOMER_ID,
+    chatProps.sessionInitialized,
+    chatProps.onSendMessage,
+    location.state,
+    autoProposeEnabled
+  );
   const [isChatOpen, setIsChatOpen] = useState(true); // Open by default like other customers
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [citationModalData, setCitationModalData] = useState<(CitationModalResult & { contentId: string }) | null>(null);
 
-  // Get proposed question: from location state (landing) or from customer API
-  useEffect(() => {
-    const fromState = (location.state as { proposedQuestion?: string } | null)?.proposedQuestion;
-    if (fromState) {
-      setProposedQuestion(fromState);
-      return;
-    }
-    let cancelled = false;
-    fetch(`${API_URL}/api/v1/customers/proofpoint`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (!cancelled && data?.customer?.proposedQuestion) {
-          setProposedQuestion(data.customer.proposedQuestion);
-        }
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [location.state]);
+  const handleOpenArticle = useCallback(
+    async (contentId: string) => {
+      if (!chatProps.objectApiName) return;
+      const result = await fetchCitationModal(contentId, chatProps.objectApiName, undefined, CUSTOMER_ID);
+      if (result) setCitationModalData({ ...result, contentId });
+    },
+    [chatProps.objectApiName]
+  );
 
-  // Auto-send proposed question once when session is ready (match main App behavior)
-  useEffect(() => {
-    if (!chatProps.sessionInitialized || !proposedQuestion || proposedQuestionSentRef.current) return;
-    proposedQuestionSentRef.current = true;
-    const question = proposedQuestion;
-    setToastMessage("Proposing a question based on customer content…");
-    const sendDelayMs = 2000;
-    const t = setTimeout(() => {
-      setToastMessage(null);
-      setProposedQuestion(null);
-      Promise.resolve(chatProps.onSendMessage(question)).then(
-        () => {},
-        () => {
-          proposedQuestionSentRef.current = false;
+  const handleCitationTocContentClick = useCallback(
+    async (contentId: string) => {
+      if (!chatProps.objectApiName) return;
+      const result = await fetchCitationModal(contentId, chatProps.objectApiName, undefined, CUSTOMER_ID);
+      if (result) setCitationModalData({ ...result, contentId });
+    },
+    [chatProps.objectApiName]
+  );
+
+  const handleMessageClick = useCallback(
+    async (message: Message) => {
+      if (message.sender !== "bot" || !chatProps.objectApiName) return;
+      let dccid = message.dccid ?? null;
+      let hudmo = message.hudmo ?? null;
+      let chunkObjectApiName = message.chunkObjectApiName ?? null;
+      let chunkRecordIds = message.chunkRecordIds ?? null;
+      if (!dccid || !hudmo) {
+        const urls = typeof message.content === "string" ? message.content.match(/(https?:\/\/[^\s)]+)/g) || [] : [];
+        if (urls[0]) {
+          try {
+            const cleanUrl = urls[0].replace(/[).,;!?]+$/, "");
+            const urlObj = new URL(cleanUrl);
+            dccid = urlObj.searchParams.get("c__dccid") || urlObj.searchParams.get("c__contentId") || dccid;
+            hudmo = urlObj.searchParams.get("c__hudmo") || urlObj.searchParams.get("c__objectApiName") || hudmo;
+            chunkObjectApiName = urlObj.searchParams.get("c__chunkObjectApiName") || chunkObjectApiName;
+            chunkRecordIds = urlObj.searchParams.get("c__chunkRecordIds") || chunkRecordIds;
+          } catch {
+            /* ignore */
+          }
         }
-      );
-    }, sendDelayMs);
-    return () => clearTimeout(t);
-  }, [chatProps.sessionInitialized, proposedQuestion, chatProps.onSendMessage]);
+      }
+      if (!dccid || !hudmo) return;
+      const chunkParams =
+        chunkObjectApiName && chunkRecordIds ? { chunkObjectApiName, chunkRecordIds } : undefined;
+      const result = await fetchCitationModal(dccid, chatProps.objectApiName, chunkParams, CUSTOMER_ID);
+      if (result) setCitationModalData({ ...result, contentId: dccid });
+    },
+    [chatProps.objectApiName]
+  );
 
   return (
     <CustomerRouteProvider customerId="proofpoint">
       <ThemeProvider customerId="proofpoint">
+        <ProposedQuestionToast message={toastMessage} />
         {isIndex ? (
           <div className="min-h-screen" style={{ backgroundColor: PROOFPOINT_DARK }}>
-      {toastMessage && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] px-4 py-3 rounded-lg bg-slate-800 text-white text-sm font-medium shadow-lg" role="status" aria-live="polite">
-          {toastMessage}
-        </div>
-      )}
             <header className="sticky top-0 z-10 flex h-[70px] min-h-[70px] w-full items-center justify-between gap-4 px-4 sm:px-6 lg:px-8" style={{ backgroundColor: PROOFPOINT_DARK }}>
               <div className="flex items-center gap-6">
                 <span className="text-xl font-bold text-white">proofpoint.</span>
@@ -124,7 +143,12 @@ export function ProofpointDummyPage() {
                   <span>Platform</span><span>Solutions</span><span>Why Proofpoint</span><span>Resources</span><span>Company</span>
                 </nav>
               </div>
-              <div className="flex flex-1 max-w-md justify-end items-center gap-3">
+              <div className="flex flex-1 max-w-md justify-end items-center gap-2 sm:gap-3">
+                <AutoProposeQuestionsToggle
+                  enabled={autoProposeEnabled}
+                  onChange={setAutoProposeEnabled}
+                  variant="on-dark"
+                />
                 <span className="hidden sm:inline-flex h-9 px-4 rounded border-2 items-center justify-center text-sm font-medium shrink-0 text-white bg-[#0066FF] border-[#0066FF]">Assess Your Risk →</span>
                 <span className="inline-flex h-9 px-4 rounded bg-black text-white items-center justify-center text-sm font-medium shrink-0 border border-white/20">Contact Us →</span>
               </div>
@@ -156,19 +180,28 @@ export function ProofpointDummyPage() {
                 </Link>
               ))}
             </div>
-            <ChatWidget {...chatProps} isOpen={isChatOpen} onToggle={() => setIsChatOpen((prev) => !prev)} hideStartNewSession />
+            <ChatWidget
+              {...chatProps}
+              onMessageClick={handleMessageClick}
+              onOpenArticle={handleOpenArticle}
+              isOpen={isChatOpen}
+              onToggle={() => setIsChatOpen((prev) => !prev)}
+              hideStartNewSession
+            />
           </div>
         ) : (
         <div className="min-h-screen bg-gray-50 text-gray-900">
-      {toastMessage && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] px-4 py-3 rounded-lg bg-slate-800 text-white text-sm font-medium shadow-lg" role="status" aria-live="polite">
-          {toastMessage}
-        </div>
-      )}
       <Header customers={[{ id: "proofpoint", name: "Proofpoint" }]} />
       <main className="max-w-3xl mx-auto px-4 py-8">
           <>
-            <p className="text-sm text-gray-500 mb-4">Route: {pathname || "/proofpoint"}</p>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-gray-500">Route: {pathname || "/proofpoint"}</p>
+              <AutoProposeQuestionsToggle
+                enabled={autoProposeEnabled}
+                onChange={setAutoProposeEnabled}
+                variant="on-light"
+              />
+            </div>
             {routeKey && contentLinks ? (
               <>
                 <h2 className="text-xl font-semibold mb-2">Route: {routeKey}</h2>
@@ -207,12 +240,27 @@ export function ProofpointDummyPage() {
       </main>
         <ChatWidget
           {...chatProps}
+          onMessageClick={handleMessageClick}
+          onOpenArticle={handleOpenArticle}
           isOpen={isChatOpen}
           onToggle={() => setIsChatOpen((prev) => !prev)}
           hideStartNewSession
         />
-    </div>
+      </div>
         )}
+      <CitationModal
+        open={!!citationModalData}
+        onClose={() => setCitationModalData(null)}
+        hudmoData={citationModalData?.hudmoData ?? null}
+        chunkRows={citationModalData?.chunkRows ?? []}
+        articleTitle={citationModalData?.articleTitle ?? null}
+        currentContentId={citationModalData?.contentId ?? null}
+        customerId={CUSTOMER_ID}
+        onTocContentClick={handleCitationTocContentClick}
+        enableToc={true}
+        tocUrl={chatProps.tocUrl ?? undefined}
+        tocUrls={chatProps.tocUrls ?? undefined}
+      />
       </ThemeProvider>
     </CustomerRouteProvider>
   );

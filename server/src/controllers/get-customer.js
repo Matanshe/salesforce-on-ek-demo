@@ -50,11 +50,19 @@ const getCustomer = async (req, res) => {
       : null;
 
     // Return customer without sensitive data (or return all if needed)
+    // tocUrls: array of TOC XML URLs (each article appears in at most one). Fall back to [tocUrl] for backward compat.
+    const tocUrls = Array.isArray(customer.tocUrls) && customer.tocUrls.length > 0
+      ? customer.tocUrls
+      : customer.tocUrl
+        ? [customer.tocUrl]
+        : null;
+
     const customerResponse = {
       id: customer.id,
       name: customer.name,
       objectApiName: customer.objectApiName || null,
       tocUrl: customer.tocUrl || null,
+      tocUrls,
       proposedQuestion: customer.proposedQuestion ?? null,
       urlBasedContent: customer["url-based-content"] ?? null,
       ui,

@@ -108,10 +108,12 @@
         "/proofpoint/casb": ["f87377849d8d37d89624b3a869bd9b64",
   "20f641cef89c3924016242d09f752a94",
   "18befbfb227e7be38d3558a02488ea25"],
-        "/proofpoint/websecurity": [ "6dd78147c97e12e9c381fbdf23093845",
-        "9567143506fa38d065954940f5478f8d",
-        "664321c6c205f1d20c3b4a7b8a83c9bd",
-        "3675fae60abd170bf4049c60f8340d63"],
+        "/proofpoint/websecurity": [
+          "7e95ff0f7a0356ba180883a4080489c8",
+          "ee34f8a6651311ededb9b30c424794ec",
+          "b497ba5f70ce9afaeb9f6d246f2821f8",
+          "d68d236d072750908e45dd9318b62506"
+        ],
         "/proofpoint/npre": ["2aefb475591486be3d6794039c88698e",
   "6239eee996c9b6f16944d08d2da1624e",
   "3b2684d8c1eea93aecddf775a424306c"]
@@ -121,7 +123,10 @@
       "clientSecret": "",
       "agentforceAgentId": "0XxHr000000IOh0KAG",
       "objectApiName": "proofpoint2_dmo_harmonized__dlm",
-      "tocUrl": "/data/npre-user-guide-enus-toc-enhanced.xml",
+      "tocUrls": [
+        "/data/npre-user-guide-enus-toc-enhanced.xml",
+        "/data/proofpoint-ws-toc-enhanced.xml"
+      ],
       "ui": {
         "colors": { "primary": "#66CC33", "primaryHover": "#52a82a", "accent": "#0066FF" },
         "labels": {

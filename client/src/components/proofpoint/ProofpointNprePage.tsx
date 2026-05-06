@@ -7,18 +7,33 @@ import { Link, useLocation } from "react-router-dom";
 import { CustomerRouteProvider } from "@/contexts/CustomerRouteContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { useAgentChat } from "@/hooks/useAgentChat";
+import { useCustomerProposedQuestionAutoSend } from "@/hooks/useCustomerProposedQuestionAutoSend";
+import { ProposedQuestionToast } from "@/components/ProposedQuestionToast";
 import { ChatWidget } from "@/components/chat/ChatWidget";
 import { CitationModal } from "@/components/content/CitationModal";
 import { fetchCitationModal } from "@/api/fetchCitationModal";
 import type { CitationModalResult } from "@/api/fetchCitationModal";
+import type { Message } from "@/types/message";
 import { ProofpointHeader } from "./ProofpointHeader";
 import "./Proofpoint.css";
 
 const CUSTOMER_ID = "proofpoint";
+const ACCOUNT_NAME = "Northbridge Data Security";
+const LOGGED_IN_USER_NAME = "Ethan Caldwell";
+const ELIGIBLE_PRODUCTS_TEXT = "Risk explorer";
 
 export function ProofpointNprePage() {
-  const { pathname } = useLocation();
-  const chatProps = useAgentChat(CUSTOMER_ID, pathname);
+  const location = useLocation();
+  const { pathname } = location;
+  const chatProps = useAgentChat(CUSTOMER_ID, pathname, ACCOUNT_NAME);
+  const [autoProposeEnabled, setAutoProposeEnabled] = useState(false);
+  const { toastMessage } = useCustomerProposedQuestionAutoSend(
+    CUSTOMER_ID,
+    chatProps.sessionInitialized,
+    chatProps.onSendMessage,
+    location.state,
+    autoProposeEnabled
+  );
   const [isChatOpen, setIsChatOpen] = useState(true);
   const [citationModalData, setCitationModalData] = useState<(CitationModalResult & { contentId: string }) | null>(null);
 
@@ -40,11 +55,49 @@ export function ProofpointNprePage() {
     [chatProps.objectApiName]
   );
 
+  const handleMessageClick = useCallback(
+    async (message: Message) => {
+      if (message.sender !== "bot" || !chatProps.objectApiName) return;
+      let dccid = message.dccid ?? null;
+      let hudmo = message.hudmo ?? null;
+      let chunkObjectApiName = message.chunkObjectApiName ?? null;
+      let chunkRecordIds = message.chunkRecordIds ?? null;
+      if (!dccid || !hudmo) {
+        const urls = typeof message.content === "string" ? message.content.match(/(https?:\/\/[^\s)]+)/g) || [] : [];
+        if (urls[0]) {
+          try {
+            const cleanUrl = urls[0].replace(/[).,;!?]+$/, "");
+            const urlObj = new URL(cleanUrl);
+            dccid = urlObj.searchParams.get("c__dccid") || urlObj.searchParams.get("c__contentId") || dccid;
+            hudmo = urlObj.searchParams.get("c__hudmo") || urlObj.searchParams.get("c__objectApiName") || hudmo;
+            chunkObjectApiName = urlObj.searchParams.get("c__chunkObjectApiName") || chunkObjectApiName;
+            chunkRecordIds = urlObj.searchParams.get("c__chunkRecordIds") || chunkRecordIds;
+          } catch {
+            /* ignore */
+          }
+        }
+      }
+      if (!dccid || !hudmo) return;
+      const chunkParams =
+        chunkObjectApiName && chunkRecordIds ? { chunkObjectApiName, chunkRecordIds } : undefined;
+      const result = await fetchCitationModal(dccid, chatProps.objectApiName, chunkParams, CUSTOMER_ID);
+      if (result) setCitationModalData({ ...result, contentId: dccid });
+    },
+    [chatProps.objectApiName]
+  );
+
   return (
     <CustomerRouteProvider customerId="proofpoint">
       <ThemeProvider customerId="proofpoint">
         <div className="proofpoint-page min-h-screen">
-          <ProofpointHeader />
+          <ProposedQuestionToast message={toastMessage} />
+          <ProofpointHeader
+            loggedInUserName={LOGGED_IN_USER_NAME}
+            accountName={ACCOUNT_NAME}
+            eligibleProductsText={ELIGIBLE_PRODUCTS_TEXT}
+            autoProposeQuestionsEnabled={autoProposeEnabled}
+            onAutoProposeQuestionsChange={setAutoProposeEnabled}
+          />
 
           {/* Hero */}
           <section
@@ -142,6 +195,7 @@ export function ProofpointNprePage() {
 
           <ChatWidget
             {...chatProps}
+            onMessageClick={handleMessageClick}
             onOpenArticle={handleOpenArticle}
             isOpen={isChatOpen}
             onToggle={() => setIsChatOpen((prev) => !prev)}
@@ -158,6 +212,7 @@ export function ProofpointNprePage() {
             onTocContentClick={handleCitationTocContentClick}
             enableToc={true}
             tocUrl={chatProps.tocUrl ?? undefined}
+            tocUrls={chatProps.tocUrls ?? undefined}
           />
         </div>
       </ThemeProvider>

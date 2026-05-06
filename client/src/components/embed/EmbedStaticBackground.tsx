@@ -92,10 +92,10 @@ function ProofpointEmbedBackground() {
           style={{ pointerEvents: "auto" }}
         >
           <h3 className="text-white text-xs font-semibold uppercase tracking-wide mb-2">
-            Secure and govern your AI before risk becomes reality
+            CASB
           </h3>
           <p className="text-white/80 text-sm">
-            A modern approach to managing human...
+            Cloud App Security Broker
           </p>
         </Link>
         <Link
@@ -104,10 +104,10 @@ function ProofpointEmbedBackground() {
           style={{ pointerEvents: "auto" }}
         >
           <h3 className="text-white text-xs font-semibold uppercase tracking-wide mb-2">
-            Leader for email security
+            Web Security
           </h3>
           <p className="text-white/80 text-sm">
-            Proofpoint provides comprehensive...
+            Proofpoint Web Security
           </p>
         </Link>
         <Link
@@ -116,10 +116,10 @@ function ProofpointEmbedBackground() {
           style={{ pointerEvents: "auto" }}
         >
           <h3 className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: PROOFPOINT_GREEN }}>
-            Proofpoint Protect Series
+            NPRE
           </h3>
           <p className="text-white/80 text-sm">
-            Proofpoint Protect is a multi-layer...
+            Nexus People Risk Explorer
           </p>
         </Link>
       </div>

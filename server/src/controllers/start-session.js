@@ -8,8 +8,28 @@ const startSession = async (req, res) => {
 
     const sessionId = req.query.sessionId;
     const customerId = req.query.customerId || req.body.customerId;
+    const accountName = req.query.accountName || (req.body && req.body.accountName);
 
-    console.log(`${getCurrentTimestamp()} 🔑 - startSession - Using session ID: ${sessionId}, Customer ID: ${customerId || "default"}`);
+    console.log(`${getCurrentTimestamp()} 🔑 - startSession - Using session ID: ${sessionId}, Customer ID: ${customerId || "default"}${accountName ? `, accountName: ${accountName}` : ""}`);
+
+    // Get agent ID from customer config or fallback to env var (before auth so we can return 404 for unknown customer)
+    let agentId;
+    if (customerId) {
+      try {
+        const customer = getCustomerById(customerId);
+        agentId = customer.agentforceAgentId || "";
+        console.log(`${getCurrentTimestamp()} 🤖 - startSession - Customer: ${customerId}, Agent ID from config: ${customer.agentforceAgentId}, Using: ${agentId}`);
+      } catch (err) {
+        if (err.message && err.message.includes("not found")) {
+          res.status(404).json({ error: "customer_not_found", message: err.message });
+          return;
+        }
+        throw err;
+      }
+    } else {
+      agentId = process.env.AGENTFORCE_AGENT_ID || "";
+      console.log(`${getCurrentTimestamp()} 🤖 - startSession - Using Agent ID: ${agentId} from environment variable`);
+    }
 
     const { accessToken, instanceUrl } = await sfAuthToken(customerId);
 
@@ -19,17 +39,6 @@ const startSession = async (req, res) => {
         message: "Salesforce authentication failed or is not configured. Check server config (customers.json or .env) for CLIENT_ID, CLIENT_SECRET, and SALESFORCE_LOGIN_URL.",
       });
       return;
-    }
-
-    // Get agent ID from customer config or fallback to env var
-    let agentId;
-    if (customerId) {
-      const customer = getCustomerById(customerId);
-      agentId = customer.agentforceAgentId || "";
-      console.log(`${getCurrentTimestamp()} 🤖 - startSession - Customer: ${customerId}, Agent ID from config: ${customer.agentforceAgentId}, Using: ${agentId}`);
-    } else {
-      agentId = process.env.AGENTFORCE_AGENT_ID || "";
-      console.log(`${getCurrentTimestamp()} 🤖 - startSession - Using Agent ID: ${agentId} from environment variable`);
     }
     
     // Ensure agentId is set before calling Agentforce
@@ -52,6 +61,9 @@ const startSession = async (req, res) => {
       },
       bypassUser: true,
     };
+    if (accountName) {
+      body.variables = [{ name: "accountName", type: "Text", value: accountName }];
+    }
 
     const config = {
       method: "POST",
@@ -84,7 +96,12 @@ const startSession = async (req, res) => {
       } catch {
         if (errorText && errorText.length < 200) detail = errorText;
       }
-      throw new Error(`Agentforce error: ${detail}`);
+      const status = response.status >= 400 && response.status < 600 ? response.status : 502;
+      res.status(status).json({
+        error: "start_session_failed",
+        message: `Agentforce error: ${detail}`,
+      });
+      return;
     }
 
     const data = await response.json();

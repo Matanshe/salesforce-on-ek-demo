@@ -9,8 +9,9 @@ const sendMessage = async (req, res) => {
     const message = req.body.message;
     const sequenceId = req.body.sequenceId;
     const customerId = req.body.customerId || req.query.customerId;
+    const accountName = req.body && req.body.accountName;
 
-    console.log(`${getCurrentTimestamp()} 🔑 - sendMessage - Session: ${sessionId}, Sequence: ${sequenceId}, Customer ID: ${customerId || "default"}`);
+    console.log(`${getCurrentTimestamp()} 🔑 - sendMessage - Session: ${sessionId}, Sequence: ${sequenceId}, Customer ID: ${customerId || "default"}${accountName ? `, accountName: ${accountName}` : ""}`);
 
     const { accessToken } = await sfAuthToken(customerId);
 
@@ -21,6 +22,9 @@ const sendMessage = async (req, res) => {
         text: message,
       },
     };
+    if (accountName) {
+      body.variables = [{ name: "accountName", type: "Text", value: accountName }];
+    }
 
     const config = {
       method: "POST",

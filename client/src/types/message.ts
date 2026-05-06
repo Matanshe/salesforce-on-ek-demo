@@ -96,6 +96,8 @@ export interface ChatWidgetProps {
   objectApiName?: string | null;
   /** TOC URL for citation modal (from customer config). Set by useAgentChat. */
   tocUrl?: string | null;
+  /** Multiple TOC URLs per customer (each article in at most one). When provided, TOC picks the one containing current article. */
+  tocUrls?: string[] | null;
 }
 
 export interface UrlBasedContentArticle {
