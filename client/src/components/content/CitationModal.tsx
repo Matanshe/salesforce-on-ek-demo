@@ -21,14 +21,18 @@ interface CitationModalProps {
   hudmoData: CitationModalHudmoData | null;
   chunkRows: ChunkRow[];
   articleTitle?: string | null;
-  /** Current article contentId (for TOC highlight in expanded view) */
+  /** Current article contentId (for TOC highlight and related DMO lookup) */
   currentContentId?: string | null;
+  /** Customer id (e.g. proofpoint, salesforce) so ArticleView can fetch product/relationship DMO */
+  customerId?: string | null;
   /** When user clicks another TOC item in expanded view, load that article */
   onTocContentClick?: (contentId: string) => void;
   /** When false, hide "Show table of contents" and TOC sidebar in expanded view */
   enableToc?: boolean;
   /** TOC XML URL for the current customer (e.g. Proofpoint vs Salesforce). When missing, TOC uses default. */
   tocUrl?: string | null;
+  /** Multiple TOC URLs. When provided, the TOC that contains the current article is shown. */
+  tocUrls?: string[] | null;
   /** When true, use transparent overlay (e.g. embed mode to avoid semi-transparent padding) */
   transparentOverlay?: boolean;
 }
@@ -39,9 +43,11 @@ export function CitationModal({
   hudmoData,
   chunkRows,
   currentContentId,
+  customerId,
   onTocContentClick,
   enableToc = true,
   tocUrl,
+  tocUrls,
   transparentOverlay = false,
 }: CitationModalProps) {
   const [expanded, setExpanded] = useState(false);
@@ -71,6 +77,7 @@ export function CitationModal({
             <div className="w-[260px] shrink-0 min-h-0 flex flex-col border-r border-gray-200 overflow-hidden">
               <TOC
                 tocUrl={tocUrl}
+                tocUrls={tocUrls}
                 currentContentId={currentContentId ?? null}
                 isVisible={true}
                 embedded={true}
@@ -82,6 +89,8 @@ export function CitationModal({
                 data={hudmoData}
                 chunkRows={chunkRows}
                 onClose={() => setExpanded(false)}
+                customerId={customerId}
+                contentId={currentContentId ?? undefined}
               />
             </div>
           </div>
@@ -91,6 +100,8 @@ export function CitationModal({
               data={hudmoData}
               chunkRows={chunkRows}
               onClose={onClose}
+              customerId={customerId}
+              contentId={currentContentId ?? undefined}
             />
             {enableToc && !isImage && (
               <div className="shrink-0 px-4 py-2 border-t border-gray-200 bg-gray-50 flex items-center justify-between gap-2">

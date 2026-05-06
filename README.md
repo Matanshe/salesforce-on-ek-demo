@@ -71,6 +71,7 @@ The demo showcases how **Salesforce Data Cloud** and **Agentforce** work togethe
 - **Responsive Design**: Mobile-friendly interface that works on all devices
 - **Salesforce Branding**: Design matches help.salesforce.com with Salesforce colors and styling
 - **Real-time Indicators**: Visual feedback for article loading and readiness status
+- **Proofpoint demo & HTTP API (usage-first):** Session, customer config, signing rules, and Proofpoint call flows are documented in **[docs/PROOFPOINT_AND_AGENT_FEATURES.md](docs/PROOFPOINT_AND_AGENT_FEATURES.md)**
 
 ## Embedding the widget
 
@@ -85,34 +86,45 @@ You can add the chat widget to an existing website as an iframe addon, with opti
 
 ## API Specification
 
-The application exposes four RESTful endpoints, all protected by HMAC-SHA256 signature validation:
+The backend exposes multiple REST endpoints. **Session, messaging, HUDMO, chunks, and related tools require HMAC-SHA256 signature validation.** Catalog endpoints for customer configuration do **not**.
+
+For **Proofpoint / multi-TOC / `accountName` / URL-based content** call sequences and exact signing rules (especially **GET query strings**), see **[docs/PROOFPOINT_AND_AGENT_FEATURES.md](docs/PROOFPOINT_AND_AGENT_FEATURES.md)**.
+
+**GET /api/v1/customers**
+
+- Lists customers (catalog). **No** signature.
+
+**GET /api/v1/customers/:customerId**
+
+- Returns UI labels, `objectApiName`, `tocUrl` / `tocUrls`, `proposedQuestion`, `urlBasedContent`, etc. **No** signature. Omits secrets.
 
 **GET /api/v1/start-session**
 
 - Initializes a new Agentforce session. On Heroku, use `https://<your-app>.herokuapp.com/api/v1/start-session?...` (no `:3000` in the URL).
-- Query Parameters: `sessionId` (external session key)
+- **Query parameters:** `sessionId` (required, external session key), `customerId` (optional, selects agent + auth from `customers.json`), `accountName` (optional, Agentforce session variable)
 - Headers: `X-Timestamp`, `X-Signature`
-- Returns: `{ sessionId, messages }` (Agentforce internal session ID and welcome message)
+- **Sign the full path including the query string** (must match server `req.originalUrl`).
+- Returns: `{ sessionId, messages, agentId }` — use **`sessionId`** from this response as the internal id for `send-message` / `delete-session`
 
 **POST /api/v1/send-message**
 
 - Sends a message to an active Agentforce session
 - Headers: `X-Timestamp`, `X-Signature`, `Content-Type: application/json`
-- Body: `{ sessionId, message, sequenceId }`
-- Returns: `{ messages }` (Array containing Agentforce response with metadata and citations)
+- Body: `{ sessionId, message, sequenceId, customerId?, accountName? }` — optional `accountName` adds an Agentforce variable for that turn
+- Returns: `{ messages }` (array containing Agentforce response with metadata and citations)
 
 **DELETE /api/v1/delete-session**
 
 - Terminates an active Agentforce session
 - Headers: `X-Timestamp`, `X-Signature`, `Content-Type: application/json`
 - Body: `{ sessionId }`
-- Returns: `{ success: true }`
+- Returns: `{ message: "Session successfully ended." }`
 
 **POST /api/v1/get-hudmo**
 
 - Retrieves harmonized unstructured data model object (HUDMO) content
 - Headers: `X-Timestamp`, `X-Signature`, `Content-Type: application/json`
-- Body: `{ hudmoName, dccid }` (HUDMO name and Data Cloud Content ID)
+- Body: `{ hudmoName, dccid, customerId? }`
 - Returns: `{ data }` (Harmonized HTML content with metadata and source URL)
 
 **POST /api/v1/get-chunks**
@@ -122,11 +134,12 @@ The application exposes four RESTful endpoints, all protected by HMAC-SHA256 sig
 - Body: `{ chunkRecordIds, chunkObjectApiName }` (`chunkRecordIds`: array of record IDs or comma-separated string; `chunkObjectApiName`: Data Cloud chunk object API name)
 - Returns: `{ chunkRows }` (array of `{ Chunk__c, Citation__c? }` in request order)
 
-**Authentication:**
-All requests require HMAC-SHA256 signature in headers:
+Additional signed endpoints include **GET** `/api/v1/query-dmo-relationship`, **GET** `/api/v1/article-versions`, and **GET** `/api/v1/fast-search` (see `server/src/routes/catalog.js` and `server/index.js`).
+
+**Authentication (signed routes):**
 
 - `X-Timestamp`: Current timestamp in milliseconds
-- `X-Signature`: HMAC-SHA256(API_SECRET, timestamp + method + path)
+- `X-Signature`: HMAC-SHA256(API_SECRET, `timestamp + method + path`) — **`path` must match the request path exactly**, including `?query=...` for GET requests
 
 ## Technologies used
 

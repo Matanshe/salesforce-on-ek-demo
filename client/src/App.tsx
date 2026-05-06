@@ -20,11 +20,15 @@ import { EmbedStaticBackground } from "./components/embed/EmbedStaticBackground"
 import { ArticleView } from "./components/content/ArticleView";
 import { CitationModal } from "./components/content/CitationModal";
 import { generateSignature } from "./utils/requestSigner";
+import { getAgentMessageText } from "./utils/getAgentMessageText";
 import TOC from "./components/TOC";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { CustomerRouteProvider } from "./contexts/CustomerRouteContext";
 import { citationBehavior, embedLayout, embedFeatures, getEmbedConfigFromParams } from "./config/appConfig";
 import "./App.css";
+
+/** Account name passed to the agent on the main (help portal) page. */
+const MAIN_PAGE_ACCOUNT_NAME = "Northbridge Data Security";
 
 class ArticleErrorBoundary extends Component<
   { children: ReactNode; onClose: () => void },
@@ -129,27 +133,6 @@ class AppErrorBoundary extends Component<
 }
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
-
-/** Extract display text from Agentforce API message (supports .message string or .messageParts array). Never throws. */
-function getAgentMessageText(
-  msg: { message?: string; messageParts?: Array<{ type?: string; text?: string }> } | null | undefined,
-  fallback: string
-): string {
-  try {
-    if (!msg || typeof msg !== "object") return fallback;
-    if (typeof msg.message === "string" && msg.message.trim()) return msg.message;
-    const parts = msg.messageParts;
-    if (Array.isArray(parts)) {
-      const text = parts
-        .map((p) => (p && typeof p === "object" && typeof (p as { text?: string }).text === "string" ? (p as { text: string }).text : ""))
-        .join("");
-      if (typeof text === "string" && text.trim()) return text;
-    }
-  } catch (_e) {
-    // API may return unexpected shape; avoid crashing the app
-  }
-  return fallback;
-}
 
 interface HudmoData {
   attributes?: {
@@ -259,7 +242,7 @@ function App() {
   const [prefetchedHudmoData, setPrefetchedHudmoData] = useState<Map<string, HudmoData>>(new Map());
   const [fetchingHudmoFor, setFetchingHudmoFor] = useState<Set<string>>(new Set());
   const [objectApiName, setObjectApiName] = useState<string>("SFDCHelp7_DMO_harmonized__dlm");
-  const [tocUrl, setTocUrl] = useState<string | null>(null);
+  const [tocUrls, setTocUrls] = useState<string[] | null>(null);
   const [proposedQuestionToSend, setProposedQuestionToSend] = useState<string | null>(null);
   const proposedQuestionSentRef = useRef(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -395,6 +378,7 @@ function App() {
           message: content,
           sequenceId: messageSequence,
           customerId: selectedCustomerId,
+          accountName: MAIN_PAGE_ACCOUNT_NAME,
         }),
       });
 
@@ -1082,15 +1066,17 @@ function App() {
     try {
       const newSessionKey = sessionStorage.getItem("agentforce-session-key") || crypto.randomUUID();
       const customerParam = selectedCustomerId ? `&customerId=${encodeURIComponent(selectedCustomerId)}` : '';
+      const accountParam = `&accountName=${encodeURIComponent(MAIN_PAGE_ACCOUNT_NAME)}`;
+      const startSessionQuery = `sessionId=${newSessionKey}${customerParam}${accountParam}`;
 
       console.log("Initializing new Agentforce session...");
 
       const { timestamp, signature } = await generateSignature(
         "GET",
-        `/api/v1/start-session?sessionId=${newSessionKey}${customerParam}`
+        `/api/v1/start-session?${startSessionQuery}`
       );
 
-      const response = await fetch(`${API_URL}/api/v1/start-session?sessionId=${newSessionKey}${customerParam}`, {
+      const response = await fetch(`${API_URL}/api/v1/start-session?${startSessionQuery}`, {
         headers: {
           "X-Timestamp": timestamp,
           "X-Signature": signature,
@@ -1142,13 +1128,15 @@ function App() {
     try {
       console.log("Initializing Agentforce session...");
       const customerParam = selectedCustomerId ? `&customerId=${encodeURIComponent(selectedCustomerId)}` : '';
+      const accountParam = `&accountName=${encodeURIComponent(MAIN_PAGE_ACCOUNT_NAME)}`;
+      const startSessionQuery = `sessionId=${externalSessionKey}${customerParam}${accountParam}`;
 
       const { timestamp, signature } = await generateSignature(
         "GET",
-        `/api/v1/start-session?sessionId=${externalSessionKey}${customerParam}`
+        `/api/v1/start-session?${startSessionQuery}`
       );
 
-      const response = await fetch(`${API_URL}/api/v1/start-session?sessionId=${externalSessionKey}${customerParam}`, {
+      const response = await fetch(`${API_URL}/api/v1/start-session?${startSessionQuery}`, {
         headers: {
           "X-Timestamp": timestamp,
           "X-Signature": signature,
@@ -1213,10 +1201,12 @@ function App() {
               console.warn(`No objectApiName found for customer: ${selectedCustomerId}, will use value from citation URL`);
               setObjectApiName("");
             }
-            if (data.customer?.tocUrl != null) {
-              setTocUrl(data.customer.tocUrl);
+            if (data.customer?.tocUrls != null && Array.isArray(data.customer.tocUrls)) {
+              setTocUrls(data.customer.tocUrls);
+            } else if (data.customer?.tocUrl != null) {
+              setTocUrls([data.customer.tocUrl]);
             } else {
-              setTocUrl(null);
+              setTocUrls(null);
             }
             setProposedQuestionToSend((prev) => prev ?? data.customer?.proposedQuestion ?? null);
           } else {
@@ -1361,6 +1351,7 @@ function App() {
                 <ChatWidget
                   messages={messages}
                   onMessageClick={handleMessageClick}
+                  onOpenArticle={handleCitationTocContentClick}
                   onSendMessage={handleSendMessage}
                   onDeleteSession={handleDeleteSession}
                   onStartNewSession={handleStartNewSession}
@@ -1393,9 +1384,11 @@ function App() {
           chunkRows={citationModalData?.chunkRows ?? []}
           articleTitle={citationModalData?.articleTitle ?? null}
           currentContentId={citationModalData?.contentId ?? null}
+          customerId={selectedCustomerId}
           onTocContentClick={handleCitationTocContentClick}
-          enableToc={effectiveEmbedFeatures.toc && !!tocUrl}
-          tocUrl={tocUrl}
+          enableToc={effectiveEmbedFeatures.toc}
+          tocUrl={tocUrls?.[0] ?? null}
+          tocUrls={tocUrls}
           transparentOverlay={true}
         />
         </ThemeProvider>
@@ -1447,10 +1440,11 @@ function App() {
       ) : (
       <>
       <main className="flex-1 relative overflow-hidden flex">
-        {isArticleOpen && !isSearchPage && tocUrl && (
+        {isArticleOpen && !isSearchPage && (
           <div className="w-64 border-r border-gray-200 bg-white flex-shrink-0">
-            <TOC 
-              tocUrl={tocUrl}
+            <TOC
+              tocUrl={tocUrls?.[0] ?? undefined}
+              tocUrls={tocUrls ?? undefined}
               onContentClick={handleTocContentClick}
               currentContentId={currentContentId}
               isVisible={isArticleOpen}
@@ -1472,6 +1466,7 @@ function App() {
                   <ChatWidget
                     messages={messages}
                     onMessageClick={handleMessageClick}
+                    onOpenArticle={handleCitationTocContentClick}
                     onSendMessage={handleSendMessage}
                     onDeleteSession={handleDeleteSession}
                     onStartNewSession={handleStartNewSession}
@@ -1530,6 +1525,7 @@ function App() {
           <ChatWidget
             messages={messages}
             onMessageClick={handleMessageClick}
+            onOpenArticle={handleCitationTocContentClick}
             onSendMessage={handleSendMessage}
             onDeleteSession={handleDeleteSession}
             onStartNewSession={handleStartNewSession}
@@ -1560,9 +1556,11 @@ sessionInitialized={sessionInitialized}
         chunkRows={citationModalData?.chunkRows ?? []}
         articleTitle={citationModalData?.articleTitle ?? null}
         currentContentId={citationModalData?.contentId ?? null}
+        customerId={selectedCustomerId}
         onTocContentClick={handleCitationTocContentClick}
         enableToc={true}
-        tocUrl={tocUrl}
+        tocUrl={tocUrls?.[0] ?? null}
+        tocUrls={tocUrls}
       />
       </>
       )}

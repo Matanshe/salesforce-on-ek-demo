@@ -1,17 +1,42 @@
 import sfAuthToken from "../utils/authToken.js";
 import { getCurrentTimestamp } from "../utils/loggingUtil.js";
+import { getCustomerById } from "../utils/customerConfig.js";
+
+/**
+ * Build SOQL for relationship DMO from customer config.
+ * Returns null if customer has no relationshipObjectApiName / relationshipSelectFields.
+ */
+function getRelationshipSoql(customerId) {
+  if (!customerId) return null;
+  try {
+    const customer = getCustomerById(customerId);
+    const objectName = customer.relationshipObjectApiName;
+    const fields = customer.relationshipSelectFields;
+    if (!objectName || !fields) return null;
+    return `SELECT ${fields} FROM ${objectName}`;
+  } catch {
+    return null;
+  }
+}
 
 const queryDmoRelationship = async (req, res) => {
   try {
     console.log(`${getCurrentTimestamp()} 🔍 - queryDmoRelationship - Request received...`);
 
     const customerId = req.query.customerId || req.body.customerId;
+    const soqlQuery = getRelationshipSoql(customerId);
 
-    // Query only sf_zooomin_api_tdta_apps__dlm DMO
-    // We'll match by title__c on the frontend
-    const soqlQuery = `SELECT title__c, product_name__c, major_version__c, minor_version__c, patch_version__c FROM sf_zooomin_api_tdta_apps__dlm`;
+    if (!soqlQuery) {
+      console.log(`${getCurrentTimestamp()} 📝 - queryDmoRelationship - No relationship config for customer: ${customerId || "missing"}`);
+      return res.status(200).json({
+        data: { totalSize: 0, records: [], done: true },
+        totalSize: 0,
+        records: [],
+        done: true,
+      });
+    }
 
-    console.log(`${getCurrentTimestamp()} 📝 - queryDmoRelationship - SOQL Query: ${soqlQuery}, Customer ID: ${customerId || "default"}`);
+    console.log(`${getCurrentTimestamp()} 📝 - queryDmoRelationship - SOQL Query: ${soqlQuery}, Customer ID: ${customerId}`);
 
     const { accessToken, instanceUrl } = await sfAuthToken(customerId);
 

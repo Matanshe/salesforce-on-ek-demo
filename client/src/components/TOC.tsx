@@ -13,7 +13,10 @@ interface NavNode {
 }
 
 interface TableOfContentsProps {
+  /** Single TOC URL (backward compat). Ignored if tocUrls is provided. */
   tocUrl?: string | null;
+  /** Multiple TOC URLs. When an article is open, the TOC that contains its contentId is shown. */
+  tocUrls?: string[] | null;
   onContentClick?: (contentId: string) => void;
   currentContentId?: string | null;
   isVisible?: boolean;
@@ -22,37 +25,88 @@ interface TableOfContentsProps {
 }
 
 
-const TableOfContents = ({ tocUrl: tocUrlProp, onContentClick, currentContentId, isVisible = true, embedded = false }: TableOfContentsProps) => {
+const TableOfContents = ({ tocUrl: tocUrlProp, tocUrls: tocUrlsProp, onContentClick, currentContentId, isVisible = true, embedded = false }: TableOfContentsProps) => {
   const { basePath } = useCustomerRoute();
   const [tree, setTree] = useState<NavNode | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  const tocXmlUrl = tocUrlProp ?? DEFAULT_TOC_URL;
+  const urlList = useMemo(() => {
+    if (Array.isArray(tocUrlsProp) && tocUrlsProp.length > 0) return tocUrlsProp;
+    if (tocUrlProp) return [tocUrlProp];
+    return [DEFAULT_TOC_URL];
+  }, [tocUrlsProp, tocUrlProp]);
+
+  // Collect all contentIds from a tree (for multi-TOC: find which TOC contains currentContentId)
+  const collectContentIds = useMemo(() => {
+    const collect = (node: NavNode): string[] => {
+      const ids: string[] = [];
+      if (node.contentId) ids.push(node.contentId);
+      node.children.forEach((c) => ids.push(...collect(c)));
+      return ids;
+    };
+    return collect;
+  }, []);
 
   useEffect(() => {
-    const loadXml = async () => {
+    if (urlList.length === 1) {
+      const loadXml = async () => {
+        try {
+          setError(null);
+          const response = await fetch(urlList[0]);
+          if (!response.ok) throw new Error(`Failed to load TOC data`);
+          const text = await response.text();
+          const parser = new DOMParser();
+          const xmlDoc = parser.parseFromString(text, "text/xml");
+          const root = xmlDoc.getElementsByTagName('nav')[0];
+          if (root) setTree(parseNode(root));
+          else setTree(null);
+        } catch (err: unknown) {
+          setError(err instanceof Error ? err.message : String(err));
+          setTree(null);
+        }
+      };
+      loadXml();
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
       try {
         setError(null);
-        const response = await fetch(tocXmlUrl);
-        if (!response.ok) throw new Error(`Failed to load TOC data`);
-        const text = await response.text();
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(text, "text/xml");
-        const root = xmlDoc.getElementsByTagName('nav')[0];
-        if (root) setTree(parseNode(root));
-        else setTree(null);
+        const contentIdToUrl = new Map<string, string>();
+        const treesByUrl = new Map<string, NavNode>();
+        for (const url of urlList) {
+          const response = await fetch(url);
+          if (!response.ok) continue;
+          const text = await response.text();
+          const parser = new DOMParser();
+          const xmlDoc = parser.parseFromString(text, "text/xml");
+          const root = xmlDoc.getElementsByTagName('nav')[0];
+          if (!root) continue;
+          const nodeTree = parseNode(root);
+          treesByUrl.set(url, nodeTree);
+          collectContentIds(nodeTree).forEach((id) => {
+            if (!contentIdToUrl.has(id)) contentIdToUrl.set(id, url);
+          });
+        }
+        if (cancelled) return;
+        const activeUrl = (currentContentId && contentIdToUrl.get(currentContentId)) || urlList[0];
+        const activeTree = treesByUrl.get(activeUrl) ?? treesByUrl.get(urlList[0]) ?? null;
+        setTree(activeTree);
       } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : String(err));
-        setTree(null);
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : String(err));
+          setTree(null);
+        }
       }
-    };
-    loadXml();
-  }, [tocXmlUrl]);
+    })();
+    return () => { cancelled = true; };
+  }, [urlList.join(','), currentContentId]);
 
-  // Content ID: Salesforce uses content__id; Proofpoint (and some Zoomin) uses Content_ID__c
+  // Content ID: Salesforce uses content__id; Proofpoint uses Content_ID__c or contentId (e.g. proofpoint-ws-toc)
   const getContentId = (el: Element): string | null =>
-    el.getAttribute('content__id') ?? el.getAttribute('Content_ID__c') ?? null;
+    el.getAttribute('content__id') ?? el.getAttribute('Content_ID__c') ?? el.getAttribute('contentId') ?? null;
 
   const parseNode = (node: Element): NavNode => ({
     title: node.getAttribute('title'),
