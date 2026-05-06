@@ -1,5 +1,5 @@
-import { type ReactNode, useCallback } from "react";
-import type { Message, CitationHoverCardData } from "../../types/message";
+import { type ReactNode, useCallback, useState } from "react";
+import type { Message, CitationHoverCardData, ImageSlide } from "../../types/message";
 import { Card } from "@/components/ui/card";
 import agentforceLogo from "../../assets/agentforce_logo.webp";
 
@@ -12,6 +12,8 @@ interface ChatMessageProps {
   isFetched?: boolean;
   /** Article title from get-hudmo (attributes.title), shown as "View Source: Title" when available */
   articleTitle?: string | null;
+  /** Image slides from all prefetched image/* citations; renders carousel (or single image) in the chat bubble */
+  imageSlides?: ImageSlide[];
   /** When "modal", citations open in modal; hover can show chunk preview */
   citationBehavior?: CitationBehaviorType;
   /** When false, do not show hover card or trigger hover fetch. Default true. */
@@ -123,6 +125,7 @@ export const ChatMessage = ({
   isFetching = false,
   isFetched: _isFetched = false,
   articleTitle,
+  imageSlides = [],
   citationBehavior = "fullPage",
   enableHover = true,
   chunkPreviewForMessage: _chunkPreviewForMessage,
@@ -146,13 +149,19 @@ export const ChatMessage = ({
 
   const isUser = safeMessage.sender === "user";
   const isBot = safeMessage.sender === "bot";
+  const [slideIndex, setSlideIndex] = useState(0);
+  const [erroredSlides, setErroredSlides] = useState<Set<number>>(new Set());
+  const validSlides = imageSlides.filter((_, i) => !erroredSlides.has(i));
+  const showCarousel = validSlides.length > 0;
+  const currentSlide = validSlides[Math.min(slideIndex, validSlides.length - 1)] ?? null;
 
   const getCitationUrl = (): string | null => {
     const urls = extractUrlsFromContent(safeMessage.content);
     if (urls.length > 0) return urls[0];
     const refs = safeMessage.citedReferences;
-    if (Array.isArray(refs) && refs.length > 0 && refs[0]?.url) {
-      const u = refs[0].url;
+    if (Array.isArray(refs) && refs.length > 0) {
+      const ref = refs[0];
+      const u = ref?.url ?? ref?.value;
       return typeof u === "string" ? u : null;
     }
     return null;
@@ -161,8 +170,10 @@ export const ChatMessage = ({
   const hasCitationData = () => {
     if (safeMessage.dccid && safeMessage.hudmo) return true;
     const url = getCitationUrl();
+    console.log("[hasCitationData] id:", safeMessage.id, "url:", url, "citedRefs:", JSON.stringify(safeMessage.citedReferences));
     if (url) {
       const { dccid, hudmo } = extractUrlParams(url);
+      console.log("[hasCitationData] dccid:", dccid, "hudmo:", hudmo);
       return !!(dccid && hudmo);
     }
     return false;
@@ -264,28 +275,110 @@ export const ChatMessage = ({
             <div
               className="relative mt-2 pt-2 border-t border-gray-300 border-opacity-30"
               onMouseEnter={() => {
-                if (citationBehavior === "modal" && enableHover) {
+                if (citationBehavior === "modal" && enableHover && !showCarousel) {
                   showCard();
                   onHoverCitation?.(safeMessage);
                 }
               }}
               onMouseLeave={scheduleHideCard}
             >
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={handleMessageClick}
-                onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), handleMessageClick())}
-                className="cursor-pointer flex items-center text-[var(--theme-primary)] hover:text-[var(--theme-primary-hover)] hover:underline"
-              >
-                <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-                <span className="text-[10px] sm:text-xs font-semibold">
-                  {isFetching ? "Preparing article..." : articleTitle ? `View Source: ${articleTitle}` : "View Source"}
-                </span>
-              </div>
+              {showCarousel && currentSlide ? (
+                <div className="flex flex-col gap-1.5">
+                  {/* Image */}
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => {
+                      const fakeMsg = { ...safeMessage, dccid: currentSlide.dccid, hudmo: currentSlide.hudmo };
+                      onClick(fakeMsg);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        const fakeMsg = { ...safeMessage, dccid: currentSlide.dccid, hudmo: currentSlide.hudmo };
+                        onClick(fakeMsg);
+                      }
+                    }}
+                    className="cursor-pointer group"
+                    title={currentSlide.title ?? "View full image"}
+                  >
+                    <img
+                      src={currentSlide.url}
+                      alt={currentSlide.title ?? "Citation image"}
+                      onError={() => {
+                        const originalIndex = imageSlides.indexOf(currentSlide as ImageSlide);
+                        if (originalIndex >= 0) setErroredSlides((prev) => new Set(prev).add(originalIndex));
+                      }}
+                      className="w-full rounded-md border border-gray-200 group-hover:opacity-90 group-hover:ring-2 group-hover:ring-[var(--theme-primary)] transition-all"
+                    />
+                  </div>
+
+                  {/* Carousel controls */}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] text-[var(--theme-primary)] opacity-70 truncate">
+                      {currentSlide.title ?? "Click to view full size"}
+                    </span>
+                    {validSlides.length > 1 && (
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setSlideIndex((i) => (i - 1 + validSlides.length) % validSlides.length); }}
+                          className="w-5 h-5 rounded-full flex items-center justify-center bg-gray-100 hover:bg-[var(--theme-primary)] hover:text-white text-gray-600 transition-colors"
+                          aria-label="Previous image"
+                        >
+                          <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+                          </svg>
+                        </button>
+                        <span className="text-[10px] text-gray-500 tabular-nums">
+                          {Math.min(slideIndex, validSlides.length - 1) + 1}/{validSlides.length}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setSlideIndex((i) => (i + 1) % validSlides.length); }}
+                          className="w-5 h-5 rounded-full flex items-center justify-center bg-gray-100 hover:bg-[var(--theme-primary)] hover:text-white text-gray-600 transition-colors"
+                          aria-label="Next image"
+                        >
+                          <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Dot indicators */}
+                  {validSlides.length > 1 && (
+                    <div className="flex justify-center gap-1">
+                      {validSlides.map((_, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setSlideIndex(i); }}
+                          className={`w-1.5 h-1.5 rounded-full transition-colors ${i === Math.min(slideIndex, validSlides.length - 1) ? "bg-[var(--theme-primary)]" : "bg-gray-300 hover:bg-gray-400"}`}
+                          aria-label={`Go to image ${i + 1}`}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={handleMessageClick}
+                  onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), handleMessageClick())}
+                  className="cursor-pointer flex items-center text-[var(--theme-primary)] hover:text-[var(--theme-primary-hover)] hover:underline"
+                >
+                  <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  <span className="text-[10px] sm:text-xs font-semibold">
+                    {isFetching ? "Preparing article..." : articleTitle ? `View Source: ${articleTitle}` : "View Source"}
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </div>

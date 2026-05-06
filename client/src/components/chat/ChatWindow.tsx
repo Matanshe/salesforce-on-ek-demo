@@ -1,6 +1,5 @@
 import { type ErrorInfo, type ReactNode, Component, useRef, useEffect } from "react";
-import type { Message } from "../../types/message";
-import type { UrlBasedContentArticle } from "../../types/message";
+import type { Message, ImageSlide, UrlBasedContentArticle } from "../../types/message";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
 import { CitationHoverCard } from "./CitationHoverCard";
@@ -242,8 +241,32 @@ export const ChatWindow = ({
               const cacheKey = getCacheKey(message);
               const isFetching = cacheKey ? fetchingHudmoFor.has(cacheKey) : false;
               const isFetched = cacheKey ? prefetchedHudmoData.has(cacheKey) : false;
-              const prefetched = cacheKey ? (prefetchedHudmoData.get(cacheKey) as { attributes?: { title?: string } } | undefined) : undefined;
+              type PrefetchedData = { attributes?: { title?: string; content?: string; metadata?: { contentType?: string } } };
+              const prefetched = cacheKey ? (prefetchedHudmoData.get(cacheKey) as PrefetchedData | undefined) : undefined;
               const articleTitle = prefetched?.attributes?.title ?? message.articleTitle ?? null;
+
+              // Collect image slides from all citedReferences that are prefetched and image/*
+              const imageSlides: ImageSlide[] = [];
+              const refs = message.citedReferences;
+              if (Array.isArray(refs)) {
+                for (const ref of refs) {
+                  const refUrl = ref?.url ?? ref?.value;
+                  if (typeof refUrl !== "string") continue;
+                  try {
+                    const urlObj = new URL(refUrl.replace(/[).,;!?]+$/, ""));
+                    const dccid = urlObj.searchParams.get("c__dccid") || urlObj.searchParams.get("c__contentId");
+                    const hudmo = urlObj.searchParams.get("c__hudmo") || urlObj.searchParams.get("c__objectApiName");
+                    if (!dccid || !hudmo) continue;
+                    const key = `${dccid}-${hudmo}`;
+                    const data = prefetchedHudmoData.get(key) as PrefetchedData | undefined;
+                    const ct = data?.attributes?.metadata?.contentType;
+                    const imgSrc = data?.attributes?.content;
+                    if (typeof ct === "string" && ct.startsWith("image/") && typeof imgSrc === "string") {
+                      imageSlides.push({ url: imgSrc, title: data?.attributes?.title ?? null, dccid, hudmo });
+                    }
+                  } catch { /* ignore malformed URLs */ }
+                }
+              }
               // Stable unique key: id can be missing or duplicated from API; index keeps list order correct
               const messageKey = message?.id ? `${String(message.id)}-${index}` : `msg-${index}`;
               const isFirstBotMessage = index === 0 && message?.sender === "bot";
@@ -258,6 +281,7 @@ export const ChatWindow = ({
                       isFetching={isFetching}
                       isFetched={isFetched}
                       articleTitle={articleTitle}
+                      imageSlides={imageSlides}
                       citationBehavior={citationBehavior}
                       enableHover={enableHover}
                       chunkPreviewForMessage={message?.id ? chunkPreviewByMessageId?.[message.id] : undefined}
@@ -270,7 +294,7 @@ export const ChatWindow = ({
                       <div className="mt-3 mb-2 px-0 sm:px-1">
                         <p className="text-xs font-medium text-gray-500 mb-2">Articles relevant for this page</p>
                         <div className="flex flex-col gap-2">
-                          {urlBasedContentArticles!.map((article) => (
+                          {urlBasedContentArticles!.map((article) =>
                             onOpenArticle ? (
                               <button
                                 key={article.contentId}
@@ -299,7 +323,7 @@ export const ChatWindow = ({
                                 )}
                               </Link>
                             )
-                          ))}
+                          )}
                         </div>
                       </div>
                     )}

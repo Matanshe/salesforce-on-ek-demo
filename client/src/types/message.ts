@@ -4,10 +4,14 @@ export interface ChunkRow {
 }
 
 export interface CitedReference {
-  id: string;
+  id?: string;
   name?: string;
   url?: string;
+  value?: string;
   type?: string;
+  label?: string;
+  recordId?: string | null;
+  inlineMetadata?: unknown;
 }
 
 export interface QAPair {
@@ -39,6 +43,13 @@ export interface Message {
   summary?: string;
   /** Article title from get-hudmo (attributes.title), set when we have the response */
   articleTitle?: string;
+}
+
+export interface ImageSlide {
+  url: string;
+  title: string | null;
+  dccid: string;
+  hudmo: string;
 }
 
 /** Data for the citation hover card (metadata, title, source, summary, Copy/Preview) */

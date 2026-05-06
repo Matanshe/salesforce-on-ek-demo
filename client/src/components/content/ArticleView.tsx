@@ -178,7 +178,7 @@ interface ArticleViewProps {
     attributes?: {
       content?: string;
       title?: string;
-      metadata?: Record<string, unknown>;
+      metadata?: Record<string, unknown> & { contentType?: string; sourceUrl?: string };
       summary?: string;
       qa?: QaItem[];
     };
@@ -209,6 +209,10 @@ export const ArticleView = ({ data, chunkRows = [], onClose, customerId, content
   const qa = data?.attributes?.qa;
   const hasSummary = typeof summary === "string" && summary.trim() !== "";
   const hasQa = Array.isArray(qa) && qa.length > 0;
+
+  const contentType = data?.attributes?.metadata?.contentType;
+  const isImage = typeof contentType === "string" && contentType.startsWith("image/");
+  const imageUrl = isImage && typeof data?.attributes?.content === "string" ? data.attributes.content : null;
 
   const handleContentClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const anchor = e.target instanceof HTMLElement ? e.target.closest("a[data-dccid]") : null;
@@ -330,10 +334,10 @@ export const ArticleView = ({ data, chunkRows = [], onClose, customerId, content
   useLayoutEffect(() => {
     const content = data?.attributes?.content;
     const container = contentProseRef.current;
-    if (container && typeof content === "string") {
+    if (container && typeof content === "string" && !isImage) {
       container.innerHTML = content;
     }
-  }, [data?.attributes?.content]);
+  }, [data?.attributes?.content, isImage]);
 
   // Scroll to top when content changes
   useEffect(() => {
@@ -351,7 +355,7 @@ export const ArticleView = ({ data, chunkRows = [], onClose, customerId, content
     const hasContent = !!(data?.attributes?.content);
     const hasRef = !!contentProseRef.current;
     const rowCount = chunkRows?.length ?? 0;
-    if (!hasContent || !hasRef || rowCount === 0) {
+    if (!hasContent || !hasRef || rowCount === 0 || isImage) {
       return;
     }
     const chunkTexts = chunkRows
@@ -565,7 +569,25 @@ export const ArticleView = ({ data, chunkRows = [], onClose, customerId, content
             </div>
           )}
 
-          {data.attributes?.content ? (
+          {imageUrl ? (
+            <div className="flex flex-col items-center gap-4 pb-6 sm:pb-8">
+              <img
+                src={imageUrl}
+                alt={data.attributes?.title || "Citation image"}
+                className="max-w-full rounded-lg border border-gray-200 shadow-sm"
+              />
+              {data.attributes?.metadata?.sourceUrl && (
+                <a
+                  href={data.attributes.metadata.sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-[var(--theme-primary)] hover:underline"
+                >
+                  View original source
+                </a>
+              )}
+            </div>
+          ) : data.attributes?.content ? (
             <div
               ref={contentProseRef}
               role="article"
