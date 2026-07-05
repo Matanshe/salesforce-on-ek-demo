@@ -30,7 +30,9 @@ export function resolveArticleImages(
     // Preferred path: resolve by data-dccid against the assets map.
     const dccid = img.getAttribute("data-dccid");
     if (assets && dccid && typeof assets[dccid] === "string" && assets[dccid]) {
-      img.src = assets[dccid];
+      // Asset URLs arrive HTML-encoded (e.g. `&amp;` between AWS query params). Setting that
+      // literal as src corrupts the signed-URL params -> 400. Decode entities first.
+      img.src = decodeHtmlEntities(assets[dccid]);
       attachErrorHandler(img);
       return;
     }
@@ -54,6 +56,17 @@ export function resolveArticleImages(
     }
     attachErrorHandler(img);
   });
+}
+
+/** Decode HTML entities in a URL string (the assets map returns `&amp;`-encoded signed URLs). */
+function decodeHtmlEntities(url: string): string {
+  return url
+    .replace(/&amp;/g, "&")
+    .replace(/&#38;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
 }
 
 function attachErrorHandler(img: HTMLImageElement): void {

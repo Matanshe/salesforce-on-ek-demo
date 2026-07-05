@@ -218,7 +218,7 @@
     },
     {
       "id": "docusign",
-      "name": "DocuSign",
+      "name": "docusign",
       "salesforceLoginUrl": "https://eheart-241222-495-demo.my.salesforce.com",
       "clientId": "",
       "clientSecret": "",
@@ -228,16 +228,16 @@
       "ui": {
         "colors": { "primary": "#26065D", "primaryHover": "#1A0140", "accent": "#FFD000" },
         "labels": {
-          "siteName": "DocuSign",
+          "siteName": "docusign",
           "helpLabel": "Support",
-          "welcomeBadge": "DocuSign Support",
-          "welcomeTitle": "Welcome to DocuSign Support",
-          "welcomeSubtitle": "DocuSign eSignature & IAM on Enterprise Knowledge demo site",
+          "welcomeBadge": "docusign Support",
+          "welcomeTitle": "Welcome to docusign Support",
+          "welcomeSubtitle": "docusign eSignature & IAM on Enterprise Knowledge demo site",
           "chatHeaderTitle": "Agentforce on EK",
-          "chatPlaceholder": "Ask a question about DocuSign eSignature and IAM.",
+          "chatPlaceholder": "Ask a question about docusign eSignature and IAM.",
           "backToHelp": "← Back to Support",
           "openInHelp": "Open in Support",
-          "footerCopyright": "© {year} Docusign, Inc. All rights reserved."
+          "footerCopyright": "© {year} docusign, Inc. All rights reserved."
         }
       },
       "homeUrl": "https://www.docusign.com",

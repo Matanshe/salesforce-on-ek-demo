@@ -28,6 +28,7 @@ export const ChatWidget = ({
     urlBasedContentArticles,
     basePath,
     onOpenArticle,
+    suggestedQuestions,
 }: ChatWidgetProps) => {
   const chatWindowProps = {
     messages,
@@ -52,6 +53,7 @@ export const ChatWidget = ({
     urlBasedContentArticles,
     basePath,
     onOpenArticle,
+    suggestedQuestions,
   };
 
   if (minimized) {

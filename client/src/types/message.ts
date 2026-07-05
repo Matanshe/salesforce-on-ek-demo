@@ -124,6 +124,8 @@ export interface ChatWidgetProps {
   tocUrl?: string | null;
   /** Multiple TOC URLs per customer (each article in at most one). When provided, TOC picks the one containing current article. */
   tocUrls?: string[] | null;
+  /** Suggested/FAQ questions shown as clickable buttons in the empty chat body; clicking sends the question. */
+  suggestedQuestions?: string[];
 }
 
 export interface UrlBasedContentArticle {
