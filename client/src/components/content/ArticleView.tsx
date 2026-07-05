@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { ChunkRow } from "@/types/message";
 import { highlightChunksInElement } from "@/utils/chunkHighlight";
+import { resolveArticleImages } from "@/utils/resolveArticleImages";
 import { fetchRelatedDmoData, type RelatedDmoData } from "@/api/fetchRelatedDmoData";
+import { fetchHudmoMetadata, type HudmoMetadata } from "@/api/fetchHudmoMetadata";
 import { fetchArticleVersions, fetchArticleVersionsBySoql, type ArticleVersion } from "@/api/fastSearch";
 import { fetchHarmonizationData } from "@/api/fetchHarmonizationData";
 
@@ -173,6 +175,29 @@ interface QaItem {
   answer?: string;
 }
 
+/** Format an ISO datetime into a short human date (e.g. "Jun 30, 2026"). Returns null if unparseable. */
+function formatDate(iso?: string | null): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
+
+/** Map a raw language code to a readable label (falls back to the raw value). */
+function formatLanguage(lang?: string | null): string | null {
+  if (!lang) return null;
+  const map: Record<string, string> = {
+    "en-us": "English (US)",
+    "en-gb": "English (UK)",
+    en: "English",
+    "fr-fr": "French",
+    "de-de": "German",
+    "es-es": "Spanish",
+    "ja-jp": "Japanese",
+  };
+  return map[lang.toLowerCase()] ?? lang;
+}
+
 interface ArticleViewProps {
   data: {
     attributes?: {
@@ -181,6 +206,8 @@ interface ArticleViewProps {
       metadata?: Record<string, unknown> & { contentType?: string; sourceUrl?: string };
       summary?: string;
       qa?: QaItem[];
+      /** Map of image dccid -> CDN URL; DITA <img> tags carry data-dccid resolved against this. */
+      assets?: Record<string, string>;
     };
   } | null;
   /** Optional chunk rows for highlighting; when present, matching text is highlighted and scrolled into view */
@@ -199,6 +226,8 @@ export const ArticleView = ({ data, chunkRows = [], onClose, customerId, content
   const [qaExpanded, setQaExpanded] = useState(false);
   const [relatedDmoData, setRelatedDmoData] = useState<RelatedDmoData | null>(null);
   const [otherVersions, setOtherVersions] = useState<ArticleVersion[]>([]);
+  // Metadata pulled by direct-querying the HUDMO DMO table (fields the rendering API omits).
+  const [hudmoMeta, setHudmoMeta] = useState<HudmoMetadata | null>(null);
 
   if (data) {
     console.log("[ArticleView] open article title:", data.attributes?.title ?? "(no title)");
@@ -255,6 +284,26 @@ export const ArticleView = ({ data, chunkRows = [], onClose, customerId, content
       setRelatedDmoData(null);
     }
   }, [data?.attributes?.title, customerId, contentId]);
+
+  // Direct HUDMO-table metadata (last-modified, language, harmonization, provenance, copyright).
+  // Keyed by the article's dccid (contentId). Enrichment only: failures resolve to null silently.
+  useEffect(() => {
+    if (!contentId || !customerId) {
+      setHudmoMeta(null);
+      return;
+    }
+    let cancelled = false;
+    fetchHudmoMetadata(contentId, customerId)
+      .then((meta) => {
+        if (!cancelled) setHudmoMeta(meta);
+      })
+      .catch(() => {
+        if (!cancelled) setHudmoMeta(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [contentId, customerId]);
 
   const currentLanguage = useMemo(
     () => metadataEntries.find((e) => e.title === "Language")?.value ?? null,
@@ -319,7 +368,15 @@ export const ArticleView = ({ data, chunkRows = [], onClose, customerId, content
   const abstractEntry = metadataEntries.find((e) => e.title === "Abstract");
   const descriptionEntry = metadataEntries.find((e) => e.title === "Description");
 
-  const hasMeta = filteredMetaFields.length > 0 || relatedDmoData || abstractEntry || descriptionEntry;
+  // Curated HUDMO-table values (prefer the direct-query date over the API's "Last updated",
+  // which is null for these harmonized articles).
+  const lastUpdatedFromApi = filteredMetaFields.find((e) => e.title === "Last updated")?.value ?? null;
+  const lastModified = formatDate(hudmoMeta?.lastModified) ?? lastUpdatedFromApi;
+  const languageLabel = formatLanguage(hudmoMeta?.language);
+  const hasHudmoMeta = !!hudmoMeta && (lastModified || languageLabel || hudmoMeta.sourceDocument);
+
+  const hasMeta =
+    filteredMetaFields.length > 0 || relatedDmoData || abstractEntry || descriptionEntry || hasHudmoMeta;
 
   useEffect(() => {
     if (data?.attributes) {
@@ -336,8 +393,15 @@ export const ArticleView = ({ data, chunkRows = [], onClose, customerId, content
     const container = contentProseRef.current;
     if (container && typeof content === "string" && !isImage) {
       container.innerHTML = content;
+      // Resolve <img> srcs so images in the article body load. Harmonized DITA content tags each
+      // <img> with data-dccid and returns an assets map {dccid: cdnUrl}; resolve by that first, then
+      // fall back to the article's sourceUrl base. No-op when content already has absolute image URLs.
+      resolveArticleImages(container, {
+        sourceUrl: data?.attributes?.metadata?.sourceUrl,
+        assets: data?.attributes?.assets,
+      });
     }
-  }, [data?.attributes?.content, isImage]);
+  }, [data?.attributes?.content, isImage, data?.attributes?.metadata?.sourceUrl, data?.attributes?.assets]);
 
   // Scroll to top when content changes
   useEffect(() => {
@@ -363,22 +427,40 @@ export const ArticleView = ({ data, chunkRows = [], onClose, customerId, content
       .filter((t) => t.trim().length > 0);
     if (chunkTexts.length === 0) return;
     const container = contentProseRef.current;
+    // Gap left above the highlight so it doesn't sit flush against the header.
+    const SCROLL_TOP_GAP = 24;
+
+    // Scroll the ScrollArea viewport so `el` sits SCROLL_TOP_GAP px below the top.
+    // Manual offset math (instead of scrollIntoView) keeps it inside the nested viewport and
+    // avoids the "flush to the top edge" offset.
+    const scrollHighlightIntoView = (el: HTMLElement) => {
+      const scrollArea = scrollContainerRef.current?.closest('[data-slot="scroll-area"]');
+      const viewport = scrollArea?.querySelector('[data-slot="scroll-area-viewport"]') as HTMLElement | undefined;
+      if (!viewport) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+      const elRect = el.getBoundingClientRect();
+      const vpRect = viewport.getBoundingClientRect();
+      const target = viewport.scrollTop + (elRect.top - vpRect.top) - SCROLL_TOP_GAP;
+      viewport.scrollTo({ top: Math.max(0, target), behavior: "smooth" });
+    };
+
+    let firstHighlight: HTMLElement | null = null;
     const runHighlight = () => {
       if (!container) return;
-      const firstHighlight = highlightChunksInElement(container, chunkTexts);
-      if (firstHighlight) {
-        const scrollArea = scrollContainerRef.current?.closest('[data-slot="scroll-area"]');
-        const viewport = scrollArea?.querySelector('[data-slot="scroll-area-viewport"]') as HTMLElement | undefined;
-        if (viewport) {
-          firstHighlight.scrollIntoView({ behavior: "smooth", block: "start" });
-        } else {
-          firstHighlight.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
-      }
+      firstHighlight = highlightChunksInElement(container, chunkTexts);
+      if (firstHighlight) scrollHighlightIntoView(firstHighlight);
     };
+    // Run once after paint, then re-align after late layout shifts (images and the
+    // direct-query metadata block resolve asynchronously and push content down).
     requestAnimationFrame(() => {
       requestAnimationFrame(runHighlight);
     });
+    const realign = window.setTimeout(() => {
+      if (firstHighlight && document.contains(firstHighlight)) scrollHighlightIntoView(firstHighlight);
+    }, 550);
+    return () => window.clearTimeout(realign);
   }, [data?.attributes?.content, chunkRows]);
 
   if (!data) {
@@ -456,9 +538,14 @@ export const ArticleView = ({ data, chunkRows = [], onClose, customerId, content
         <div ref={scrollContainerRef} className="px-3 sm:px-4 md:px-6 py-4 sm:py-6">
           {/* AI-generated document summary (above description), Salesforce blue highlight */}
           {hasSummary && (
-            <div className="mb-4 p-3 sm:p-4 rounded-lg bg-[#0176D3]/10 border border-[#0176D3]/30">
-              <h2 className="text-sm font-semibold text-[#0176D3] mb-2">AI-generated document summary</h2>
-              <p className="text-sm text-[#014486] leading-relaxed whitespace-pre-wrap break-words">
+            <div className="mb-4 p-3 sm:p-4 rounded-lg bg-[var(--theme-primary)]/10 border border-[var(--theme-primary)]/30">
+              <h2 className="flex items-center gap-1.5 text-sm font-semibold text-[var(--theme-primary)] mb-2">
+                <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M12 2l1.9 4.6L18.5 8l-4.6 1.9L12 14l-1.9-4.1L5.5 8l4.6-1.4L12 2zM19 14l.95 2.3L22 17l-2.05.7L19 20l-.95-2.3L16 17l2.05-.7L19 14zM6 15l.8 1.9L9 18l-2.2.9L6 21l-.8-2.1L3 18l2.2-1.1L6 15z" />
+                </svg>
+                AI-generated document summary
+              </h2>
+              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-words">
                 {summary}
               </p>
             </div>
@@ -469,10 +556,16 @@ export const ArticleView = ({ data, chunkRows = [], onClose, customerId, content
               {/* Detail fields: small chips in one row, blue styling */}
               {/* Show in order: Last updated, Product, Major Version, Minor Version, Patch Version */}
               <div className="flex flex-wrap gap-2">
-                {filteredMetaFields.find((e) => e.title === "Last updated") && (
+                {lastModified && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-[var(--theme-primary)]/10 text-[var(--theme-primary)] border border-[var(--theme-primary)]/30">
-                    <span className="text-[var(--theme-primary)]/80">Last updated:</span>
-                    <span className="text-gray-800">{filteredMetaFields.find((e) => e.title === "Last updated")?.value}</span>
+                    <span className="text-[var(--theme-primary)]/80">Last modified:</span>
+                    <span className="text-gray-800">{lastModified}</span>
+                  </span>
+                )}
+                {languageLabel && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-[var(--theme-primary)]/10 text-[var(--theme-primary)] border border-[var(--theme-primary)]/30">
+                    <span className="text-[var(--theme-primary)]/80">Language:</span>
+                    <span className="text-gray-800">{languageLabel}</span>
                   </span>
                 )}
                 {relatedDmoData?.product_name__c && (
@@ -516,6 +609,18 @@ export const ArticleView = ({ data, chunkRows = [], onClose, customerId, content
                   <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap break-words">
                     {descriptionEntry.value}
                   </p>
+                </div>
+              )}
+              {/* Provenance line: original source document (from direct HUDMO query) */}
+              {hudmoMeta?.sourceDocument && (
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-400">
+                  <span className="inline-flex items-center gap-1" title={hudmoMeta.sourceFile ?? undefined}>
+                    <svg className="h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                      <path d="M14 2v6h6" />
+                    </svg>
+                    <span className="truncate max-w-[280px]">{hudmoMeta.sourceDocument}</span>
+                  </span>
                 </div>
               )}
             </div>

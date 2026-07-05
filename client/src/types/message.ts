@@ -6,12 +6,27 @@ export interface ChunkRow {
 export interface CitedReference {
   id?: string;
   name?: string;
+  /** New citation structure carries the article title directly (prefer over a separate title fetch). */
+  title?: string;
   url?: string;
   value?: string;
   type?: string;
   label?: string;
   recordId?: string | null;
   inlineMetadata?: unknown;
+}
+
+/**
+ * Read the article title from a citation object (new structure).
+ * Live API puts the title in `label` (e.g. "New and Enhanced Features"); older/other shapes
+ * use `title`/`name`. Check all three so this works across customers.
+ */
+export function getCitationTitle(ref: CitedReference | null | undefined): string | null {
+  if (!ref) return null;
+  if (typeof ref.title === "string" && ref.title.trim()) return ref.title;
+  if (typeof ref.label === "string" && ref.label.trim()) return ref.label;
+  if (typeof ref.name === "string" && ref.name.trim()) return ref.name;
+  return null;
 }
 
 export interface QAPair {
@@ -109,6 +124,8 @@ export interface ChatWidgetProps {
   tocUrl?: string | null;
   /** Multiple TOC URLs per customer (each article in at most one). When provided, TOC picks the one containing current article. */
   tocUrls?: string[] | null;
+  /** Suggested/FAQ questions shown as clickable buttons in the empty chat body; clicking sends the question. */
+  suggestedQuestions?: string[];
 }
 
 export interface UrlBasedContentArticle {

@@ -39,6 +39,8 @@ interface ChatWindowProps {
   basePath?: string;
   /** When set, "Articles relevant for this page" cards open article via this callback (e.g. citation modal) instead of navigating. */
   onOpenArticle?: (contentId: string) => void;
+  /** Suggested/FAQ questions shown as buttons in the empty chat body; clicking sends the question. */
+  suggestedQuestions?: string[];
 }
 
 const extractUrlParams = (url: string): { dccid: string | null; hudmo: string | null } => {
@@ -127,6 +129,7 @@ export const ChatWindow = ({
   urlBasedContentArticles,
   basePath = "",
   onOpenArticle,
+  suggestedQuestions,
 }: ChatWindowProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -243,7 +246,9 @@ export const ChatWindow = ({
               const isFetched = cacheKey ? prefetchedHudmoData.has(cacheKey) : false;
               type PrefetchedData = { attributes?: { title?: string; content?: string; metadata?: { contentType?: string } } };
               const prefetched = cacheKey ? (prefetchedHudmoData.get(cacheKey) as PrefetchedData | undefined) : undefined;
-              const articleTitle = prefetched?.attributes?.title ?? message.articleTitle ?? null;
+              // Prefer the title from the citation object (new structure, set on message.articleTitle);
+              // fall back to the prefetched get-hudmo title for older citations.
+              const articleTitle = message.articleTitle ?? prefetched?.attributes?.title ?? null;
 
               // Collect image slides from all citedReferences that are prefetched and image/*
               const imageSlides: ImageSlide[] = [];
@@ -331,6 +336,29 @@ export const ChatWindow = ({
                 </MessageErrorBoundary>
               );
             })}
+            {/* Suggested / FAQ questions: shown until the user sends their first message (only the greeting present). */}
+            {Array.isArray(suggestedQuestions) &&
+              suggestedQuestions.length > 0 &&
+              !isLoading &&
+              messages.every((m) => m.sender === "bot") && (
+                <div className="mt-3 mb-2 px-0 sm:px-1">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-2">
+                    Frequently asked
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    {suggestedQuestions.map((q) => (
+                      <button
+                        key={q}
+                        type="button"
+                        onClick={() => onSendMessage(q)}
+                        className="block w-full rounded-lg border border-gray-200 bg-white px-3.5 py-2.5 text-left text-sm text-gray-700 shadow-sm transition-colors hover:border-[var(--theme-primary)] hover:bg-gray-50 hover:text-[var(--theme-primary)] cursor-pointer"
+                      >
+                        {q}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             {isLoading && (
               <div className="flex justify-start mb-3 sm:mb-4">
                 <div className="max-w-[80%] px-3 sm:px-4 py-2 sm:py-3 rounded-lg bg-gray-200">

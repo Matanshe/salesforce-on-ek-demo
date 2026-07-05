@@ -58,10 +58,10 @@ export function LandingPage() {
   }, []);
 
   const handleTileClick = (customer: Customer) => {
-    const path =
-      customer.id === "proofpoint"
-        ? `/proofpoint?embed=1`
-        : `/${encodeURIComponent(customer.id)}`;
+    const embedOnlyCustomers = new Set(["proofpoint", "docusign"]);
+    const path = embedOnlyCustomers.has(customer.id)
+      ? `/${customer.id}?embed=1`
+      : `/${encodeURIComponent(customer.id)}`;
     navigate(path, {
       replace: false,
       state: customer.proposedQuestion ? { proposedQuestion: customer.proposedQuestion } : undefined,

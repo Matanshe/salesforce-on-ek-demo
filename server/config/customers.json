@@ -215,6 +215,42 @@
       "embedUi": {
         "colors": { "primary": "#66CC33", "primaryHover": "#52a82a", "accent": "#0066FF" }
       }
+    },
+    {
+      "id": "docusign",
+      "name": "docusign",
+      "salesforceLoginUrl": "https://eheart-241222-495-demo.my.salesforce.com",
+      "clientId": "",
+      "clientSecret": "",
+      "agentforceAgentId": "0XxHr0000007u5lKAA",
+      "objectApiName": "dita_test_1_harmonized__dlm",
+      "tocUrl": "/data/docusign-esignature-rn-toc.xml",
+      "ui": {
+        "colors": { "primary": "#26065D", "primaryHover": "#1A0140", "accent": "#FFD000" },
+        "labels": {
+          "siteName": "docusign",
+          "helpLabel": "Support",
+          "welcomeBadge": "docusign Support",
+          "welcomeTitle": "Welcome to docusign Support",
+          "welcomeSubtitle": "docusign eSignature & IAM on Enterprise Knowledge demo site",
+          "chatHeaderTitle": "Agentforce on EK",
+          "chatPlaceholder": "Ask a question about docusign eSignature and IAM.",
+          "backToHelp": "← Back to Support",
+          "openInHelp": "Open in Support",
+          "footerCopyright": "© {year} docusign, Inc. All rights reserved."
+        }
+      },
+      "homeUrl": "https://www.docusign.com",
+      "logoUrl": null,
+      "proposedQuestion": "What is the purpose of the new IAM Clause Library?",
+      "footerLinks": [
+        { "label": "Docusign.com", "href": "https://www.docusign.com" },
+        { "label": "Support", "href": "https://support.docusign.com" },
+        { "label": "Developer Center", "href": "https://developers.docusign.com" }
+      ],
+      "embedUi": {
+        "colors": { "primary": "#26065D", "primaryHover": "#1A0140", "accent": "#FFD000" }
+      }
     }
   ]
 }

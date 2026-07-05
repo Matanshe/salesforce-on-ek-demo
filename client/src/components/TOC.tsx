@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Input } from './ui/input';
 import { useCustomerRoute } from '../contexts/CustomerRouteContext';
@@ -22,14 +22,20 @@ interface TableOfContentsProps {
   isVisible?: boolean;
   /** When true, TOC fits parent height (e.g. inside a modal) instead of 100vh */
   embedded?: boolean;
+  /** Called with whether the TOC has any usable nav data, so parents can hide the panel when empty. */
+  onDataLoaded?: (hasData: boolean) => void;
+  /** When set, a collapse chevron is shown by the header; clicking it calls this (parent collapses the panel). */
+  onCollapse?: () => void;
 }
 
 
-const TableOfContents = ({ tocUrl: tocUrlProp, tocUrls: tocUrlsProp, onContentClick, currentContentId, isVisible = true, embedded = false }: TableOfContentsProps) => {
+const TableOfContents = ({ tocUrl: tocUrlProp, tocUrls: tocUrlsProp, onContentClick, currentContentId, isVisible = true, embedded = false, onDataLoaded, onCollapse }: TableOfContentsProps) => {
   const { basePath } = useCustomerRoute();
   const [tree, setTree] = useState<NavNode | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const onDataLoadedRef = useRef(onDataLoaded);
+  onDataLoadedRef.current = onDataLoaded;
 
   const urlList = useMemo(() => {
     if (Array.isArray(tocUrlsProp) && tocUrlsProp.length > 0) return tocUrlsProp;
@@ -103,6 +109,12 @@ const TableOfContents = ({ tocUrl: tocUrlProp, tocUrls: tocUrlsProp, onContentCl
     })();
     return () => { cancelled = true; };
   }, [urlList.join(','), currentContentId]);
+
+  // Report whether the TOC has usable nav data (any node with a contentId) so parents can hide the panel.
+  useEffect(() => {
+    const hasData = !!tree && collectContentIds(tree).length > 0;
+    onDataLoadedRef.current?.(hasData);
+  }, [tree, collectContentIds]);
 
   // Content ID: Salesforce uses content__id; Proofpoint uses Content_ID__c or contentId (e.g. proofpoint-ws-toc)
   const getContentId = (el: Element): string | null =>
@@ -323,18 +335,54 @@ const TableOfContents = ({ tocUrl: tocUrlProp, tocUrls: tocUrlsProp, onContentCl
       flexDirection: 'column',
       overflow: 'hidden',
     }}>
-      <h2 style={{ 
-        fontSize: '14px', 
-        padding: '20px 16px', 
-        margin: 0, 
-        color: '#3e3e3c',
-        textTransform: 'uppercase',
-        letterSpacing: '0.0625rem',
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '8px',
+        padding: '16px',
         borderBottom: '1px solid #d8dde6',
-        flexShrink: 0
+        flexShrink: 0,
       }}>
-        Table of Contents
-      </h2>
+        <h2 style={{
+          fontSize: '13px',
+          margin: 0,
+          color: '#3e3e3c',
+          textTransform: 'uppercase',
+          letterSpacing: '0.0625rem',
+          fontWeight: 700,
+        }}>
+          Table of Contents
+        </h2>
+        {onCollapse && (
+          <button
+            type="button"
+            onClick={onCollapse}
+            title="Hide contents"
+            aria-label="Hide table of contents"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '28px',
+              height: '28px',
+              borderRadius: '6px',
+              border: 'none',
+              background: 'transparent',
+              color: '#706e6b',
+              cursor: 'pointer',
+              flexShrink: 0,
+              transition: 'background-color 0.15s, color 0.15s',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#e0e0e0'; e.currentTarget.style.color = '#3e3e3c'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#706e6b'; }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" style={{ width: '16px', height: '16px' }}>
+              <path d="M15 6l-6 6 6 6" />
+            </svg>
+          </button>
+        )}
+      </div>
       <div style={{
         padding: '12px 16px',
         borderBottom: '1px solid #d8dde6',

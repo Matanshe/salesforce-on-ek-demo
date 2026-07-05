@@ -1,8 +1,16 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { generateSignature } from "../utils/requestSigner";
 import { getAgentMessageText } from "../utils/getAgentMessageText";
-import type { Message } from "../types/message";
+import { getCitationTitle } from "../types/message";
+import type { Message, CitedReference } from "../types/message";
 import type { ChatWidgetProps, UrlBasedContentArticle } from "../types/message";
+
+/** Article title from the first citation (new citation structure carries title directly). */
+function articleTitleFromMessage(m: Record<string, unknown>): string | undefined {
+  const refs = m.citedReferences;
+  if (!Array.isArray(refs) || refs.length === 0) return undefined;
+  return getCitationTitle(refs[0] as CitedReference) ?? undefined;
+}
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 
@@ -212,6 +220,7 @@ export function useAgentChat(customerId: string, pathname?: string | null, accou
               ? (agentResponse.citedReferences as Message["citedReferences"])
               : undefined,
             qa: Array.isArray(agentResponse.qa) ? (agentResponse.qa as Message["qa"]) : undefined,
+            articleTitle: articleTitleFromMessage(agentResponse),
           };
           setMessages((prev) => [...prev, botMessage]);
         }
