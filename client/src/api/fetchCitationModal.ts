@@ -17,7 +17,9 @@ export async function fetchCitationModal(
   dccid: string,
   objectApiName: string,
   chunkParams?: { chunkObjectApiName: string; chunkRecordIds: string },
-  customerId?: string | null
+  customerId?: string | null,
+  /** New citation structure: title from the citation object. When provided, used instead of the get-hudmo title. */
+  citationTitle?: string | null
 ): Promise<CitationModalResult | null> {
   try {
     const { timestamp, signature } = await generateSignature("POST", "/api/v1/get-hudmo");
@@ -66,7 +68,7 @@ export async function fetchCitationModal(
       }
     }
 
-    const articleTitle = data?.attributes?.title ?? null;
+    const articleTitle = (citationTitle && citationTitle.trim()) || data?.attributes?.title || null;
     return { hudmoData: data, chunkRows: rows, articleTitle };
   } catch (e) {
     console.warn("[citation modal] fetch error:", e);

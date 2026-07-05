@@ -243,7 +243,9 @@ export const ChatWindow = ({
               const isFetched = cacheKey ? prefetchedHudmoData.has(cacheKey) : false;
               type PrefetchedData = { attributes?: { title?: string; content?: string; metadata?: { contentType?: string } } };
               const prefetched = cacheKey ? (prefetchedHudmoData.get(cacheKey) as PrefetchedData | undefined) : undefined;
-              const articleTitle = prefetched?.attributes?.title ?? message.articleTitle ?? null;
+              // Prefer the title from the citation object (new structure, set on message.articleTitle);
+              // fall back to the prefetched get-hudmo title for older citations.
+              const articleTitle = message.articleTitle ?? prefetched?.attributes?.title ?? null;
 
               // Collect image slides from all citedReferences that are prefetched and image/*
               const imageSlides: ImageSlide[] = [];

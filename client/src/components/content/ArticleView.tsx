@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { ChunkRow } from "@/types/message";
 import { highlightChunksInElement } from "@/utils/chunkHighlight";
+import { resolveArticleImages } from "@/utils/resolveArticleImages";
 import { fetchRelatedDmoData, type RelatedDmoData } from "@/api/fetchRelatedDmoData";
 import { fetchArticleVersions, fetchArticleVersionsBySoql, type ArticleVersion } from "@/api/fastSearch";
 import { fetchHarmonizationData } from "@/api/fetchHarmonizationData";
@@ -181,6 +182,8 @@ interface ArticleViewProps {
       metadata?: Record<string, unknown> & { contentType?: string; sourceUrl?: string };
       summary?: string;
       qa?: QaItem[];
+      /** Map of image dccid -> CDN URL; DITA <img> tags carry data-dccid resolved against this. */
+      assets?: Record<string, string>;
     };
   } | null;
   /** Optional chunk rows for highlighting; when present, matching text is highlighted and scrolled into view */
@@ -336,8 +339,15 @@ export const ArticleView = ({ data, chunkRows = [], onClose, customerId, content
     const container = contentProseRef.current;
     if (container && typeof content === "string" && !isImage) {
       container.innerHTML = content;
+      // Resolve <img> srcs so images in the article body load. Harmonized DITA content tags each
+      // <img> with data-dccid and returns an assets map {dccid: cdnUrl}; resolve by that first, then
+      // fall back to the article's sourceUrl base. No-op when content already has absolute image URLs.
+      resolveArticleImages(container, {
+        sourceUrl: data?.attributes?.metadata?.sourceUrl,
+        assets: data?.attributes?.assets,
+      });
     }
-  }, [data?.attributes?.content, isImage]);
+  }, [data?.attributes?.content, isImage, data?.attributes?.metadata?.sourceUrl, data?.attributes?.assets]);
 
   // Scroll to top when content changes
   useEffect(() => {

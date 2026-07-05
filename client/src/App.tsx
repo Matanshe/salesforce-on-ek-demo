@@ -1,6 +1,7 @@
 import { type ErrorInfo, type ReactNode, Component, useState, useCallback, useEffect, useRef } from "react";
 import { useLocation, useNavigate, useSearchParams, useParams } from "react-router-dom";
-import type { Message, ChunkRow, CitationHoverCardData } from "./types/message";
+import type { Message, ChunkRow, CitationHoverCardData, CitedReference } from "./types/message";
+import { getCitationTitle } from "./types/message";
 import { Header } from "./components/layout/Header";
 import { Footer } from "./components/layout/Footer";
 import {
@@ -446,7 +447,13 @@ function App() {
       if (agentResponse.metrics != null && typeof agentResponse.metrics === "object" && !Array.isArray(agentResponse.metrics)) botMessage.metrics = agentResponse.metrics;
       if (typeof agentResponse.planId === "string") botMessage.planId = agentResponse.planId;
       if (Array.isArray(agentResponse.result)) botMessage.result = agentResponse.result;
-      if (Array.isArray(agentResponse.citedReferences)) botMessage.citedReferences = agentResponse.citedReferences;
+      if (Array.isArray(agentResponse.citedReferences)) {
+        botMessage.citedReferences = agentResponse.citedReferences;
+        // New citation structure: title is on the citation object. Use it immediately so
+        // "View Source: <title>" renders without waiting on the get-hudmo response.
+        const citationTitle = getCitationTitle(agentResponse.citedReferences[0] as CitedReference | undefined);
+        if (citationTitle) botMessage.articleTitle = citationTitle;
+      }
 
       setMessages((prev) => [...prev, botMessage]);
       console.log("✅ Bot message added to messages, current message count:", messages.length + 1);
@@ -673,7 +680,14 @@ function App() {
             setMessages((prev) =>
               prev.map((msg) =>
                 msg.id === messageId
-                  ? { ...msg, ...(safeQa && { qa: safeQa }), ...(safeSummary && { summary: safeSummary }), ...(safeArticleTitle && { articleTitle: safeArticleTitle }) }
+                  ? {
+                      ...msg,
+                      ...(safeQa && { qa: safeQa }),
+                      ...(safeSummary && { summary: safeSummary }),
+                      // Prefer a title already set from the citation object (new structure);
+                      // only fall back to the get-hudmo title when the message has none.
+                      ...(safeArticleTitle && !msg.articleTitle && { articleTitle: safeArticleTitle }),
+                    }
                   : msg
               )
             );

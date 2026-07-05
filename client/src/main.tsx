@@ -5,6 +5,7 @@ import './index.css'
 import App from './App.tsx'
 import { LandingPage } from './components/LandingPage.tsx'
 import { ProofpointDummyPage } from './components/ProofpointDummyPage.tsx'
+import { DocusignDummyPage } from './components/DocusignDummyPage.tsx'
 import { ProofpointCASBPage } from './components/proofpoint/ProofpointCASBPage.tsx'
 import { ProofpointWebSecurityPage } from './components/proofpoint/ProofpointWebSecurityPage.tsx'
 import { ProofpointNprePage } from './components/proofpoint/ProofpointNprePage.tsx'
@@ -20,6 +21,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/proofpoint/casb" element={<ProofpointCASBPage />} />
           <Route path="/proofpoint/websecurity" element={<ProofpointWebSecurityPage />} />
           <Route path="/proofpoint/npre" element={<ProofpointNprePage />} />
+          <Route path="/docusign" element={<DocusignDummyPage />} />
           <Route path="/:customerId/*" element={<App />} />
         </Routes>
       </BrowserRouter>

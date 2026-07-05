@@ -81,9 +81,37 @@ const PROOFPOINT_DEFAULT_THEME: ThemeConfig = {
   footerLinks: [{ label: "Proofpoint.com", href: "https://www.proofpoint.com" }],
 };
 
+const DOCUSIGN_DEFAULT_THEME: ThemeConfig = {
+  colors: {
+    primary: "#26065D",
+    primaryHover: "#1A0140",
+    accent: "#FFD000",
+  },
+  labels: {
+    siteName: "DocuSign",
+    helpLabel: "Support",
+    welcomeBadge: "DocuSign Support",
+    welcomeTitle: "Welcome to DocuSign Support",
+    welcomeSubtitle: "DocuSign eSignature & IAM on Enterprise Knowledge demo site",
+    chatHeaderTitle: "Agentforce on EK",
+    chatPlaceholder: "Ask a question about DocuSign eSignature and IAM.",
+    backToHelp: "← Back to Support",
+    openInHelp: "Open in Support",
+    footerCopyright: "© {year} Docusign, Inc. All rights reserved.",
+  },
+  homeUrl: "https://www.docusign.com",
+  logoUrl: null,
+  footerLinks: [
+    { label: "Docusign.com", href: "https://www.docusign.com" },
+    { label: "Support", href: "https://support.docusign.com" },
+    { label: "Developer Center", href: "https://developers.docusign.com" },
+  ],
+};
+
 /** Returns customer-specific default when known, so fallback never shows wrong brand (e.g. Proofpoint never shows "Salesforce"). */
 export function getDefaultTheme(customerId?: string | null): ThemeConfig {
   if (customerId === "proofpoint") return PROOFPOINT_DEFAULT_THEME;
+  if (customerId === "docusign") return DOCUSIGN_DEFAULT_THEME;
   return SALESFORCE_DEFAULT_THEME;
 }
 
